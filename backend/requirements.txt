@@ -1,0 +1,11 @@
+fastapi == 0.115.6
+uvicorn == 0.34.0
+pydantic == 2.10.5
+python-multipart
+python-dotenv == 1.0.1
+sqlmodel == 0.0.23
+psycopg2-binary == 2.9.10
+numpy == 2.2.3
+pandas == 2.2.3
+toml == 0.10.2
+

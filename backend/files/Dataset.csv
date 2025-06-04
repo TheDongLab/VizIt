@@ -1,0 +1,6 @@
+study_id,dataset_id,description,dataset_name,PI_full_name,PI_email,first_contributor,first_contributor_email,other_contributors,support_grants,other_funding_source,publication_DOI,publication_PMID,n_samples,brain_super_region,brain_region,sample_info,assay,seurat
+PD5D,PD5D_MTG_snRNAseq,,PD5D_MTG_snRNAseq,Dr.Clemens Scherzer,clemens.scherzer@yale.edu,Jacob Parker,jacob.parker@yale.edu,Dr.Xianjun Dong,ASAP-000301,NA,NA,NA,94,,MTG,PD and control postmortem brains,snRNAseq,"DietFullIntegration_Oct2023_FinalOSR_6HC_MTG_FebCA_MajorMarkersUpdated2.rds
+"
+PD5D,PD5D_MB_Moactcseq,,PD5D_MB_Multiome,Dr.Clemens Scherzer,clemens.scherzer@yale.edu,Mingming Lu,mingming.lu@yale.edu,Dr.Xianjun Dong,ASAP-000301,NA,NA,NA,94,,MB,PD and control postmortem brains,scMultiome,
+PD5D,PD5D_MTG_VisiumST,Integrating spatial transcriptomics and known regulatory elements to elucidate mechanisms of Parkinson’s disease,PD5D_MTG_VisiumST,Dr.Clemens Scherzer,clemens.scherzer@yale.edu,Jie Yuan,jie.yuan@yale.edu,Dr.Xianjun Dong,ASAP-000301,NA,NA,NA,94,,MTG,PD and control postmortem brains,VisiumST,"comb_seurat_smoothed_V4_cell2loc_01222025.rds
+"
