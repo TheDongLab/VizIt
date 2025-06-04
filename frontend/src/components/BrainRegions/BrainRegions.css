@@ -1,0 +1,39 @@
+.brain-regions-container {
+  width: 100%;
+  max-width: 800px; /* Adjust to match your image width */
+  margin: 0 auto;
+  position: relative;
+}
+
+.image-overlay-container {
+  position: relative;
+  width: 100%;
+  height: auto;
+}
+
+.brain-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.regions-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.region {
+  fill: rgba(255, 255, 255, 0); /* Transparent by default */
+  pointer-events: auto;
+  cursor: pointer;
+  transition: fill 1s ease;
+}
+
+.region:hover {
+  fill: rgba(0, 0, 0, 0.0); /* Highlight color on hover */
+}

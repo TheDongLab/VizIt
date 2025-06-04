@@ -1,0 +1,38 @@
+.disease-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0px;
+}
+
+.selector-title {
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #6b7280; /* Neutral gray for subtitle */
+}
+
+.disease-buttons {
+  border: 1px solid #cbd5e1; /* Light border around button group */
+  border-radius: 25px; !important; /* Rounded edges for button group */
+  overflow: hidden; /* Ensures rounded corners work on all buttons */
+}
+
+.disease-buttons .MuiButtonBase-root {
+  text-transform: none; /* Prevents uppercase text */
+  border: none; /* Remove inner borders between buttons */
+  padding: 6px 16px;
+  color: #334155; /* Neutral gray for unselected buttons */
+  background-color: #f9fafb; /* Light background for buttons */
+}
+
+.disease-buttons .MuiButtonBase-root:hover {
+  background-color: #e2e8f0; /* Slight hover effect */
+}
+
+.disease-buttons .selected {
+  background-color: #d1fae5; /* Light green for selected button */
+  color: #064e3b; /* Darker green for selected text */
+  border: 0px solid #10b981; /* Green border for selected button */
+  /*border-radius: 25px;*/
+
+}
