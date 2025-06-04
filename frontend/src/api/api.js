@@ -1,0 +1,194 @@
+import axios from "axios";
+
+const BASE_URL = "http://localhost:8000"; // Replace with your backend URL
+// const BASE_URL = "http://10.168.236.29:8000"; // Replace with your backend URL
+
+const API_URL = `${BASE_URL}/api`;
+
+export const getGeneList = async (dataset,query_str) => {
+    try {
+        const response = await axios.get(`${API_URL}/getgenelist`,
+            {params: {dataset:dataset,query_str:query_str}});
+        return response;
+    } catch (error) {
+        console.error("Error getGeneList:", error);
+        throw error;
+    }
+}
+
+export const getSampleList = async (dataset,query_str) => {
+    try {
+        const response = await axios.get(`${API_URL}/getsamplelist`,
+            {params: {dataset:dataset,query_str:query_str}});
+        return response;
+    } catch (error) {
+        console.error("Error getSampleList:", error);
+        throw error;
+    }
+}
+
+export const getMetaList = async (dataset,query_str) => {
+    try {
+        const response = await axios.get(`${API_URL}/getmetalist`,
+            {params: {dataset:dataset,query_str:query_str}});
+        return response;
+    } catch (error) {
+        console.error("Error getMetaList:", error);
+        throw error;
+    }
+}
+
+export const getMainClusterInfo = async (dataset) => {
+    try {
+        const response = await axios.get(`${API_URL}/getmainclusterinfo`,
+            {params: {dataset:dataset}});
+        return response;
+    } catch (error) {
+        console.error("Error getMainClusterInfo:", error);
+        throw error;
+    }
+}
+
+export const getCellTypeList = async (dataset) => {
+    try {
+        const response = await axios.get(`${API_URL}/getcelltypelist`,
+            {params: {dataset:dataset}});
+        return response;
+    } catch (error) {
+        console.error("Error getCellTypeList:", error);
+        throw error;
+    }
+}
+
+export const getCellCounts = async (dataset) => {
+    try {
+        const response = await axios.get(`${API_URL}/getcellcounts`,
+            {params: {dataset:dataset}});
+        return response;
+    } catch (error) {
+        console.error("Error getCellCounts:", error);
+        throw error;
+    }
+}
+
+export const getUMAPData = async (dataset) => {
+    try {
+        const response = await axios.get(`${API_URL}/getumapembedding`,
+            {params: {dataset:dataset}});
+        return response;
+    } catch (error) {
+        console.error("Error getUMAPData:", error);
+        throw error;
+    }
+}
+
+export const getExprData = async (dataset,gene) => {
+    try {
+        const response = await axios.get(`${API_URL}/getexprdata`,
+            {params: {dataset:dataset,gene:gene}});
+        return response;
+    } catch (error) {
+        console.error("Error getExprData:", error);
+        throw error;
+    }
+}
+
+export const getPseudoExprData = async (dataset,gene) => {
+    try {
+        const response = await axios.get(`${API_URL}/getpseudoexprdata`,
+            {params: {dataset:dataset,gene:gene}});
+        return response;
+    } catch (error) {
+        console.error("Error getPseudoExprData:", error);
+        throw error;
+    }
+}
+
+export const getMetaDataOfSample = async (dataset, sample) => {
+    try {
+        const response = await axios.get(`${API_URL}/getmetadataofsample`,
+            {params: {dataset:dataset, sample:sample}});
+        return response;
+    } catch (error) {
+        console.error("Error getMetaDataOfSample:", error);
+        throw error;
+    }
+}
+
+export const getAllSampleMetaData = async (dataset) => {
+    try {
+        const response = await axios.get(`${API_URL}/getallsamplemetadata`,
+            {params: {dataset:dataset}});
+        return response;
+    } catch (error) {
+        console.error("Error getAllSampleMetaData:", error);
+        throw error;
+    }
+}
+
+
+export const getAllMetaData = async (dataset_id="all", cols=["all"], rows=["all"]) => {
+    try {
+        const response = await axios.get(`${API_URL}/getallmetadata`,
+            {params: {dataset_id: dataset_id, cols: cols,  rows: rows}});
+        return response;
+    } catch (error) {
+        console.error("Error getAllMetaData:", error);
+        throw error;
+    }
+}
+
+
+export const getMarkerGenes = async (dataset) => {
+    try {
+        const response = await axios.get(`${API_URL}/getmarkergenes`,
+            {params: {dataset:dataset}});
+        return response;
+    } catch (error) {
+        console.error("Error getMarkerGenes:", error);
+        throw error;
+    }
+}
+
+export const getDEGsOfCellType = async (dataset,cell_type) => {
+    try {
+        const response = await axios.get(`${API_URL}/getdegsofcelltype`,
+            {params: {dataset:dataset,celltype:cell_type}});
+        return response;
+    } catch (error) {
+        console.error("Error getDEGsOfCellType:", error);
+        throw error;
+    }
+}
+
+
+export const getDatatable_get = async (data_id="all") => {
+    try {
+        const response = await axios.get(`${API_URL}/getdatatable/${data_id}`);
+        return response;
+    } catch (error) {
+        console.error("Error reading data records:", error);
+        throw error;
+    }
+}
+
+export const getSampletable_get = async (conditions) => {
+    // console.log(conditions);
+    try {
+        const response = await axios.get(`${API_URL}/getsampletable`, {params: conditions});
+        return response;
+    } catch (error) {
+        console.error("Error reading sample records:", error);
+        throw error;
+    }
+}
+
+export const getDatasetList = async (dataset_id="all") => {
+    try {
+        const response = await axios.get(`${API_URL}/getdatasetlist/${dataset_id}`);
+        return response;
+    } catch (error) {
+        console.error("Error reading dataset records:", error);
+        throw error;
+    }
+}
