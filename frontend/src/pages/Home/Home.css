@@ -1,0 +1,71 @@
+/* General Styles */
+.landing-page {
+    padding: 2rem;
+    font-family: Arial, sans-serif;
+    margin-bottom: 100px;
+}
+
+.title {
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.subtitle {
+    color: #333;
+    font-size: 1.2rem;
+}
+
+/* Content Grid */
+.content-grid {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* Paper Section Styles */
+.paper {
+    padding: 1rem;
+    background-color: #f9f9f9;
+    height: 100%; /* Ensures the paper stretches to match the height */
+    display: flex;
+    flex-direction: column;
+    justify-content: start; /* Optional: Keeps content spaced evenly */
+    border-radius: 12px !important; /* Override default radius */
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important; /* Custom shadow */
+}
+
+.section-title {
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.subsection-title {
+    margin-top: 1rem;
+    font-weight: bold;
+}
+
+ul {
+    padding-left: 1.5rem;
+    margin-top: 0.1rem;
+    list-style: none;
+}
+
+ul li {
+    margin-bottom: 0.5rem;
+}
+
+
+
+/* Responsive grid behavior */
+@media (max-width: 768px) {
+    .content-grid {
+        flex-direction: column; /* Stack sections vertically */
+        gap: 20px;
+    }
+
+    .brain-image-container {
+        max-width: 100%; /* Allow full width on smaller screens */
+    }
+}

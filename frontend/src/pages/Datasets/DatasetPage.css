@@ -1,0 +1,39 @@
+/* DataPage */
+.data-page-container {
+    width:80%;
+    height: 100vh;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.title-row {
+    margin-bottom: 16px;
+}
+
+.main-content {
+    display: flex;
+    margin-top: 1rem;
+}
+
+.data-display-area {
+    margin: 0
+    20px;
+    flex: 1;
+}
+
+.data-toolbar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.search-input {
+    width: 300px;
+}
+
+
+.pagination {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}

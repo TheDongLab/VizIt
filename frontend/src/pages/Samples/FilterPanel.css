@@ -1,0 +1,60 @@
+/* Filter panel container */
+.filter-panel {
+    width: 20%;
+    min-width: 250px;
+    background-color: #f9f9f9;
+    /*padding: 16px;*/
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    height: fit-content;
+}
+
+.panel-title {
+    font-weight: bold;
+    padding: 8px 12px;
+    background-color: #e3e3e3;
+}
+
+/* Filter section container */
+.filter-section {
+    /*margin-bottom: 0px;*/
+}
+
+/* Filter header with expand/collapse icon */
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px 8px 8px 16px;
+    background-color: #333333;
+    color: #f9f9f9;
+}
+
+/* Expand/collapse toggle icon */
+.toggle-icon {
+    font-size: 20px;
+    color: #f9f9f9;
+    user-select: none;
+}
+
+/* Filter options container */
+.filter-options {
+    max-height: 150px; /* Max height for scrollable options */
+    overflow-y: auto;
+    padding-left: 8px;
+    margin-top: 8px;
+}
+
+/* Individual filter option item */
+.filter-option-item {
+    display: block;
+    margin: 0px 0px;
+    width: fit-content;
+}
+
+/* Divider between filters */
+.MuiDivider-root {
+    margin: 8px 0;
+}
