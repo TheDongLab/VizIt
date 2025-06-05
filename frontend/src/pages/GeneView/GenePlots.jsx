@@ -4,7 +4,7 @@ import {useEffect, useMemo, useState} from "react";
 import "./GeneView.css";
 import {isCategorical} from "../../utils/funcs.js";
 import PropTypes from "prop-types";
-import useSampleGeneMetaStore from "../../store/SempleGeneMetaStore.js";
+import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js";
 import {toast} from "react-toastify";
 import Plotly from 'plotly.js-dist-min';
 

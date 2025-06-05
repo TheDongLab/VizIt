@@ -15,7 +15,7 @@ import {useSearchParams} from "react-router-dom";
 
 import "./VisiumView.css";
 
-import useSampleGeneMetaStore from "../../store/SempleGeneMetaStore.js";
+import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js";
 import useDataStore from "../../store/DatatableStore.js";
 
 import EChartFeaturePlot from "./VisiumEChartPlot.jsx";

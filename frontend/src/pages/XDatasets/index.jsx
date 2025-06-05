@@ -21,7 +21,7 @@ import DeleteIcon from "@mui/icons-material/Delete"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import {useSearchParams} from "react-router-dom"
 
-import useSampleGeneMetaStore from "../../store/SempleGeneMetaStore.js"
+import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js"
 import useDataStore from "../../store/DatatableStore.js"
 import {toast} from "react-toastify"
 import PlotlyFeaturePlot from "../VisiumView/VisiumPlotlyPlot.jsx"
