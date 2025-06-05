@@ -18,7 +18,7 @@ import {
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot"
 import {useSearchParams} from "react-router-dom"
 
-import useSampleGeneMetaStore from "../../store/SempleGeneMetaStore.js"
+import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js"
 
 import EChartScatterPlot from "./EChartScatter.jsx"
 import GeneMetaPlots from "./GenePlots.jsx"
