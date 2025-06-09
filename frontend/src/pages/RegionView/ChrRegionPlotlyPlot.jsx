@@ -145,7 +145,6 @@ const PlotlyFeaturePlot = ({visiumData, geneData, metaData, feature}) => {
         showlegend: isCat,
         // automrgin: true,
         autosize: true,
-        scrollZoom: true,
         xaxis: {showgrid: false, zeroline: false, visible: false, range: [0, naturalDimensions.width], autornange: false},
         yaxis: {showgrid: false, zeroline: false, visible: false, range: [naturalDimensions.height, 0], autorange: false},
         images: imageUrl ? [{
@@ -199,6 +198,7 @@ const PlotlyFeaturePlot = ({visiumData, geneData, metaData, feature}) => {
                 config={{
                     responsive: true,  // Makes it adapt to screen size
                     displaylogo: false, // Removes the Plotly logo
+                    scrollZoom: true, // Enable zooming with scroll wheel
                     doubleClick: false,
                     toImageButtonOptions: {
                         name: "Save as PNG",
