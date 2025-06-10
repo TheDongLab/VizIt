@@ -23,9 +23,9 @@ const useCellTypeStore = create((set, get) => ({
     setMainCluster: async (cluster) => await set({mainCluster: cluster}),
     getMainCluster: async () => await get().mainCluster,
 
-    fetchMainClsuterInfo: async (dataset_id) => {
+    fetchMainClusterInfo: async (dataset_id) => {
         if (!dataset_id || dataset_id === "all") {
-            set({error: "fetchMainClsuterInfo: No dataset selected"});
+            set({error: "fetchMainClusterInfo: No dataset selected"});
             return [];
         }
         try {

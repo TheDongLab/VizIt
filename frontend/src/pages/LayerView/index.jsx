@@ -43,7 +43,7 @@ function LayerView() {
     const {selectedCellTypes, setSelectedCellTypes} = useCellTypeStore()
     const {cellTypeList, fetchCellTypeList, markerGenes, fetchMarkerGenes} = useCellTypeStore()
     const {cellCounts, fetchCellCounts, diffExpGenes, fetchDiffExpGenes} = useCellTypeStore()
-    const {fetchMainClsuterInfo, mainCluster, getMainCluster} = useCellTypeStore()
+    const {fetchMainClusterInfo, mainCluster, getMainCluster} = useCellTypeStore()
     const {loading, error, metadataLoading} = useCellTypeStore()
 
     const [cellTypeSearchText, setCellTypeSearchText] = useState("")
@@ -51,13 +51,13 @@ function LayerView() {
 
     useEffect(() => {
         fetchDatasetList()
-        fetchMainClsuterInfo(selectedDataset);
+        fetchMainClusterInfo(selectedDataset);
     }, [])
 
     useEffect(() => {
         // Main data fetches (control loading state)
         const fetchPrimaryData = async () => {
-            await fetchMainClsuterInfo(selectedDataset)
+            await fetchMainClusterInfo(selectedDataset)
             // update the mainCluster
             const mainCluster = await getMainCluster()
             await fetchUMAPData(selectedDataset)
