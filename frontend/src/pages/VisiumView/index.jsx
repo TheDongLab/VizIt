@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import {
     Typography,
-    ListItem,
     Box,
     Divider,
     Chip,
@@ -85,7 +84,10 @@ const StyledPopper = styled(Popper)({
 
 const ListboxComponent = forwardRef(function ListboxComponent(props, ref) {
     const { children, ...other } = props;
-    const itemData = React.Children.toArray(children);
+    const itemData = React.useMemo(
+        () => React.Children.toArray(children),
+        [children],
+    );
 
     const itemCount = itemData.length;
     const height =
@@ -321,9 +323,12 @@ function VisiumView() {
                         renderOption={(props, option) => {
                             const { key, ...rest } = props;
                             return (
-                                <ListItem key={key} {...rest}>
+                                <li key={key} {...rest}>
                                     {option}
-                                </ListItem>
+                                </li>
+                                // <ListItem key={key} {...rest}>
+                                //   {option}
+                                // </ListItem>
                             );
                         }}
                         renderInput={(params) => (
@@ -360,9 +365,12 @@ function VisiumView() {
                         renderOption={(props, option) => {
                             const { key, ...rest } = props;
                             return (
-                                <ListItem key={key} {...rest}>
+                                <li key={key} {...rest}>
                                     {option}
-                                </ListItem>
+                                </li>
+                                // <ListItem key={key} {...rest}>
+                                //   {option}
+                                // </ListItem>
                             );
                         }}
                         renderTags={(value, getTagProps) =>
@@ -432,9 +440,12 @@ function VisiumView() {
                         renderOption={(props, option) => {
                             const { key, ...rest } = props;
                             return (
-                                <ListItem key={key} {...rest}>
+                                <li key={key} {...rest}>
                                     {option}
-                                </ListItem>
+                                </li>
+                                // <ListItem key={key} {...rest}>
+                                //   {option}
+                                // </ListItem>
                             );
                         }}
                         renderTags={(value, getTagProps) =>
@@ -487,9 +498,12 @@ function VisiumView() {
                         renderOption={(props, option) => {
                             const { key, ...rest } = props;
                             return (
-                                <ListItem key={key} {...rest}>
+                                <li key={key} {...rest}>
                                     {option}
-                                </ListItem>
+                                </li>
+                                // <ListItem key={key} {...rest}>
+                                //   {option}
+                                // </ListItem>
                             );
                         }}
                         renderTags={(value, getTagProps) =>
