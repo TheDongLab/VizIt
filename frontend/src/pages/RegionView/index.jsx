@@ -4,6 +4,7 @@ import {
   Box,
   Divider,
   Chip,
+  ListItem,
   Button,
   TextField,
   LinearProgress,
@@ -24,22 +25,21 @@ import "./RegionView.css";
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
 
+// Constants for react-window listbox
 const LISTBOX_PADDING = 8;
 const MAX_VISIBLE = 8;
 const ITEM_SIZE = 36;
 
 function renderRow({ data, index, style }) {
-  const [props, option] = data[index];
+  const item = data[index];
   const inlineStyle = {
     ...style,
     top: style.top + LISTBOX_PADDING,
   };
 
-  return (
-    <Typography component="li" {...props} noWrap style={inlineStyle}>
-      {option}
-    </Typography>
-  );
+  return React.cloneElement(item, {
+    style: inlineStyle,
+  });
 }
 
 const OuterElementContext = React.createContext({});
@@ -62,10 +62,20 @@ function useResetCache(data) {
   return ref;
 }
 
+const StyledPopper = styled(Popper)({
+  [`& .${autocompleteClasses.listbox}`]: {
+    boxSizing: "border-box",
+    "& ul": {
+      padding: 0,
+      margin: 0,
+    },
+  },
+});
+
 const ListboxComponent = React.forwardRef(
   function ListboxComponent(props, ref) {
     const { children, ...other } = props;
-    const itemData = children;
+    const itemData = React.Children.toArray(children);
 
     const itemCount = itemData.length;
     const height =
@@ -95,16 +105,6 @@ const ListboxComponent = React.forwardRef(
 ListboxComponent.propTypes = {
   children: PropTypes.node,
 };
-
-const StyledPopper = styled(Popper)({
-  [`& .${autocompleteClasses.listbox}`]: {
-    boxSizing: "border-box",
-    "& ul": {
-      padding: 0,
-      margin: 0,
-    },
-  },
-});
 
 function RegionView() {
   // Get all the pre-selected values
@@ -226,18 +226,18 @@ function RegionView() {
   const handleGeneChange = (event, newValue) => {
     setSelectedGene(newValue);
     setSelectedSnp("");
-    updateQueryParams(datasetId, newValue, "");
+    updateQueryParams(datasetId, newValue, selectedSnp);
     // TODO clear the graph if no gene is selected?
-    if (newValue != "") fetchSnpData(datasetId, "Astrocytes");
+    if (selectedGene != "") fetchSnpData(datasetId, "Astrocytes");
   };
 
   /** Handles SNP selection change */
   const handleSnpChange = (event, newValue) => {
     setSelectedSnp(newValue);
     setSelectedGene("");
-    updateQueryParams(datasetId, "", newValue);
+    updateQueryParams(datasetId, selectedGene, newValue);
     // TODO clear the graph if no SNP is selected?
-    if (newValue != "") fetchGeneData(datasetId, "Astrocytes");
+    if (selectedSnp != "") fetchGeneData(datasetId, "Astrocytes");
   };
 
   // TODO needed?
@@ -316,7 +316,14 @@ function RegionView() {
                 component: ListboxComponent,
               },
             }}
-            renderOption={(props, option, { index }) => [props, option, index]} // renderOption must return [props, option, index]
+            renderOption={(props, option) => {
+              const { key, ...rest } = props;
+              return (
+                <ListItem key={key} {...rest}>
+                  {option}
+                </ListItem>
+              );
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -353,7 +360,14 @@ function RegionView() {
                 component: ListboxComponent,
               },
             }}
-            renderOption={(props, option, { index }) => [props, option, index]} // renderOption must return [props, option, index]
+            renderOption={(props, option) => {
+              const { key, ...rest } = props;
+              return (
+                <ListItem key={key} {...rest}>
+                  {option}
+                </ListItem>
+              );
+            }}
             /* renderTags={(value, getTagProps) => */
             /*   value.map((option, index) => { */
             /*     const { key, ...tagProps } = getTagProps({ index }); */
@@ -395,7 +409,14 @@ function RegionView() {
                 component: ListboxComponent,
               },
             }}
-            renderOption={(props, option, { index }) => [props, option, index]} // renderOption must return [props, option, index]
+            renderOption={(props, option) => {
+              const { key, ...rest } = props;
+              return (
+                <ListItem key={key} {...rest}>
+                  {option}
+                </ListItem>
+              );
+            }}
             /* renderTags={(value, getTagProps) => */
             /*   value.map((option, index) => { */
             /*     const { key, ...tagProps } = getTagProps({ index }); */
