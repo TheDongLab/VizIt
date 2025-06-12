@@ -1,10 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  forwardRef,
+  useContext,
+  useRef,
+  cloneElement,
+  createContext,
+} from "react";
 import {
   Typography,
   Box,
   Divider,
   Chip,
-  ListItem,
   Button,
   TextField,
   LinearProgress,
@@ -75,7 +82,15 @@ const StyledPopper = styled(Popper)({
 const ListboxComponent = React.forwardRef(
   function ListboxComponent(props, ref) {
     const { children, ...other } = props;
-    const itemData = React.Children.toArray(children);
+    const itemData = useMemo(
+      () => React.Children.toArray(children),
+      [children],
+    );
+    // These also work, but may be worse
+    // const itemData = React.Children.toArray(children);
+    // const itemData = React.useMemo(() => {
+    //   return Array.isArray(children) ? children : [children];
+    // }, [children]);
 
     const itemCount = itemData.length;
     const height =
@@ -319,9 +334,12 @@ function RegionView() {
             renderOption={(props, option) => {
               const { key, ...rest } = props;
               return (
-                <ListItem key={key} {...rest}>
+                <li key={key} {...rest}>
                   {option}
-                </ListItem>
+                </li>
+                // <ListItem key={key} {...rest}>
+                //   {option}
+                // </ListItem>
               );
             }}
             renderInput={(params) => (
@@ -363,9 +381,12 @@ function RegionView() {
             renderOption={(props, option) => {
               const { key, ...rest } = props;
               return (
-                <ListItem key={key} {...rest}>
+                <li key={key} {...rest}>
                   {option}
-                </ListItem>
+                </li>
+                // <ListItem key={key} {...rest}>
+                //   {option}
+                // </ListItem>
               );
             }}
             /* renderTags={(value, getTagProps) => */
@@ -412,9 +433,12 @@ function RegionView() {
             renderOption={(props, option) => {
               const { key, ...rest } = props;
               return (
-                <ListItem key={key} {...rest}>
+                <li key={key} {...rest}>
                   {option}
-                </ListItem>
+                </li>
+                // <ListItem key={key} {...rest}>
+                //   {option}
+                // </ListItem>
               );
             }}
             /* renderTags={(value, getTagProps) => */
