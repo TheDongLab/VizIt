@@ -1,4 +1,10 @@
-import { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  forwardRef,
+  useContext,
+  useRef,
+} from "react";
 import {
   Typography,
   Box,
@@ -11,16 +17,96 @@ import {
   Autocomplete,
   Link,
 } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import Popper from "@mui/material/Popper";
+import { autocompleteClasses } from "@mui/material/Autocomplete";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import { useSearchParams } from "react-router-dom";
+import PropTypes from "prop-types";
+import { FixedSizeList } from "react-window";
 
 import "./RegionView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
 
-// import PlotlyFeaturePlot from "./ChrRegionPlotlyPlot.jsx";
-// import useVisiumStore from "../../store/VisiumStore.jsx";
+const LISTBOX_PADDING = 8;
+const MAX_VISIBLE = 8;
+const ITEM_SIZE = 36;
+
+function renderRow({ data, index, style }) {
+  const [props, option] = data[index];
+  const inlineStyle = {
+    ...style,
+    top: style.top + LISTBOX_PADDING,
+  };
+
+  return (
+    <Typography component="li" {...props} noWrap style={inlineStyle}>
+      {option}
+    </Typography>
+  );
+}
+
+const OuterElementContext = React.createContext({});
+
+const OuterElementType = forwardRef(function OuterElementType(props, ref) {
+  const outerProps = useContext(OuterElementContext);
+  return <div ref={ref} {...props} {...outerProps} />;
+});
+
+// Reset the cache of the list when the data changes (unused)
+function useResetCache(data) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current != null) {
+      ref.current.resetAfterIndex(0, true);
+    }
+  }, [data]);
+  return ref;
+}
+
+const StyledPopper = styled(Popper)({
+  [`& .${autocompleteClasses.listbox}`]: {
+    boxSizing: "border-box",
+    "& ul": {
+      padding: 0,
+      margin: 0,
+    },
+  },
+});
+
+const ListboxComponent = forwardRef(function ListboxComponent(props, ref) {
+  const { children, ...other } = props;
+  const itemData = React.Children.toArray(children);
+
+  const itemCount = itemData.length;
+  const height =
+    Math.min(itemCount, MAX_VISIBLE) * ITEM_SIZE + 2 * LISTBOX_PADDING;
+
+  return (
+    <div ref={ref}>
+      <OuterElementContext.Provider value={other}>
+        <FixedSizeList
+          itemData={itemData}
+          height={height}
+          width="100%"
+          outerElementType={OuterElementType}
+          innerElementType="ul"
+          itemSize={ITEM_SIZE}
+          overscanCount={5}
+          itemCount={itemCount}
+        >
+          {renderRow}
+        </FixedSizeList>
+      </OuterElementContext.Provider>
+    </div>
+  );
+});
+
+ListboxComponent.propTypes = {
+  children: PropTypes.node,
+};
 
 function RegionView() {
   // Get all the pre-selected values
@@ -142,7 +228,7 @@ function RegionView() {
   const handleGeneChange = (event, newValue) => {
     setSelectedGene(newValue);
     setSelectedSnp("");
-    updateQueryParams(datasetId, newValue, selectedSnp);
+    updateQueryParams(datasetId, newValue, "");
     // TODO clear the graph if no gene is selected?
     if (newValue != "") fetchSnpData(datasetId, "Astrocytes");
   };
@@ -151,7 +237,7 @@ function RegionView() {
   const handleSnpChange = (event, newValue) => {
     setSelectedSnp(newValue);
     setSelectedGene("");
-    updateQueryParams(datasetId, selectedGene, newValue);
+    updateQueryParams(datasetId, "", newValue);
     // TODO clear the graph if no SNP is selected?
     if (newValue != "") fetchGeneData(datasetId, "Astrocytes");
   };
@@ -215,6 +301,7 @@ function RegionView() {
           {/* Dataset Selection */}
           <Autocomplete
             size="small"
+            disableListWrap
             options={datasetOptions}
             value={datasetId}
             /* value={datasetOptions.includes(datasetId) ? datasetId : null} */
@@ -223,6 +310,15 @@ function RegionView() {
             onInputChange={(event, newInputValue) =>
               setDatasetSearchText(newInputValue)
             }
+            slots={{
+              popper: StyledPopper,
+            }}
+            slotProps={{
+              listbox: {
+                component: ListboxComponent,
+              },
+            }}
+            renderOption={(props, option, { index }) => [props, option, index]} // renderOption must return [props, option, index]
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -241,6 +337,7 @@ function RegionView() {
           <Autocomplete
             sx={{ marginLeft: "20px" }}
             /* multiple */
+            disableListWrap
             size="small"
             options={geneList}
             value={selectedGene}
@@ -250,6 +347,15 @@ function RegionView() {
             onInputChange={(event, newInputValue) => {
               setGeneSearchText(newInputValue);
             }}
+            slots={{
+              popper: StyledPopper,
+            }}
+            slotProps={{
+              listbox: {
+                component: ListboxComponent,
+              },
+            }}
+            renderOption={(props, option, { index }) => [props, option, index]} // renderOption must return [props, option, index]
             /* renderTags={(value, getTagProps) => */
             /*   value.map((option, index) => { */
             /*     const { key, ...tagProps } = getTagProps({ index }); */
@@ -271,20 +377,27 @@ function RegionView() {
 
           {/* SNP Selection with Fuzzy Search & Chips */}
           <Autocomplete
-            sx={{ marginLeft: "20px" }}
-            /* multiple */
-            freeSolo
+            sx={{
+              marginLeft: "20px",
+            }}
+            disableListWrap
             size="small"
-            /* options={snpList} */
-            options={visibleSnpList}
+            options={snpList}
             value={selectedSnp}
-            /* value={snpList.includes(selectedSnp) ? selectedSnp : null} */
             onChange={handleSnpChange}
             inputValue={snpSearchText}
             onInputChange={(event, newInputValue) => {
               setSnpSearchText(newInputValue);
-              fetchSnpList(datasetId, newInputValue);
             }}
+            slots={{
+              popper: StyledPopper,
+            }}
+            slotProps={{
+              listbox: {
+                component: ListboxComponent,
+              },
+            }}
+            renderOption={(props, option, { index }) => [props, option, index]} // renderOption must return [props, option, index]
             /* renderTags={(value, getTagProps) => */
             /*   value.map((option, index) => { */
             /*     const { key, ...tagProps } = getTagProps({ index }); */
