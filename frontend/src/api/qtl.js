@@ -29,6 +29,30 @@ export const getSnpList = async (dataset, query_str) => {
     }
 };
 
+export const getCellTypesForGene = async (dataset, gene) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getcelltypesforgene`, {
+            params: { dataset: dataset, gene: gene },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getCellTypesForGene:", error);
+        throw error;
+    }
+};
+
+export const getCellTypesForSnp = async (dataset, snp) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getcelltypesforsnp`, {
+            params: { dataset: dataset, snp: snp },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getCellTypesForSnp:", error);
+        throw error;
+    }
+};
+
 export const getSnpDataForGene = async (dataset, gene, celltype) => {
     try {
         const response = await axios.get(`${QTL_URL}/getsnpdataforgene`, {

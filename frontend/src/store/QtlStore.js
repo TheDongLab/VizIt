@@ -2,6 +2,8 @@ import { create } from "zustand";
 import {
     getGeneList,
     getSnpList,
+    getCellTypesForGene,
+    getCellTypesForSnp,
     getSnpDataForGene,
     getGeneDataForSnp,
 } from "../api/qtl.js";
@@ -12,8 +14,9 @@ const useQtlStore = create((set, get) => ({
     selectedSnp: null,
     geneList: [],
     snpList: [],
-    snpData: null,
-    geneData: null,
+    selectedCellTypes: [],
+    snpData: {},
+    geneData: {},
     loading: true,
     error: null,
 
@@ -67,7 +70,53 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
-    fetchSnpData: async (dataset, celltype) => {
+    fetchGeneCellTypes: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGeneCellTypes: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+
+        try {
+            const response = await getCellTypesForGene(
+                dataset,
+                get().selectedGene,
+            );
+            const cellTypes = response.data;
+            set({ selectedCellTypes: cellTypes, loading: false });
+            return cellTypes;
+        } catch (error) {
+            console.error("Error fetching cell types:", error);
+        }
+    },
+
+    fetchSnpCellTypes: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchSnpCellTypes: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+
+        try {
+            const response = await getCellTypesForSnp(
+                dataset,
+                get().selectedSnp,
+            );
+            const cellTypes = response.data;
+            set({ selectedCellTypes: cellTypes, loading: false });
+            return cellTypes;
+        } catch (error) {
+            console.error("Error fetching cell types:", error);
+        }
+    },
+
+    fetchSnpData: async (dataset) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({
@@ -78,19 +127,28 @@ const useQtlStore = create((set, get) => ({
         }
 
         try {
-            const response = await getSnpDataForGene(
-                dataset,
-                get().selectedGene,
-                celltype,
-            );
-            const snpData = response.data;
-            set({ snpData: snpData, loading: false });
+            for (const celltype of get().selectedCellTypes) {
+                const response = await getSnpDataForGene(
+                    dataset,
+                    get().selectedGene,
+                    celltype,
+                );
+                const snpData = response.data;
+
+                set((state) => ({
+                    snpData: {
+                        ...state.snpData,
+                        [celltype]: snpData,
+                    },
+                    loading: false,
+                }));
+            }
         } catch (error) {
             console.error("Error fetching SNP data for gene:", error);
         }
     },
 
-    fetchGeneData: async (dataset, celltype) => {
+    fetchGeneData: async (dataset) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({
@@ -101,13 +159,22 @@ const useQtlStore = create((set, get) => ({
         }
 
         try {
-            const response = await getGeneDataForSnp(
-                dataset,
-                get().selectedSnp,
-                celltype,
-            );
-            const geneData = response.data;
-            set({ geneData: geneData, loading: false });
+            for (const celltype of get().selectedCellTypes) {
+                const response = await getGeneDataForSnp(
+                    dataset,
+                    get().selectedSnp,
+                    celltype,
+                );
+                const geneData = response.data;
+
+                set((state) => ({
+                    geneData: {
+                        ...state.geneData,
+                        [celltype]: geneData,
+                    },
+                    loading: false,
+                }));
+            }
         } catch (error) {
             console.error("Error fetching gene data for SNP:", error);
         }

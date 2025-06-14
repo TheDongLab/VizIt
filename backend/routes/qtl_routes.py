@@ -9,6 +9,8 @@ from backend.funcs.get_data import (
     get_qtl_snp_list,
     get_snp_data_for_gene,
     get_gene_data_for_snp,
+    get_celltypes_for_gene,
+    get_celltypes_for_snp,
 )
 
 router = APIRouter()
@@ -42,6 +44,34 @@ async def getsnplist(request: Request):
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting QTL SNP list.")
+    return response
+
+
+@router.get("/getcelltypesforgene")
+async def getcelltypesforgene(request: Request):
+    print("getcelltypesforgene() called================")
+    dataset_id = request.query_params.get("dataset")
+    gene = request.query_params.get("gene")
+
+    response = get_celltypes_for_gene(dataset_id, gene)
+    if "Error" in response:
+        raise HTTPException(
+            status_code=404, detail="Error in getting cell types for gene."
+        )
+    return response
+
+
+@router.get("/getcelltypesforsnp")
+async def getcelltypesforsnp(request: Request):
+    print("getcelltypesforsnp() called================")
+    dataset_id = request.query_params.get("dataset")
+    snp = request.query_params.get("snp")
+
+    response = get_celltypes_for_snp(dataset_id, snp)
+    if "Error" in response:
+        raise HTTPException(
+            status_code=404, detail="Error in getting cell types for SNP."
+        )
     return response
 
 

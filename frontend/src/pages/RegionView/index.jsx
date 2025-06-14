@@ -17,14 +17,16 @@ import {
   CircularProgress,
   Autocomplete,
   Link,
+  styled,
+  Popper,
+  autocompleteClasses,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
-import Popper from "@mui/material/Popper";
-import { autocompleteClasses } from "@mui/material/Autocomplete";
-import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
-import { useSearchParams } from "react-router-dom";
+
 import PropTypes from "prop-types";
 import { FixedSizeList } from "react-window";
+
+import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
+import { useSearchParams } from "react-router-dom";
 
 import "./RegionView.css";
 
@@ -173,28 +175,36 @@ function RegionView() {
     fetchSnpData,
     geneData,
     fetchGeneData,
+    selectedCellTypes,
+    fetchGeneCellTypes,
+    fetchSnpCellTypes,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
 
-  // const [selectedMetaFeatures, setSelectedMetaFeatures] = useState(urlMetas);
-
   useEffect(() => {
-    if (datasetId && datasetId !== "") {
-      setDataset(datasetId);
-      fetchGeneList(datasetId);
-      fetchSnpList(datasetId);
+    const initialize = async () => {
+      if (!datasetId || datasetId === "") return;
 
-      // Only fetch data if we have selections
-      if (
-        (selectedGene && selectedGene !== "") ||
-        (urlGene && urlGene !== "")
-      ) {
-        fetchSnpData(datasetId, "Astrocytes");
+      try {
+        await setDataset(datasetId);
+        await fetchGeneList(datasetId);
+        await fetchSnpList(datasetId);
+
+        if (selectedGene && selectedGene !== "") {
+          await fetchGeneCellTypes(datasetId);
+          await fetchSnpData(datasetId);
+        }
+
+        if (selectedSnp && selectedSnp !== "") {
+          await fetchSnpCellTypes(datasetId);
+          await fetchGeneData(datasetId);
+        }
+      } catch (error) {
+        console.error("Error in data fetching:", error);
       }
-      if ((selectedSnp && selectedSnp !== "") || (urlSnp && urlSnp !== "")) {
-        fetchGeneData(datasetId, "Astrocytes");
-      }
-    }
+    };
+
+    initialize();
   }, [datasetId]);
 
   // const excludedKeys = new Set([
@@ -212,39 +222,80 @@ function RegionView() {
   const [geneSearchText, setGeneSearchText] = useState("");
   const [snpSearchText, setSnpSearchText] = useState("");
 
-  /** Updates the query parameters in the URL */
-  const updateQueryParams = (dataset, gene, snp) => {
-    const newParams = new URLSearchParams();
-    dataset && newParams.set("dataset", dataset);
-    gene && newParams.set("gene", gene);
-    snp && newParams.set("snp", snp);
+  // /** Updates the query parameters in the URL */
+  // const updateQueryParams = (dataset, gene, snp) => {
+  //   const newParams = new URLSearchParams();
+  //   dataset && newParams.set("dataset", dataset);
+  //   gene && newParams.set("gene", gene);
+  //   snp && newParams.set("snp", snp);
 
+  //   setQueryParams(newParams);
+  // };
+  //
+  // useEffect(() => {
+  //   console.log(
+  //     "geneData",
+  //     geneData.map((g) => -Math.log10(g["p-value"])),
+  //   );
+  //   console.log(
+  //     "snpData",
+  //     snpData.map((s) => -Math.log10(s["p-value"])),
+  //   );
+  // }, [geneData, snpData]);
+
+  useEffect(() => {
+    const newParams = new URLSearchParams();
+    datasetId && newParams.set("dataset", datasetId);
+    selectedGene && newParams.set("gene", selectedGene);
+    selectedSnp && newParams.set("snp", selectedSnp);
     setQueryParams(newParams);
+  }, [datasetId, selectedGene, selectedSnp]);
+
+  const fetchGeneOrSnpData = async () => {
+    if (!datasetId) return;
+    const isGene = selectedGene && selectedGene !== "";
+    const isSnp = selectedSnp && selectedSnp !== "";
+
+    // TODO clear the graph if nothing is selected?
+
+    if (!isGene && !isSnp) {
+      return;
+    } else if (isGene && isSnp) {
+      console.warn("Error: Both gene and SNP are selected.");
+    } else if (isGene) {
+      await fetchGeneCellTypes(datasetId);
+      await fetchSnpData(datasetId);
+    } else if (isSnp) {
+      await fetchSnpCellTypes(datasetId);
+      await fetchGeneData(datasetId);
+    }
   };
+
+  useEffect(() => {
+    console.log("genes", geneList.length);
+    console.log("snps", snpList.length);
+  }, [geneList, snpList]);
+
+  useEffect(() => {
+    fetchGeneOrSnpData();
+  }, [selectedGene, selectedSnp, datasetId]);
 
   const handleDatasetChange = (event, newValue) => {
     // TODO clear both gene and snp selections?
     setDataset(newValue);
     setDatasetId(newValue);
-    updateQueryParams(newValue, selectedGene, selectedSnp);
   };
 
   /** Handles gene selection change */
-  const handleGeneChange = (event, newValue) => {
-    setSelectedGene(newValue);
-    setSelectedSnp("");
-    updateQueryParams(datasetId, newValue, selectedSnp);
-    // TODO clear the graph if no gene is selected?
-    if (selectedGene != "") fetchSnpData(datasetId, "Astrocytes");
+  const handleGeneChange = async (event, newValue) => {
+    await setSelectedGene(newValue);
+    await setSelectedSnp("");
   };
 
   /** Handles SNP selection change */
-  const handleSnpChange = (event, newValue) => {
-    setSelectedSnp(newValue);
-    setSelectedGene("");
-    updateQueryParams(datasetId, selectedGene, newValue);
-    // TODO clear the graph if no SNP is selected?
-    if (selectedSnp != "") fetchGeneData(datasetId, "Astrocytes");
+  const handleSnpChange = async (event, newValue) => {
+    await setSelectedSnp(newValue);
+    await setSelectedGene("");
   };
 
   // TODO needed?
@@ -266,13 +317,8 @@ function RegionView() {
   // };
 
   // click the button to fetch umap data
-  const handleLoadPlot = () => {
-    if (selectedGene) {
-      fetchSnpData(datasetId, "Astrocytes");
-    }
-    if (selectedSnp) {
-      fetchGeneData(datasetId, "Astrocytes");
-    }
+  const handleLoadPlot = async () => {
+    await fetchGeneOrSnpData();
   };
 
   // const selectedFeatures = [
@@ -350,7 +396,6 @@ function RegionView() {
 
           {/* Gene Selection with Fuzzy Search & Chips */}
           <Autocomplete
-            sx={{ marginLeft: "20px" }}
             /* multiple */
             disableListWrap
             size="small"
@@ -402,9 +447,6 @@ function RegionView() {
 
           {/* SNP Selection with Fuzzy Search & Chips */}
           <Autocomplete
-            sx={{
-              marginLeft: "20px",
-            }}
             disableListWrap
             size="small"
             options={snpList}
@@ -470,6 +512,56 @@ function RegionView() {
             </Button>
           </Box>
         </div>
+        {/* display the genedata and snpdata in plain text for now */}
+        <div className="plot-panel">
+          <Typography variant="subtitle1">Selected Gene</Typography>
+          <Box sx={{ marginTop: "10px" }}>
+            <Typography variant="body1">
+              {selectedGene ? selectedGene : "No gene selected"}
+            </Typography>
+          </Box>
+          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
+            Selected SNP
+          </Typography>
+          <Box sx={{ marginTop: "10px" }}>
+            <Typography variant="body1">
+              {selectedSnp ? selectedSnp : "No SNP selected"}
+            </Typography>
+          </Box>
+          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
+            Selected Cell Types
+          </Typography>
+          <Box sx={{ marginTop: "10px" }}>
+            <Typography variant="body1">
+              {selectedCellTypes.length > 0
+                ? selectedCellTypes.join(", ")
+                : "No cell types selected"}
+            </Typography>
+          </Box>
+          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
+            Selected Dataset
+          </Typography>
+          <Box sx={{ marginTop: "10px" }}>
+            <Typography variant="body1">
+              {datasetId ? datasetId : "No dataset selected"}
+            </Typography>
+          </Box>
+          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
+            Selected SNP Data
+          </Typography>
+          <Box sx={{ marginTop: "10px" }}>
+            <Typography variant="body1">{JSON.stringify(snpData)}</Typography>
+          </Box>
+          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
+            Selected Gene Data
+          </Typography>
+          <Box sx={{ marginTop: "10px" }}>
+            <Typography variant="body1">
+              {JSON.stringify(geneData, null, 2)}
+            </Typography>
+          </Box>
+        </div>
+
         {/* Left UMAP Plot Area (80%) */}
         {/* <div className="plot-main"> */}
         {/*   {loading ? ( */}

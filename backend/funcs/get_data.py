@@ -56,15 +56,59 @@ def get_qtl_snp_list(dataset, query_str="all"):
         print(snps_file + " not found")
         return "Error: SNP list file not found"
 
+def get_celltypes_for_gene(dataset, gene):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        genes_file = os.path.join("backend","datasets",dataset,'gene_list.json')
+
+    if os.path.exists(genes_file):
+        with open(genes_file, 'r') as f:
+            data = json.load(f)
+        if gene in data:
+            return data[gene]
+        else:
+            return f"Error: Gene {gene} not found in {dataset} dataset."
+    else:
+        print(genes_file + " not found")
+        return "Error: Gene list file not found for the specified dataset."
+
+def get_celltypes_for_snp(dataset, snp):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        snps_file = os.path.join("backend","datasets",dataset,'snp_list.json')
+
+    if os.path.exists(snps_file):
+        with open(snps_file, 'r') as f:
+            data = json.load(f)
+        if snp in data:
+            return data[snp]
+        else:
+            return f"Error: SNP {snp} not found in {dataset} dataset."
+    else:
+        print(snps_file + " not found")
+        return "Error: SNP list file not found for the specified dataset."
+
 def get_snp_data_for_gene(dataset, gene, celltype=""):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
-        data_file = os.path.join("backend","datasets",dataset,f'eQTL.{celltype}.with_allele_info.tsv')
+        celltype_mapping_file = os.path.join("backend","datasets",dataset,'celltype_mapping.json')
+
+        if os.path.exists(celltype_mapping_file):
+            with open(celltype_mapping_file, 'r') as f:
+                celltype_mapping = json.load(f)
+        else:
+            print(celltype_mapping_file + " not found")
+            return "Error: Celltype mapping file not found for the specified dataset."
+
+        celltype_file = celltype_mapping.get(celltype, celltype)
+        data_file = os.path.join("backend","datasets",dataset,"celltypes",celltype_file)
 
     if os.path.exists(data_file):
         df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
-        gene_df = df[df["gene"] == gene]
+        gene_df = df[df["gene_id"] == gene]
 
         if gene_df.empty:
             return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
@@ -78,11 +122,20 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
-        data_file = os.path.join("backend","datasets",dataset,f'eQTL.{celltype}.with_allele_info.tsv')
+        celltype_mapping_file = os.path.join("backend","datasets",dataset,'celltype_mapping.json')
+        if os.path.exists(celltype_mapping_file):
+            with open(celltype_mapping_file, 'r') as f:
+                celltype_mapping = json.load(f)
+        else:
+            print(celltype_mapping_file + " not found")
+            return "Error: Celltype mapping file not found for the specified dataset."
+
+        celltype_file = celltype_mapping.get(celltype, celltype)
+        data_file = os.path.join("backend","datasets",dataset,"celltypes",celltype_file)
 
     if os.path.exists(data_file):
         df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
-        snp_df = df[df["SNP"] == snp]
+        snp_df = df[df["snp_id"] == snp]
 
         if snp_df.empty:
             return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
