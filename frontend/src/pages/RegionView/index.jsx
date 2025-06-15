@@ -181,6 +181,16 @@ function RegionView() {
   } = useQtlStore();
   const { loading, error } = useQtlStore();
 
+  const selectGeneOrSnp = (type, value) => {
+    if (type === "gene") {
+      setSelectedSnp("");
+      setSelectedGene(value);
+    } else if (type === "snp") {
+      setSelectedGene("");
+      setSelectedSnp(value);
+    }
+  };
+
   useEffect(() => {
     const initialize = async () => {
       if (!datasetId || datasetId === "") return;
@@ -288,14 +298,12 @@ function RegionView() {
 
   /** Handles gene selection change */
   const handleGeneChange = async (event, newValue) => {
-    await setSelectedGene(newValue);
-    await setSelectedSnp("");
+    selectGeneOrSnp("gene", newValue);
   };
 
   /** Handles SNP selection change */
   const handleSnpChange = async (event, newValue) => {
-    await setSelectedSnp(newValue);
-    await setSelectedGene("");
+    selectGeneOrSnp("snp", newValue);
   };
 
   // TODO needed?
