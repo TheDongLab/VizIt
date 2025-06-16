@@ -192,6 +192,8 @@ function RegionView() {
 
   const [geneSearchText, setGeneSearchText] = useState("");
   const [snpSearchText, setSnpSearchText] = useState("");
+  const [filteredGeneList, setFilteredGeneList] = useState([]);
+  const [filteredSnpList, setFilteredSnpList] = useState([]);
 
   useEffect(() => {
     const newParams = new URLSearchParams();
@@ -200,6 +202,42 @@ function RegionView() {
     selectedSnp && newParams.set("snp", selectedSnp);
     setQueryParams(newParams);
   }, [datasetId, selectedGene, selectedSnp]);
+
+  const listLength = 15000; // Limit the list length for performance
+
+  useEffect(() => {
+    setFilteredSnpList(snpList.slice(0, listLength));
+  }, [snpList]);
+
+  useEffect(() => {
+    setFilteredGeneList(geneList.slice(0, listLength));
+  }, [geneList]);
+
+  const handleGeneInputChange = (event, value) => {
+    setGeneSearchText(value);
+    if (!value) {
+      setFilteredGeneList(geneList.slice(0, listLength));
+    } else {
+      const results = geneList.filter((id) =>
+        id.toLowerCase().includes(value.toLowerCase()),
+      );
+      setFilteredGeneList(results.slice(0, listLength));
+    }
+  };
+
+  const handleSnpInputChange = (event, value) => {
+    setSnpSearchText(value);
+    if (!value) {
+      setFilteredSnpList(snpList.slice(0, listLength));
+    } else if (value === "rs") {
+      setFilteredSnpList(snpList.slice(0, listLength));
+    } else {
+      const results = snpList.filter((id) =>
+        id.toLowerCase().includes(value.toLowerCase()),
+      );
+      setFilteredSnpList(results.slice(0, listLength));
+    }
+  };
 
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
@@ -316,14 +354,11 @@ function RegionView() {
             /* multiple */
             disableListWrap
             size="small"
-            options={geneList}
+            options={filteredGeneList}
             value={selectedGene}
-            /* value={geneList.includes(selectedGene) ? selectedGene : null} */
             onChange={handleGeneChange}
             inputValue={geneSearchText}
-            onInputChange={(event, newInputValue) => {
-              setGeneSearchText(newInputValue);
-            }}
+            onInputChange={handleGeneInputChange}
             slots={{
               popper: StyledPopper,
             }}
@@ -349,13 +384,11 @@ function RegionView() {
           <Autocomplete
             disableListWrap
             size="small"
-            options={snpList}
+            options={filteredSnpList}
             value={selectedSnp}
             onChange={handleSnpChange}
             inputValue={snpSearchText}
-            onInputChange={(event, newInputValue) => {
-              setSnpSearchText(newInputValue);
-            }}
+            onInputChange={handleSnpInputChange}
             slots={{
               popper: StyledPopper,
             }}
