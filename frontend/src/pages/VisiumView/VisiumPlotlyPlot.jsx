@@ -146,7 +146,7 @@ const PlotlyFeaturePlot = ({visiumData, geneData, metaData, feature}) => {
         // automrgin: true,
         autosize: true,
         scrollZoom: true,
-        xaxis: {showgrid: false, zeroline: false, visible: false, range: [0, naturalDimensions.width], autornange: false},
+        xaxis: {showgrid: false, zeroline: false, visible: false, range: [0, naturalDimensions.width], autorange: false},
         yaxis: {showgrid: false, zeroline: false, visible: false, range: [naturalDimensions.height, 0], autorange: false},
         images: imageUrl ? [{
             source: imageUrl,
