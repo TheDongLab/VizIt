@@ -134,33 +134,6 @@ function RegionView() {
   const [datasetId, setDatasetId] = useState(urlDataset);
   const [datasetSearchText, setDatasetSearchText] = useState("");
 
-  // Prepare all the  data
-  // const {
-  //   setDataset,
-  //   geneList,
-  //   fetchGeneList,
-  //   sampleList,
-  //   fetchSampleList,
-  //   metaList,
-  //   fetchMetaList,
-  // } = useSampleGeneMetaStore();
-  // const {
-  //   selectedSamples,
-  //   setSelectedSamples,
-  //   selectedGenes,
-  //   setSelectedGenes,
-  // } = useSampleGeneMetaStore();
-  // const {
-  //   exprDataDict,
-  //   fetchExprData,
-  //   sampleMetaDict,
-  //   fetchMetaDataOfSample,
-  //   imageDataDict,
-  //   fetchImageData,
-  // } = useSampleGeneMetaStore();
-  // const { loading, error } = useSampleGeneMetaStore();
-  // const { defaultSamples, defaultFeatures, defaultGenes, fetchVisiumDefaults } =
-  //   useVisiumStore();
   const {
     setDataset,
     selectedGene,
@@ -217,41 +190,8 @@ function RegionView() {
     initialize();
   }, [datasetId]);
 
-  // const excludedKeys = new Set([
-  //   "cs_id",
-  //   "sample_id",
-  //   "Cell",
-  //   "Spot",
-  //   "UMAP_1",
-  //   "UMAP_2",
-  // ]);
-  // const metaOptions = metaList
-  //   ? metaList.filter((option) => !excludedKeys.has(option))
-  //   : [];
-
   const [geneSearchText, setGeneSearchText] = useState("");
   const [snpSearchText, setSnpSearchText] = useState("");
-
-  // /** Updates the query parameters in the URL */
-  // const updateQueryParams = (dataset, gene, snp) => {
-  //   const newParams = new URLSearchParams();
-  //   dataset && newParams.set("dataset", dataset);
-  //   gene && newParams.set("gene", gene);
-  //   snp && newParams.set("snp", snp);
-
-  //   setQueryParams(newParams);
-  // };
-  //
-  // useEffect(() => {
-  //   console.log(
-  //     "geneData",
-  //     geneData.map((g) => -Math.log10(g["p-value"])),
-  //   );
-  //   console.log(
-  //     "snpData",
-  //     snpData.map((s) => -Math.log10(s["p-value"])),
-  //   );
-  // }, [geneData, snpData]);
 
   useEffect(() => {
     const newParams = new URLSearchParams();
@@ -306,41 +246,10 @@ function RegionView() {
     selectGeneOrSnp("snp", newValue);
   };
 
-  // TODO needed?
-  // const handleGeneDelete = (delGene) => {
-  //   const newGenes = selectedGenes.filter((g) => g !== delGene);
-  //   setSelectedGenes(newGenes);
-  //   updateQueryParams(datasetId, newGenes, selectedSamples);
-  //   fetchExprData();
-  // };
-
-  // const handleMetaFeatureChange = (event, newValue) => {
-  //   setSelectedMetaFeatures(newValue);
-  //   updateQueryParams(datasetId, selectedGenes, selectedSamples, newValue);
-  // };
-  // const handleMetaDelete = (delMeta) => {
-  //   const newMetas = selectedMetaFeatures.filter((m) => m !== delMeta);
-  //   setSelectedMetaFeatures(newMetas);
-  //   updateQueryParams(datasetId, selectedGenes, selectedSamples, newMetas);
-  // };
-
   // click the button to fetch umap data
   const handleLoadPlot = async () => {
     await fetchGeneOrSnpData();
   };
-
-  // const selectedFeatures = [
-  //   ...new Set([...selectedGenes, ...selectedMetaFeatures]),
-  // ];
-  // console.log("selectedFeatures:", selectedFeatures);
-  // const plotClass =
-  //   Object.keys(selectedFeatures).length <= 1
-  //     ? "single-plot"
-  //     : Object.keys(selectedFeatures).length === 2
-  //       ? "two-plots"
-  //       : Object.keys(selectedFeatures).length === 3
-  //         ? "three-plots"
-  //         : "four-plots";
 
   return (
     <div
@@ -429,25 +338,8 @@ function RegionView() {
                 <li key={key} {...rest}>
                   {option}
                 </li>
-                // <ListItem key={key} {...rest}>
-                //   {option}
-                // </ListItem>
               );
             }}
-            /* renderTags={(value, getTagProps) => */
-            /*   value.map((option, index) => { */
-            /*     const { key, ...tagProps } = getTagProps({ index }); */
-            /*     return ( */
-            /*       <Chip */
-            /*         key={`${key}-${option}`} */
-            /*         label={option} */
-            /*         {...tagProps} */
-            /*         color="primary" */
-            /*         /\* onDelete={() => handleGeneDelete(option)} *\/ */
-            /*       /> */
-            /*     ); */
-            /*   }) */
-            /* } */
             renderInput={(params) => (
               <TextField {...params} label="Search gene" variant="standard" />
             )}
@@ -478,25 +370,8 @@ function RegionView() {
                 <li key={key} {...rest}>
                   {option}
                 </li>
-                // <ListItem key={key} {...rest}>
-                //   {option}
-                // </ListItem>
               );
             }}
-            /* renderTags={(value, getTagProps) => */
-            /*   value.map((option, index) => { */
-            /*     const { key, ...tagProps } = getTagProps({ index }); */
-            /*     return ( */
-            /*       <Chip */
-            /*         key={`${key}-${option}`} */
-            /*         label={option} */
-            /*         {...tagProps} */
-            /*         color="primary" */
-            /*         /\* onDelete={() => handleGeneDelete(option)} *\/ */
-            /*       /> */
-            /*     ); */
-            /*   }) */
-            /* } */
             renderInput={(params) => (
               <TextField {...params} label="Search SNP" variant="standard" />
             )}
