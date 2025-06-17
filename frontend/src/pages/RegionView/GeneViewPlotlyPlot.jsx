@@ -23,13 +23,6 @@ const GeneViewPlotlyPlot = ({
   snpData,
   celltype,
 }) => {
-  useEffect(() => {
-    console.log("Rendering gene plot: ", celltype);
-    console.log("SNPs loaded:", snpData.length);
-    console.log("Gene start and end", geneStart, geneEnd);
-    console.log("range", initialXRange, initialYRange);
-  }, [celltype, snpData.length, geneStart, geneEnd]);
-
   // TODO
   // const [naturalDimensions, setNaturalDimensions] = useState({
   //   width: 0,
@@ -55,11 +48,25 @@ const GeneViewPlotlyPlot = ({
   const yPadding = 1;
   const yMin = Math.min(...yValues, -2) - yPadding;
   const yMax = Math.max(...yValues, 2) + yPadding;
-  const initialXRange = [xMin, xMax];
-  const initialYRange = [yMin, yMax];
+  const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
+  const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
 
   const [xRange, setXRange] = useState(initialXRange);
   const [yRange, setYRange] = useState(initialYRange);
+
+  useEffect(() => {
+    console.log("Rendering gene plot: ", celltype);
+    console.log("SNPs loaded:", snpData.length);
+    console.log("Gene start and end", geneStart, geneEnd);
+    console.log("range", initialXRange, initialYRange);
+  }, [
+    celltype,
+    snpData.length,
+    geneStart,
+    geneEnd,
+    initialXRange,
+    initialYRange,
+  ]);
 
   const snpTraces = snps.map((snp) => ({
     x: [snp.x],
@@ -93,31 +100,34 @@ const GeneViewPlotlyPlot = ({
       arrowwidth: 2,
       arrowcolor: "black",
     };
-  }, [geneName, geneStart, geneEnd]);
+  }, [geneStart, geneEnd]);
 
-  const getClippedAnnotation = (xRange) => {
-    const { ax, x, y } = annotation;
+  const getClippedAnnotation = useCallback(
+    (xRange) => {
+      const { ax, x, y } = annotation;
 
-    // const [min, max] = currentLayout.xaxis.range;
-    const [xMin, xMax] = xRange; // TODO shadowing?
-    const [yMin, yMax] = yRange;
+      // const [min, max] = currentLayout.xaxis.range;
+      const [xMin, xMax] = xRange; // TODO shadowing?
+      const [yMin, yMax] = yRange;
 
-    // Completely outside the view
-    if ((ax < xMin && x < xMin) || (ax > xMax && x > xMax)) return null;
-    if (y < yMin || y > yMax) return null;
+      // Completely outside the view
+      if ((ax < xMin && x < xMin) || (ax > xMax && x > xMax)) return null;
+      if (y < yMin || y > yMax) return null;
 
-    // Truncate at edges
-    const clippedAx = Math.max(xMin, Math.min(ax, xMax));
-    const clippedX = Math.max(xMin, Math.min(x, xMax));
-    const clipped = { ...annotation, ax: clippedAx, x: clippedX };
+      // Truncate at edges
+      const clippedAx = Math.max(xMin, Math.min(ax, xMax));
+      const clippedX = Math.max(xMin, Math.min(x, xMax));
+      const clipped = { ...annotation, ax: clippedAx, x: clippedX };
 
-    // Don't show arrowhead if truncated
-    if (x !== clippedX) {
-      clipped.arrowhead = 0;
-    }
+      // Don't show arrowhead if truncated
+      if (x !== clippedX) {
+        clipped.arrowhead = 0;
+      }
 
-    return clipped;
-  };
+      return clipped;
+    },
+    [annotation, yRange],
+  );
 
   // Handle resize TODO
   // const updateScale = useCallback(() => {
