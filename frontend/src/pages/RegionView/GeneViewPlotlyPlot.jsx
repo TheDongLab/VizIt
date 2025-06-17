@@ -8,12 +8,33 @@ import {
   sortObjectByKey,
 } from "../../utils/funcs.js";
 
-function dataToRGB({ beta, y }) {
-  beta = Math.max(Math.min(beta, 1), 0);
-  if (Math.abs(y) < 2) return "rgb(161, 161, 161)";
-  if (y >= 0)
-    return `rgb(230, ${Math.floor(230 * (1 - beta))}, ${Math.floor(230 * (1 - beta))})`;
-  return `rgb(${Math.floor(230 * (1 - beta))}, ${Math.floor(230 * (1 - beta))}, 230)`;
+function dataToRGB({ beta, y }, min = 2, max = 3) {
+  const maxLevel = 230;
+
+  if (Math.abs(y) < 2)
+    return beta > 0 ? `rgb(181, 161, 161)` : `rgb(161, 161, 181)`;
+
+  const absBeta = Math.abs(beta);
+  let intensity;
+
+  if (min >= max) {
+    intensity = absBeta >= max ? 1 : 0; // Treat min/max as single threshold
+  } else {
+    if (absBeta < min) intensity = 0;
+    else if (absBeta > max) intensity = 1;
+    else intensity = (absBeta - min) / (max - min); // Normalize to [0,1]
+  }
+
+  const channelValue = Math.round(maxLevel * (1 - intensity));
+
+  return beta > 0
+    ? `rgb(${maxLevel}, ${channelValue}, ${channelValue})`
+    : `rgb(${channelValue}, ${channelValue}, ${maxLevel})`;
+}
+
+function round(num, precision = 6) {
+  if (num == null || isNaN(num)) return "";
+  return Number(Number(num).toPrecision(precision));
 }
 
 const GeneViewPlotlyPlot = ({
@@ -34,7 +55,7 @@ const GeneViewPlotlyPlot = ({
     ({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
       id: snp_id,
-      y: -Math.log10(p_value),
+      y: -Math.log10(p_value) * Math.sign(beta_value),
       beta: beta_value,
       x: position,
       p_value,
@@ -45,6 +66,9 @@ const GeneViewPlotlyPlot = ({
   const oneMb = 1_000_000;
   const xValues = snps.map((snp) => snp.x);
   const yValues = snps.map((snp) => snp.y);
+  const betaValues = snps.map((snp) => snp.beta);
+  const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
+  const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
 
   const snpMin = Math.min(...xValues);
   const snpMax = Math.max(...xValues);
@@ -81,12 +105,12 @@ const GeneViewPlotlyPlot = ({
     type: "scatter",
     mode: "markers",
     marker: {
-      color: dataToRGB(snp),
+      color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
       size: 6,
     },
     name: snp.id,
     hoverinfo: "text",
-    text: `${snp.id}<br>β=${snp.beta}<br>-log10(p)=${snp.y}`,
+    text: `<b>ID:</b> ${snp.id}<br><b>β:</b> ${round(snp.beta, 4)}<br><b>-log10(p):</b> ${round(snp.y, 4)}`,
     pointType: "snp",
     showlegend: false,
   }));
@@ -114,7 +138,7 @@ const GeneViewPlotlyPlot = ({
       const { ax, x, y } = annotation;
 
       // const [min, max] = currentLayout.xaxis.range;
-      const [xMin, xMax] = xRange; // TODO shadowing?
+      const [xMin, xMax] = xRange;
       const [yMin, yMax] = yRange;
 
       // Completely outside the view
