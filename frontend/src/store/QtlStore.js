@@ -20,7 +20,7 @@ const useQtlStore = create((set, get) => ({
     selectedCellTypes: [],
     snpData: {},
     geneData: {},
-    loading: true,
+    loading: false,
     error: null,
 
     setDataset: (dataset) => {
