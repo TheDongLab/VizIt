@@ -11,6 +11,10 @@ from backend.funcs.get_data import (
     get_gene_data_for_snp,
     get_celltypes_for_gene,
     get_celltypes_for_snp,
+    get_gene_chromosome,
+    get_snp_chromosome,
+    get_gene_positions,
+    get_snp_position,
 )
 
 router = APIRouter()
@@ -19,6 +23,58 @@ router = APIRouter()
 @router.get("/")
 async def read_root():
     return {"Message": "Hello QTL."}
+
+
+@router.get("/getgenepositions")
+async def getgenepositions(request: Request):
+    print("getgenepositions() called================")
+    dataset_id = request.query_params.get("dataset")
+    gene = request.query_params.get("gene")
+
+    response = get_gene_positions(dataset_id, gene)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting QTL gene list.")
+    return response
+
+
+@router.get("/getsnpposition")
+async def getsnpposition(request: Request):
+    print("getsnpposition() called================")
+    dataset_id = request.query_params.get("dataset")
+    snp = request.query_params.get("snp")
+
+    response = get_snp_position(dataset_id, snp)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting QTL SNP list.")
+    return response
+
+
+@router.get("/getgenechromosome")
+async def getgenechromosome(request: Request):
+    print("getgenechromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    gene = request.query_params.get("gene")
+
+    response = get_gene_chromosome(dataset_id, gene)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting QTL gene list.")
+    return response
+
+
+@router.get("/getsnpchromosome")
+async def getsnpchromosome(request: Request):
+    print("getsnpchromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    snp = request.query_params.get("snp")
+
+    response = get_snp_chromosome(dataset_id, snp)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting QTL SNP list.")
+    return response
 
 
 @router.get("/getgenelist")

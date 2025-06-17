@@ -32,6 +32,9 @@ import "./RegionView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
+import { getGenePositions, getSnpPosition } from "../../api/qtl.js";
+
+import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 
 // Constants for react-window listbox
 const LISTBOX_PADDING = 8;
@@ -173,15 +176,24 @@ function RegionView() {
         await fetchGeneList(datasetId);
         await fetchSnpList(datasetId);
 
-        if (selectedGene && selectedGene !== "") {
-          await fetchGeneCellTypes(datasetId);
-          await fetchSnpData(datasetId);
+        // if the selectedgene is not in the list, reset it
+        if (urlGene && !geneList.includes(urlGene)) {
+          setSelectedGene("");
+        }
+        // if the selectedsnp is not in the list, reset it
+        if (urlSnp && !snpList.includes(urlSnp)) {
+          setSelectedSnp("");
         }
 
-        if (selectedSnp && selectedSnp !== "") {
-          await fetchSnpCellTypes(datasetId);
-          await fetchGeneData(datasetId);
-        }
+        // if (selectedGene && selectedGene !== "") {
+        //   await fetchGeneCellTypes(datasetId);
+        //   await fetchSnpData(datasetId);
+        // }
+
+        // if (selectedSnp && selectedSnp !== "") {
+        //   await fetchSnpCellTypes(datasetId);
+        //   await fetchGeneData(datasetId);
+        // }
       } catch (error) {
         console.error("Error in data fetching:", error);
       }
@@ -215,7 +227,7 @@ function RegionView() {
 
   const handleGeneInputChange = (event, value) => {
     setGeneSearchText(value);
-    if (!value) {
+    if (!value || value === selectedGene) {
       setFilteredGeneList(geneList.slice(0, listLength));
     } else {
       const results = geneList.filter((id) =>
@@ -239,6 +251,18 @@ function RegionView() {
     }
   };
 
+  const handleGeneAutocompleteOpen = () => {
+    if (geneSearchText == selectedGene) {
+      setFilteredGeneList(geneList.slice(0, listLength));
+    }
+  };
+
+  const handleSnpAutocompleteOpen = () => {
+    if (snpSearchText == selectedSnp) {
+      setFilteredSnpList(snpList.slice(0, listLength));
+    }
+  };
+
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
     const isGene = selectedGene && selectedGene !== "";
@@ -252,9 +276,17 @@ function RegionView() {
       console.warn("Error: Both gene and SNP are selected.");
     } else if (isGene) {
       await fetchGeneCellTypes(datasetId);
+      const genePositions = await getGenePositions(datasetId, selectedGene);
+      await setGeneStart(genePositions.data.start);
+      await setGeneEnd(genePositions.data.end);
+      console.log("gene positions", geneStart, geneEnd);
+
       await fetchSnpData(datasetId);
     } else if (isSnp) {
       await fetchSnpCellTypes(datasetId);
+      const snpPosition = await getSnpPosition(datasetId, selectedSnp);
+      await setSnpPosition(snpPosition);
+
       await fetchGeneData(datasetId);
     }
   };
@@ -263,6 +295,10 @@ function RegionView() {
     console.log("genes", geneList.length);
     console.log("snps", snpList.length);
   }, [geneList, snpList]);
+
+  const [geneStart, setGeneStart] = useState(null);
+  const [geneEnd, setGeneEnd] = useState(null);
+  const [snpPosition, setSnpPosition] = useState(null);
 
   useEffect(() => {
     fetchGeneOrSnpData();
@@ -357,6 +393,7 @@ function RegionView() {
             options={filteredGeneList}
             value={selectedGene}
             onChange={handleGeneChange}
+            onOpen={handleGeneAutocompleteOpen}
             inputValue={geneSearchText}
             onInputChange={handleGeneInputChange}
             slots={{
@@ -387,6 +424,7 @@ function RegionView() {
             options={filteredSnpList}
             value={selectedSnp}
             onChange={handleSnpChange}
+            onOpen={handleSnpAutocompleteOpen}
             inputValue={snpSearchText}
             onInputChange={handleSnpInputChange}
             slots={{
@@ -428,184 +466,95 @@ function RegionView() {
             </Button>
           </Box>
         </div>
-        {/* display the genedata and snpdata in plain text for now */}
-        <div className="plot-panel">
-          <Typography variant="subtitle1">Selected Gene</Typography>
-          <Box sx={{ marginTop: "10px" }}>
-            <Typography variant="body1">
-              {selectedGene ? selectedGene : "No gene selected"}
-            </Typography>
-          </Box>
-          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
-            Selected SNP
-          </Typography>
-          <Box sx={{ marginTop: "10px" }}>
-            <Typography variant="body1">
-              {selectedSnp ? selectedSnp : "No SNP selected"}
-            </Typography>
-          </Box>
-          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
-            Selected Cell Types
-          </Typography>
-          <Box sx={{ marginTop: "10px" }}>
-            <Typography variant="body1">
-              {selectedCellTypes.length > 0
-                ? selectedCellTypes.join(", ")
-                : "No cell types selected"}
-            </Typography>
-          </Box>
-          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
-            Selected Dataset
-          </Typography>
-          <Box sx={{ marginTop: "10px" }}>
-            <Typography variant="body1">
-              {datasetId ? datasetId : "No dataset selected"}
-            </Typography>
-          </Box>
-          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
-            Selected SNP Data
-          </Typography>
-          <Box sx={{ marginTop: "10px" }}>
-            <Typography variant="body1">{JSON.stringify(snpData)}</Typography>
-          </Box>
-          <Typography variant="subtitle1" sx={{ marginTop: "20px" }}>
-            Selected Gene Data
-          </Typography>
-          <Box sx={{ marginTop: "10px" }}>
-            <Typography variant="body1">
-              {JSON.stringify(geneData, null, 2)}
-            </Typography>
-          </Box>
-        </div>
 
         {/* Left UMAP Plot Area (80%) */}
-        {/* <div className="plot-main"> */}
-        {/*   {loading ? ( */}
-        {/*     <> */}
-        {/*       <Box sx={{ width: "100%" }}> */}
-        {/*         <LinearProgress /> */}
-        {/*       </Box> */}
-        {/*       <Box */}
-        {/*         sx={{ */}
-        {/*           display: "flex", */}
-        {/*           justifyContent: "center", */}
-        {/*           paddingTop: "100px", */}
-        {/*         }} */}
-        {/*       > */}
-        {/*         <CircularProgress /> */}
-        {/*       </Box> */}
-        {/*       <Box */}
-        {/*         sx={{ */}
-        {/*           display: "flex", */}
-        {/*           justifyContent: "center", */}
-        {/*           paddingTop: "10px", */}
-        {/*         }} */}
-        {/*       > */}
-        {/*         <Typography */}
-        {/*           sx={{ marginLeft: "10px", color: "text.secondary" }} */}
-        {/*           variant="h5" */}
-        {/*         > */}
-        {/*           Loading sample list and metadata... */}
-        {/*         </Typography> */}
-        {/*       </Box> */}
-        {/*     </> */}
-        {/*   ) : datasetId === "" || */}
-        {/*     datasetId === "all" || */}
-        {/*     datasetId === undefined || */}
-        {/*     datasetId === null ? ( */}
-        {/*     <Typography */}
-        {/*       sx={{ color: "text.secondary", paddingTop: "100px" }} */}
-        {/*       variant="h5" */}
-        {/*     > */}
-        {/*       No dataset selected for exploration */}
-        {/*     </Typography> */}
-        {/*   ) : error ? ( */}
-        {/*     <Typography color="error">{error}</Typography> */}
-        {/*   ) : ( */}
-        {/*     <div className="visium-container"> */}
-        {/*       {Object.keys(imageDataDict).length < 1 ? ( */}
-        {/*         <Box className="no-sample"> */}
-        {/*           <Typography sx={{ color: "text.secondary" }} variant="h5"> */}
-        {/*             No sample selected for visualization */}
-        {/*           </Typography> */}
-        {/*         </Box> */}
-        {/*       ) : ( */}
-        {/*         Object.entries(imageDataDict).map( */}
-        {/*           ([sample_i, visiumData_i]) => ( */}
-        {/*             <div key={sample_i} className="sample-row"> */}
-        {/*               {/\* Sample Label *\/} */}
-        {/*               <div key={`${sample_i}-label`} className="sample-label"> */}
-        {/*                 <Box */}
-        {/*                   display="flex" */}
-        {/*                   alignItems="center" */}
-        {/*                   justifyContent="center" */}
-        {/*                   sx={{ mb: 1 }} */}
-        {/*                 > */}
-        {/*                   <Typography variant="subtitle1"> */}
-        {/*                     Sample: {sample_i} */}
-        {/*                   </Typography> */}
-        {/*                   <div>&nbsp;&nbsp;</div>( */}
-        {/*                   <Link */}
-        {/*                     href={`/gsMAP/${sample_i}_PD_gsMap_Report.html`} */}
-        {/*                     target="_blank" */}
-        {/*                     rel="noopener" */}
-        {/*                     underline="hover" */}
-        {/*                   > */}
-        {/*                     View gsMAP */}
-        {/*                   </Link> */}
-        {/*                   ) */}
-        {/*                 </Box> */}
-        {/*               </div> */}
-
-        {/*               {/\* Features Container *\/} */}
-        {/*               <div */}
-        {/*                 key={`${sample_i}-features`} */}
-        {/*                 className={`features-container ${plotClass}`} */}
-        {/*               > */}
-        {/*                 {selectedFeatures.length > 0 ? ( */}
-        {/*                   selectedFeatures.map((feature) => ( */}
-        {/*                     <> */}
-        {/*                       <div */}
-        {/*                         key={`${sample_i}-${feature}-chart`} */}
-        {/*                         className="feature-plot-echart" */}
-        {/*                       > */}
-        {/*                         {sampleMetaDict[sample_i] && ( */}
-        {/*                           <PlotlyFeaturePlot */}
-        {/*                             visiumData={visiumData_i} */}
-        {/*                             geneData={exprDataDict} */}
-        {/*                             metaData={sampleMetaDict[sample_i] || {}} */}
-        {/*                             feature={feature} */}
-        {/*                           /> */}
-        {/*                         )} */}
-        {/*                         <Typography */}
-        {/*                           variant="caption" */}
-        {/*                           display="block" */}
-        {/*                           align="center" */}
-        {/*                         > */}
-        {/*                           {feature} */}
-        {/*                         </Typography> */}
-        {/*                       </div> */}
-        {/*                     </> */}
-        {/*                   )) */}
-        {/*                 ) : ( */}
-        {/*                   <Box className="no-feature"> */}
-        {/*                     <Typography */}
-        {/*                       sx={{ color: "text.secondary" }} */}
-        {/*                       variant="h5" */}
-        {/*                     > */}
-        {/*                       No feature selected for visualization */}
-        {/*                     </Typography> */}
-        {/*                   </Box> */}
-        {/*                 )} */}
-        {/*               </div> */}
-        {/*               <Divider /> */}
-        {/*             </div> */}
-        {/*           ), */}
-        {/*         ) */}
-        {/*       )} */}
-        {/*     </div> */}
-        {/*   )} */}
-        {/* </div> */}
+        <div className="plot-main">
+          {loading ? (
+            <>
+              <Box sx={{ width: "100%" }}>
+                <LinearProgress />
+              </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  paddingTop: "100px",
+                }}
+              >
+                <CircularProgress />
+              </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  paddingTop: "10px",
+                }}
+              >
+                <Typography
+                  sx={{ marginLeft: "10px", color: "text.secondary" }}
+                  variant="h5"
+                >
+                  Loading sample list and metadata...
+                </Typography>
+              </Box>
+            </>
+          ) : datasetId === "" || datasetId === "all" || datasetId == null ? (
+            <Typography
+              sx={{ color: "text.secondary", paddingTop: "100px" }}
+              variant="h5"
+            >
+              No dataset selected for exploration
+            </Typography>
+          ) : error ? (
+            <Typography color="error">{error}</Typography>
+          ) : (
+            <div className="qtl-container">
+              <div key={`${selectedGene}-view`} className={`view-container`}>
+                {selectedCellTypes.length > 0 ? (
+                  geneStart !== null && geneEnd !== null ? (
+                    selectedCellTypes.map((cellType, index) => (
+                      <div
+                        key={`${cellType}-plot`}
+                        className="gene-plot"
+                        data-celltype={cellType}
+                        /* style={{ */
+                        /*   width: "800px", */
+                        /*   marginBottom: "20px", */
+                        /*   height: "100%", */
+                        /* }} */
+                      >
+                        {/* <Typography variant="h6" align="center"> */}
+                        {/*   {cellType} */}
+                        {/* </Typography> */}
+                        <GeneViewPlotlyPlot
+                          geneName={selectedGene}
+                          geneStart={geneStart}
+                          geneEnd={geneEnd}
+                          snpData={snpData[cellType] || []}
+                          celltype={cellType}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <Typography
+                      sx={{ color: "text.secondary", paddingTop: "100px" }}
+                      variant="h5"
+                    >
+                      No gene selected for exploration
+                    </Typography>
+                  )
+                ) : (
+                  <Typography
+                    sx={{ color: "text.secondary", paddingTop: "100px" }}
+                    variant="h5"
+                  >
+                    No cell types selected for exploration
+                  </Typography>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

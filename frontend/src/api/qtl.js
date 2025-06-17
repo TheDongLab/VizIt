@@ -5,6 +5,30 @@ const BASE_URL = "http://localhost:8000"; // Replace with your backend URL
 
 const QTL_URL = `${BASE_URL}/qtl`;
 
+export const getGenePositions = async (dataset, gene) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgenepositions`, {
+            params: { dataset: dataset, gene: gene },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGenePositions:", error);
+        throw error;
+    }
+};
+
+export const getSnpPosition = async (dataset, snp) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getsnpposition`, {
+            params: { dataset: dataset, snp: snp },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getSnpPosition:", error);
+        throw error;
+    }
+};
+
 export const getGeneList = async (dataset, query_str) => {
     try {
         const response = await axios.get(`${QTL_URL}/getgenelist`, {
@@ -25,6 +49,30 @@ export const getSnpList = async (dataset, query_str) => {
         return response;
     } catch (error) {
         console.error("Error getSnpList:", error);
+        throw error;
+    }
+};
+
+export const getGeneChromosome = async (dataset, gene) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgenechromosome`, {
+            params: { dataset: dataset, gene: gene },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGeneChromosome:", error);
+        throw error;
+    }
+};
+
+export const getSnpChromosome = async (dataset, snp) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getsnpchromosome`, {
+            params: { dataset: dataset, snp: snp },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getSnpChromosome:", error);
         throw error;
     }
 };

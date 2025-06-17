@@ -4,6 +4,97 @@ import json
 import toml
 import re
 
+def get_gene_positions(dataset, gene):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        genes_file = os.path.join("backend","datasets",dataset,'gene_list.json')
+
+    if os.path.exists(genes_file):
+        with open(genes_file, 'r') as f:
+            data = json.load(f)
+        if gene in data:
+            chromosome = data[gene]["chromosome"]
+            chromosome_file = os.path.join("backend","datasets",dataset,"gene_locations",chromosome+".tsv")
+
+            if os.path.exists(chromosome_file):
+                df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
+                gene_df = df[df["gene_id"] == gene]
+                if not gene_df.empty:
+                    gene = gene_df.iloc[0]
+                    return {
+                        "start": int(gene["position_start"]),
+                        "end": int(gene["position_end"]),
+                    }
+                else:
+                    return f"Error: Gene {gene} not found in {chromosome} chromosome."
+        else:
+            return f"Error: Gene {gene} not found in {dataset} dataset."
+    else:
+        print(genes_file + " not found")
+        return "Error: Gene list file not found for the specified dataset."
+
+def get_snp_position(dataset, snp):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        snps_file = os.path.join("backend","datasets",dataset,'snp_list.json')
+
+    if os.path.exists(snps_file):
+        with open(snps_file, 'r') as f:
+            data = json.load(f)
+        if snp in data:
+            chromosome = data[snp]["chromosome"]
+            chromosome_file = os.path.join("backend","datasets",dataset,"snp_locations",chromosome+".tsv")
+
+            if os.path.exists(chromosome_file):
+                df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
+                snp_df = df[df["snp_id"] == snp]
+                if not snp_df.empty:
+                    snp = snp_df.iloc[0]
+                    return snp["position"]
+                else:
+                    return f"Error: SNP {snp} not found in {chromosome} chromosome."
+        else:
+            return f"Error: SNP {snp} not found in {dataset} dataset."
+    else:
+        print(snps_file + " not found")
+        return "Error: SNP list file not found for the specified dataset."
+
+def get_gene_chromosome(dataset, gene):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        genes_file = os.path.join("backend","datasets",dataset,'gene_list.json')
+
+    if os.path.exists(genes_file):
+        with open(genes_file, 'r') as f:
+            data = json.load(f)
+        if gene in data:
+            return data[gene]["chromosome"]
+        else:
+            return f"Error: Gene {gene} not found in {dataset} dataset."
+    else:
+        print(genes_file + " not found")
+        return "Error: Gene list file not found for the specified dataset."
+
+def get_snp_chromosome(dataset, snp):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        snps_file = os.path.join("backend","datasets",dataset,'snp_list.json')
+
+    if os.path.exists(snps_file):
+        with open(snps_file, 'r') as f:
+            data = json.load(f)
+        if snp in data:
+            return data[snp]["chromosome"]
+        else:
+            return f"Error: SNP {snp} not found in {dataset} dataset."
+    else:
+        print(snps_file + " not found")
+        return "Error: SNP list file not found for the specified dataset."
+
 def get_gene_list(dataset, query_str="AB"):
     if dataset == "all":
         genes_file = os.path.join("backend","datasets", 'gene_list.json')
@@ -66,7 +157,7 @@ def get_celltypes_for_gene(dataset, gene):
         with open(genes_file, 'r') as f:
             data = json.load(f)
         if gene in data:
-            return data[gene]
+            return data[gene]["celltypes"]
         else:
             return f"Error: Gene {gene} not found in {dataset} dataset."
     else:
@@ -83,7 +174,7 @@ def get_celltypes_for_snp(dataset, snp):
         with open(snps_file, 'r') as f:
             data = json.load(f)
         if snp in data:
-            return data[snp]
+            return data[snp]["celltypes"]
         else:
             return f"Error: SNP {snp} not found in {dataset} dataset."
     else:
@@ -105,15 +196,29 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
 
         celltype_file = celltype_mapping.get(celltype, celltype)
         data_file = os.path.join("backend","datasets",dataset,"celltypes",celltype_file)
+        chromosome = get_gene_chromosome(dataset, gene)
+        chromosome_file = os.path.join("backend","datasets",dataset,"snp_locations",chromosome+".tsv")
 
     if os.path.exists(data_file):
         df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
         gene_df = df[df["gene_id"] == gene]
+        gene_df = gene_df.drop(columns=["gene_id"])
 
         if gene_df.empty:
             return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
 
-        return gene_df.to_dict(orient="records")
+        if os.path.exists(chromosome_file):
+            snps_df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
+            gene_df = gene_df[gene_df["snp_id"].isin(snps_df["snp_id"])]
+            gene_df = gene_df.merge(snps_df[["snp_id", "position"]], on="snp_id", how="left")
+
+            if gene_df.empty:
+                return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
+
+            return gene_df.to_dict(orient="records")
+        else:
+            print(chromosome_file + " not found")
+            return "Error: SNP chromosome file not found for the specified dataset and gene."
     else:
         print(data_file + " not found")
         return "Error: eQTL data file not found for the specified dataset and cell type."
@@ -132,15 +237,29 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
 
         celltype_file = celltype_mapping.get(celltype, celltype)
         data_file = os.path.join("backend","datasets",dataset,"celltypes",celltype_file)
+        chromosome = get_snp_chromosome(dataset, snp)
+        chromosome_file = os.path.join("backend","datasets",dataset,"gene_locations",chromosome+".tsv")
 
     if os.path.exists(data_file):
         df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
         snp_df = df[df["snp_id"] == snp]
+        snp_df = snp_df.drop(columns=["snp_id"])
 
         if snp_df.empty:
             return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
 
-        return snp_df.to_dict(orient="records")
+        if os.path.exists(chromosome_file):
+            genes_df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
+            snp_df = snp_df[snp_df["gene_id"].isin(genes_df["gene_id"])]
+            snp_df = snp_df.merge(genes_df[["gene_id", "position_start", "position_end"]], on="gene_id", how="left")
+
+            if snp_df.empty:
+                return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
+
+            return snp_df.to_dict(orient="records")
+        else:
+            print(chromosome_file + " not found")
+            return "Error: Gene chromosome file not found for the specified dataset and SNP."
     else:
         print(data_file + " not found")
         return "Error: eQTL data file not found for the specified dataset and cell type."

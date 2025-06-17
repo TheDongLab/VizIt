@@ -6,6 +6,8 @@ import {
     getCellTypesForSnp,
     getSnpDataForGene,
     getGeneDataForSnp,
+    getGeneChromosome,
+    getSnpChromosome,
 } from "../api/qtl.js";
 
 const useQtlStore = create((set, get) => ({
@@ -14,6 +16,7 @@ const useQtlStore = create((set, get) => ({
     selectedSnp: null,
     geneList: [],
     snpList: [],
+    selectedChromosome: null,
     selectedCellTypes: [],
     snpData: {},
     geneData: {},
@@ -70,6 +73,47 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
+    fetchGeneChromosome: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGeneChromosome: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+
+        try {
+            const response = await getGeneChromosome(
+                dataset,
+                get().selectedGene,
+            );
+            const chromosome = response.data;
+            set({ selectedChromosome: chromosome, loading: false });
+        } catch (error) {
+            console.error("Error fetching gene chromosome:", error);
+        }
+    },
+
+    fetchSnpChromosome: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchSnpChromosome: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+
+        try {
+            const response = await getSnpChromosome(dataset, get().selectedSnp);
+            const chromosome = response.data;
+            set({ selectedChromosome: chromosome, loading: false });
+        } catch (error) {
+            console.error("Error fetching SNP chromosome:", error);
+        }
+    },
+
     fetchGeneCellTypes: async (dataset) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
@@ -87,7 +131,6 @@ const useQtlStore = create((set, get) => ({
             );
             const cellTypes = response.data;
             set({ selectedCellTypes: cellTypes, loading: false });
-            return cellTypes;
         } catch (error) {
             console.error("Error fetching cell types:", error);
         }
@@ -110,7 +153,6 @@ const useQtlStore = create((set, get) => ({
             );
             const cellTypes = response.data;
             set({ selectedCellTypes: cellTypes, loading: false });
-            return cellTypes;
         } catch (error) {
             console.error("Error fetching cell types:", error);
         }
@@ -125,6 +167,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             for (const celltype of get().selectedCellTypes) {
@@ -157,6 +200,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             for (const celltype of get().selectedCellTypes) {
