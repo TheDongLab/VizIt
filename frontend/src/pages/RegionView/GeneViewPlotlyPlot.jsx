@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Plot from "react-plotly.js";
-import React from "react";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
 import {
@@ -57,7 +56,7 @@ const GeneViewPlotlyPlot = ({
   const yMin = Math.min(...yValues, -2) - yPadding;
   const yMax = Math.max(...yValues, 2) + yPadding;
   const initialXRange = [xMin, xMax];
-  const initialYRange = [yMax, yMin];
+  const initialYRange = [yMin, yMax];
 
   const [xRange, setXRange] = useState(initialXRange);
   const [yRange, setYRange] = useState(initialYRange);

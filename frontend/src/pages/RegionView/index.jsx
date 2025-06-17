@@ -1,11 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  forwardRef,
-  useContext,
-  useRef,
-  useMemo,
-} from "react";
+import { useEffect, useState } from "react";
 import {
   Typography,
   Box,
@@ -17,13 +10,7 @@ import {
   CircularProgress,
   Autocomplete,
   Link,
-  styled,
-  Popper,
-  autocompleteClasses,
 } from "@mui/material";
-
-import PropTypes from "prop-types";
-import { FixedSizeList } from "react-window";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import { useSearchParams } from "react-router-dom";
@@ -36,87 +23,8 @@ import { getGenePositions, getSnpPosition } from "../../api/qtl.js";
 
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 
-// Constants for react-window listbox
-const LISTBOX_PADDING = 8;
-const MAX_VISIBLE = 8;
-const ITEM_SIZE = 36;
-
-function renderRow({ data, index, style }) {
-  const item = data[index];
-  const inlineStyle = {
-    ...style,
-    top: style.top + LISTBOX_PADDING,
-  };
-
-  return React.cloneElement(item, {
-    style: inlineStyle,
-  });
-}
-
-const OuterElementContext = React.createContext({});
-
-const OuterElementType = forwardRef(function OuterElementType(props, ref) {
-  const outerProps = useContext(OuterElementContext);
-  return <div ref={ref} {...props} {...outerProps} />;
-});
-
-// Reset the cache of the list when the data changes (unused)
-function useResetCache(data) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current != null) {
-      ref.current.resetAfterIndex(0, true);
-    }
-  }, [data]);
-  return ref;
-}
-
-const StyledPopper = styled(Popper)({
-  [`& .${autocompleteClasses.listbox}`]: {
-    boxSizing: "border-box",
-    "& ul": {
-      padding: 0,
-      margin: 0,
-    },
-  },
-});
-
-const ListboxComponent = forwardRef(function ListboxComponent(props, ref) {
-  const { children, ...other } = props;
-  const itemData = useMemo(() => React.Children.toArray(children), [children]);
-  // These also work, but may be worse
-  // const itemData = React.Children.toArray(children);
-  // const itemData = React.useMemo(() => {
-  //   return Array.isArray(children) ? children : [children];
-  // }, [children]);
-
-  const itemCount = itemData.length;
-  const height =
-    Math.min(itemCount, MAX_VISIBLE) * ITEM_SIZE + 2 * LISTBOX_PADDING;
-
-  return (
-    <div ref={ref}>
-      <OuterElementContext.Provider value={other}>
-        <FixedSizeList
-          itemData={itemData}
-          height={height}
-          width="100%"
-          outerElementType={OuterElementType}
-          innerElementType="ul"
-          itemSize={ITEM_SIZE}
-          overscanCount={5}
-          itemCount={itemCount}
-        >
-          {renderRow}
-        </FixedSizeList>
-      </OuterElementContext.Provider>
-    </div>
-  );
-});
-
-ListboxComponent.propTypes = {
-  children: PropTypes.node,
-};
+// import ListboxComponent from "../../components/Listbox";
+import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
 function RegionView() {
   // Get all the pre-selected values
