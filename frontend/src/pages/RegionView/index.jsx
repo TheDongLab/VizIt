@@ -383,36 +383,14 @@ function RegionView() {
 
         {/* Left UMAP Plot Area (80%) */}
         <div className="plot-main">
-          {loading || dataLoading ? (
+          {dataLoading && (
             <>
               <Box sx={{ width: "100%" }}>
                 <LinearProgress />
               </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  paddingTop: "100px",
-                }}
-              >
-                <CircularProgress />
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  paddingTop: "10px",
-                }}
-              >
-                <Typography
-                  sx={{ marginLeft: "10px", color: "text.secondary" }}
-                  variant="h5"
-                >
-                  Loading sample list and metadata...
-                </Typography>
-              </Box>
             </>
-          ) : datasetId === "" || datasetId === "all" || datasetId == null ? (
+          )}
+          {datasetId === "" || datasetId === "all" || datasetId == null ? (
             <Typography
               sx={{ color: "text.secondary", paddingTop: "100px" }}
               variant="h5"
@@ -426,21 +404,25 @@ function RegionView() {
               <div key={`${selectedGene}-view`} className={`view-container`}>
                 {selectedCellTypes.length > 0 ? (
                   geneStart !== null && geneEnd !== null ? (
-                    selectedCellTypes.map((cellType, index) => (
-                      <div
-                        key={`${cellType}-plot`}
-                        className="gene-plot"
-                        data-celltype={cellType}
-                      >
-                        <GeneViewPlotlyPlot
-                          geneName={selectedGene}
-                          geneStart={geneStart}
-                          geneEnd={geneEnd}
-                          snpData={snpData[cellType] || []}
-                          celltype={cellType}
-                        />
-                      </div>
-                    ))
+                    selectedCellTypes.map(
+                      (cellType, index) =>
+                        snpData[cellType] &&
+                        !loading && (
+                          <div
+                            key={`${cellType}-plot`}
+                            className="gene-plot"
+                            data-celltype={cellType}
+                          >
+                            <GeneViewPlotlyPlot
+                              geneName={selectedGene}
+                              geneStart={geneStart}
+                              geneEnd={geneEnd}
+                              snpData={snpData[cellType]}
+                              celltype={cellType}
+                            />
+                          </div>
+                        ),
+                    )
                   ) : (
                     <Typography
                       sx={{ color: "text.secondary", paddingTop: "100px" }}
