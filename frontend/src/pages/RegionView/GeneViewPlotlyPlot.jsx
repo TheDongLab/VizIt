@@ -41,7 +41,7 @@ const GeneViewPlotlyPlot = ({
   const snps = snpData.map(
     ({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
-      rsID: snp_id,
+      id: snp_id,
       y: -Math.log10(p_value),
       beta: beta_value,
       x: position,
@@ -71,9 +71,9 @@ const GeneViewPlotlyPlot = ({
       color: dataToRGB(snp),
       size: 6,
     },
-    name: snp.rsID,
+    name: snp.id,
     hoverinfo: "text",
-    text: `${snp.rsID}<br>β=${snp.beta}<br>-log10(p)=${snp.y}`,
+    text: `${snp.id}<br>β=${snp.beta}<br>-log10(p)=${snp.y}`,
     pointType: "snp",
     showlegend: false,
   }));
