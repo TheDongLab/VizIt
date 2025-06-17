@@ -431,15 +431,7 @@ function RegionView() {
                         key={`${cellType}-plot`}
                         className="gene-plot"
                         data-celltype={cellType}
-                        /* style={{ */
-                        /*   width: "800px", */
-                        /*   marginBottom: "20px", */
-                        /*   height: "100%", */
-                        /* }} */
                       >
-                        {/* <Typography variant="h6" align="center"> */}
-                        {/*   {cellType} */}
-                        {/* </Typography> */}
                         <GeneViewPlotlyPlot
                           geneName={selectedGene}
                           geneStart={geneStart}
