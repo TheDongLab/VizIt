@@ -44,6 +44,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             const response = await getGeneList(dataset, query_str);
@@ -63,6 +64,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             const response = await getSnpList(dataset, query_str);
@@ -82,6 +84,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             const response = await getGeneChromosome(
@@ -104,6 +107,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             const response = await getSnpChromosome(dataset, get().selectedSnp);
@@ -123,6 +127,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             const response = await getCellTypesForGene(
@@ -145,6 +150,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
+        set({ loading: true });
 
         try {
             const response = await getCellTypesForSnp(

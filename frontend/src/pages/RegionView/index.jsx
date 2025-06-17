@@ -64,6 +64,7 @@ function RegionView() {
     fetchSnpCellTypes,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
+  const [dataLoading, setDataLoading] = useState(false);
 
   const selectGeneOrSnp = (type, value) => {
     if (type === "gene") {
@@ -183,6 +184,7 @@ function RegionView() {
     } else if (isGene && isSnp) {
       console.warn("Error: Both gene and SNP are selected.");
     } else if (isGene) {
+      setDataLoading(true);
       await fetchGeneCellTypes(datasetId);
       const genePositions = await getGenePositions(datasetId, selectedGene);
       await setGeneStart(genePositions.data.start);
@@ -190,12 +192,16 @@ function RegionView() {
       console.log("gene positions", geneStart, geneEnd);
 
       await fetchSnpData(datasetId);
+      setDataLoading(false);
     } else if (isSnp) {
+      setDataLoading(true);
       await fetchSnpCellTypes(datasetId);
       const snpPosition = await getSnpPosition(datasetId, selectedSnp);
       await setSnpPosition(snpPosition);
 
       await fetchGeneData(datasetId);
+      console.log("snp position", snpPosition);
+      setDataLoading(false);
     }
   };
 
@@ -367,7 +373,7 @@ function RegionView() {
             <Button
               variant="outlined"
               endIcon={<ScatterPlotIcon />}
-              disabled={loading}
+              disabled={loading || dataLoading}
               onClick={handleLoadPlot}
             >
               {loading ? "Loading plots..." : "Refresh Plots"}
@@ -377,7 +383,7 @@ function RegionView() {
 
         {/* Left UMAP Plot Area (80%) */}
         <div className="plot-main">
-          {loading ? (
+          {loading || dataLoading ? (
             <>
               <Box sx={{ width: "100%" }}>
                 <LinearProgress />
