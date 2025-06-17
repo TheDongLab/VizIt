@@ -40,36 +40,40 @@ const GeneViewPlotlyPlot = ({
       p_value,
     }),
   );
-  console.log(snps);
-  const padding = 50000;
-  const xMin = geneStart - 1000000 - padding;
-  const xMax = geneEnd + 1000000 + padding;
+
+  // Calculate X and Y ranges
+  const oneMb = 1_000_000;
+  const xValues = snps.map((snp) => snp.x);
   const yValues = snps.map((snp) => snp.y);
+
+  const snpMin = Math.min(...xValues);
+  const snpMax = Math.max(...xValues);
+
+  const combinedMin = Math.min(snpMin, geneStart);
+  const combinedMax = Math.max(snpMax, geneEnd);
+  const combinedRange = combinedMax - combinedMin;
+
+  const xPadding = Math.round((combinedRange * 0.05) / 1000) * 1000; // 5% of range
+
+  const paddedMin = combinedMin - xPadding;
+  const paddedMax = combinedMax + xPadding;
+
+  const xMin = Math.max(paddedMin, geneStart - oneMb);
+  const xMax = Math.min(paddedMax, geneEnd + oneMb);
+
   const yPadding = 1;
   const yMin = Math.min(...yValues, -2) - yPadding;
   const yMax = Math.max(...yValues, 2) + yPadding;
-  const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
-  const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
 
-  const [xRange, setXRange] = useState(initialXRange);
-  const [yRange, setYRange] = useState(initialYRange);
+  const [xRange, setXRange] = useState([xMin, xMax]);
+  const [yRange, setYRange] = useState([yMin, yMax]);
 
   useEffect(() => {
     console.log("Rendering gene plot: ", celltype);
     console.log("SNPs loaded:", snpData.length);
     console.log("Gene start and end", geneStart, geneEnd);
-    console.log("initialRange", initialXRange, initialYRange);
     console.log("range", xRange, yRange);
-  }, [
-    celltype,
-    snpData.length,
-    geneStart,
-    geneEnd,
-    initialXRange,
-    initialYRange,
-    xRange,
-    yRange,
-  ]);
+  }, [snpData.length, geneStart, geneEnd, xRange, yRange, celltype]);
 
   const snpTraces = snps.map((snp) => ({
     x: [snp.x],
@@ -347,17 +351,16 @@ const GeneViewPlotlyPlot = ({
           ],
         }}
         onRelayout={(e) => {
-          if (e["xaxis.range[0]"] == null && e["yaxis.range[0]"] == null) {
-            console.log(initialXRange, initialYRange);
-            setXRange(initialXRange);
-            setYRange(initialYRange);
-            return;
-          }
-
           const r0 = e["xaxis.range[0]"] ?? e["xaxis.range"]?.[0];
           const r1 = e["xaxis.range[1]"] ?? e["xaxis.range"]?.[1];
           const yr0 = e["yaxis.range[0]"] ?? e["yaxis.range"]?.[0];
           const yr1 = e["yaxis.range[1]"] ?? e["yaxis.range"]?.[1];
+
+          if (r0 == null && yr0 == null) {
+            setXRange([xMin, xMax]);
+            setYRange([yMin, yMax]);
+            return;
+          }
 
           if (r0 != null && r1 != null) setXRange([r0, r1]);
           if (yr0 != null && yr1 != null) setYRange([yr0, yr1]);
