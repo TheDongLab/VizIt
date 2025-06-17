@@ -19,7 +19,6 @@ import "./RegionView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
-import { getGenePositions, getSnpPosition } from "../../api/qtl.js";
 
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 
@@ -62,6 +61,11 @@ function RegionView() {
     selectedCellTypes,
     fetchGeneCellTypes,
     fetchSnpCellTypes,
+    selectedChromosome,
+    fetchGeneChromosome,
+    fetchSnpChromosome,
+    fetchGeneLocations,
+    fetchSnpLocations,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
   const [dataLoading, setDataLoading] = useState(false);
@@ -172,6 +176,9 @@ function RegionView() {
     }
   };
 
+  const [genes, setGenes] = useState([]);
+  const [snps, setSnps] = useState([]);
+
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
     const isGene = selectedGene && selectedGene !== "";
@@ -186,21 +193,20 @@ function RegionView() {
     } else if (isGene) {
       setDataLoading(true);
       await fetchGeneCellTypes(datasetId);
-      const genePositions = await getGenePositions(datasetId, selectedGene);
-      await setGeneStart(genePositions.data.start);
-      await setGeneEnd(genePositions.data.end);
-      console.log("gene positions", geneStart, geneEnd);
+      await fetchGeneChromosome(datasetId);
+      const locations = await fetchGeneLocations(datasetId);
+      setGenes(locations);
 
       await fetchSnpData(datasetId);
       setDataLoading(false);
     } else if (isSnp) {
       setDataLoading(true);
       await fetchSnpCellTypes(datasetId);
-      const snpPosition = await getSnpPosition(datasetId, selectedSnp);
-      await setSnpPosition(snpPosition);
+      await fetchSnpChromosome(datasetId);
+      const locations = await fetchSnpLocations(datasetId);
+      setSnps(locations);
 
       await fetchGeneData(datasetId);
-      console.log("snp position", snpPosition);
       setDataLoading(false);
     }
   };
@@ -209,10 +215,6 @@ function RegionView() {
     console.log("genes", geneList.length);
     console.log("snps", snpList.length);
   }, [geneList, snpList]);
-
-  const [geneStart, setGeneStart] = useState(null);
-  const [geneEnd, setGeneEnd] = useState(null);
-  const [snpPosition, setSnpPosition] = useState(null);
 
   useEffect(() => {
     fetchGeneOrSnpData();
@@ -403,7 +405,7 @@ function RegionView() {
             <div className="qtl-container">
               <div key={`${selectedGene}-view`} className={`view-container`}>
                 {selectedCellTypes.length > 0 ? (
-                  geneStart !== null && geneEnd !== null ? (
+                  selectedGene ? (
                     selectedCellTypes.map(
                       (cellType, index) =>
                         snpData[cellType] &&
@@ -415,8 +417,7 @@ function RegionView() {
                           >
                             <GeneViewPlotlyPlot
                               geneName={selectedGene}
-                              geneStart={geneStart}
-                              geneEnd={geneEnd}
+                              genes={genes}
                               snpData={snpData[cellType]}
                               celltype={cellType}
                             />

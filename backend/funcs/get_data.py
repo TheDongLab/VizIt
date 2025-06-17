@@ -4,7 +4,7 @@ import json
 import toml
 import re
 
-def get_gene_positions(dataset, gene):
+def get_gene_location(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -34,7 +34,7 @@ def get_gene_positions(dataset, gene):
         print(genes_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
 
-def get_snp_position(dataset, snp):
+def get_snp_location(dataset, snp):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -60,6 +60,38 @@ def get_snp_position(dataset, snp):
     else:
         print(snps_file + " not found")
         return "Error: SNP list file not found for the specified dataset."
+
+def get_gene_locations_in_chromosome(dataset, chromosome):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        chromosome_file = os.path.join("backend","datasets",dataset,"gene_locations",chromosome+".tsv")
+
+        if os.path.exists(chromosome_file):
+            df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
+            if not df.empty:
+                return df[["gene_id", "position_start", "position_end", "strand"]].to_dict(orient="records")
+            else:
+                return f"Error: No genes found in {chromosome} chromosome."
+        else:
+            print(chromosome_file + " not found")
+            return "Error: Chromosome file not found for the specified dataset."
+
+def get_snp_locations_in_chromosome(dataset, chromosome):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        chromosome_file = os.path.join("backend","datasets",dataset,"snp_locations",chromosome+".tsv")
+
+        if os.path.exists(chromosome_file):
+            df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
+            if not df.empty:
+                return df[["snp_id", "position"]].to_dict(orient="records")
+            else:
+                return f"Error: No SNPs found in {chromosome} chromosome."
+        else:
+            print(chromosome_file + " not found")
+            return "Error: Chromosome file not found for the specified dataset."
 
 def get_gene_chromosome(dataset, gene):
     if dataset == "all":

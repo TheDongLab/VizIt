@@ -37,13 +37,7 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
-const GeneViewPlotlyPlot = ({
-  geneName,
-  geneStart,
-  geneEnd,
-  snpData,
-  celltype,
-}) => {
+const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
   // TODO
   // const [naturalDimensions, setNaturalDimensions] = useState({
   //   width: 0,
@@ -61,6 +55,13 @@ const GeneViewPlotlyPlot = ({
       p_value,
     }),
   );
+
+  const gene = genes.find((g) => g.gene_id === geneName);
+  const geneStart = gene ? gene.position_start : 0;
+  const geneEnd = gene ? gene.position_end : 0;
+  const geneStrand = gene ? gene.strand : "+";
+  const annotationStart = geneStrand === "-" ? geneEnd : geneStart;
+  const annotationEnd = geneStrand === "-" ? geneStart : geneEnd;
 
   // Calculate X and Y ranges
   const oneMb = 1_000_000;
@@ -110,16 +111,16 @@ const GeneViewPlotlyPlot = ({
     },
     name: snp.id,
     hoverinfo: "text",
-    text: `<b>ID:</b> ${snp.id}<br><b>β:</b> ${round(snp.beta, 4)}<br><b>-log10(p):</b> ${round(snp.y, 4)}`,
+    text: `<b>ID:</b> ${snp.id}<br><b>β:</b> ${round(snp.beta, 4)}<br><b>-log10(p):</b> ${round(snp.y, 4) * Math.sign(snp.beta)}`,
     pointType: "snp",
     showlegend: false,
   }));
 
   const annotation = useMemo(() => {
     return {
-      x: geneEnd,
+      x: annotationEnd,
       y: 0,
-      ax: geneStart,
+      ax: annotationStart,
       ay: 0,
       xref: "x",
       yref: "y",
@@ -131,7 +132,7 @@ const GeneViewPlotlyPlot = ({
       arrowwidth: 2,
       arrowcolor: "black",
     };
-  }, [geneStart, geneEnd]);
+  }, [annotationEnd, annotationStart]);
 
   const getClippedAnnotation = useCallback(
     (xRange) => {
@@ -178,7 +179,7 @@ const GeneViewPlotlyPlot = ({
   // maybe useMemo
   const geneTrace = useMemo(() => {
     return {
-      x: [geneStart],
+      x: [annotationStart],
       y: [0],
       type: "scatter",
       mode: "markers+text",
@@ -193,7 +194,7 @@ const GeneViewPlotlyPlot = ({
       showlegend: false,
       hoverinfo: "text",
     };
-  }, [geneName, geneStart]);
+  }, [annotationStart, geneName]);
 
   // Plotly layout
   const layout = useMemo(
@@ -396,8 +397,14 @@ const GeneViewPlotlyPlot = ({
 
 GeneViewPlotlyPlot.propTypes = {
   geneName: PropTypes.string.isRequired,
-  geneStart: PropTypes.number.isRequired,
-  geneEnd: PropTypes.number.isRequired,
+  genes: PropTypes.arrayOf(
+    PropTypes.shape({
+      gene_id: PropTypes.string.isRequired,
+      position_start: PropTypes.number.isRequired,
+      position_end: PropTypes.number.isRequired,
+      strand: PropTypes.string.isRequired,
+    }),
+  ).isRequired,
   snpData: PropTypes.arrayOf(
     PropTypes.shape({
       snp_id: PropTypes.string.isRequired,

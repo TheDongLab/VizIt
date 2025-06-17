@@ -13,8 +13,10 @@ from backend.funcs.get_data import (
     get_celltypes_for_snp,
     get_gene_chromosome,
     get_snp_chromosome,
-    get_gene_positions,
-    get_snp_position,
+    get_gene_location,
+    get_snp_location,
+    get_gene_locations_in_chromosome,
+    get_snp_locations_in_chromosome,
 )
 
 router = APIRouter()
@@ -25,29 +27,55 @@ async def read_root():
     return {"Message": "Hello QTL."}
 
 
-@router.get("/getgenepositions")
-async def getgenepositions(request: Request):
-    print("getgenepositions() called================")
+@router.get("/getgenelocation")
+async def getgenelocation(request: Request):
+    print("getgenelocation() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
 
-    response = get_gene_positions(dataset_id, gene)
+    response = get_gene_location(dataset_id, gene)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting QTL gene list.")
+        raise HTTPException(status_code=404, detail="Error in getting gene location.")
     return response
 
 
-@router.get("/getsnpposition")
-async def getsnpposition(request: Request):
-    print("getsnpposition() called================")
+@router.get("/getsnplocation")
+async def getsnplocation(request: Request):
+    print("getsnplocation() called================")
     dataset_id = request.query_params.get("dataset")
     snp = request.query_params.get("snp")
 
-    response = get_snp_position(dataset_id, snp)
+    response = get_snp_location(dataset_id, snp)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting QTL SNP list.")
+        raise HTTPException(status_code=404, detail="Error in getting SNP location.")
+    return response
+
+
+@router.get("/getgenelocationsinchromosome")
+async def getgenelocationsinchromosome(request: Request):
+    print("getgenelocationsinchromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    chromosome = request.query_params.get("chromosome")
+
+    response = get_gene_locations_in_chromosome(dataset_id, chromosome)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting gene locations.")
+    return response
+
+
+@router.get("/getsnplocationsinchromosome")
+async def getsnplocationsinchromosome(request: Request):
+    print("getsnplocationsinchromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    chromosome = request.query_params.get("chromosome")
+
+    response = get_snp_locations_in_chromosome(dataset_id, chromosome)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting SNP locations.")
     return response
 
 
@@ -60,7 +88,7 @@ async def getgenechromosome(request: Request):
     response = get_gene_chromosome(dataset_id, gene)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting QTL gene list.")
+        raise HTTPException(status_code=404, detail="Error in getting gene chromosome.")
     return response
 
 
@@ -73,7 +101,7 @@ async def getsnpchromosome(request: Request):
     response = get_snp_chromosome(dataset_id, snp)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting QTL SNP list.")
+        raise HTTPException(status_code=404, detail="Error in getting SNP chromosome.")
     return response
 
 
@@ -86,7 +114,7 @@ async def getgenelist(request: Request):
     response = get_qtl_gene_list(dataset_id, query_str)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting QTL gene list.")
+        raise HTTPException(status_code=404, detail="Error in getting gene list.")
     return response
 
 
@@ -99,7 +127,7 @@ async def getsnplist(request: Request):
     response = get_qtl_snp_list(dataset_id, query_str)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting QTL SNP list.")
+        raise HTTPException(status_code=404, detail="Error in getting SNP list.")
     return response
 
 

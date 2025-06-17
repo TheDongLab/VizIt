@@ -5,26 +5,26 @@ const BASE_URL = "http://localhost:8000"; // Replace with your backend URL
 
 const QTL_URL = `${BASE_URL}/qtl`;
 
-export const getGenePositions = async (dataset, gene) => {
+export const getGeneLocation = async (dataset, gene) => {
     try {
-        const response = await axios.get(`${QTL_URL}/getgenepositions`, {
+        const response = await axios.get(`${QTL_URL}/getgenelocation`, {
             params: { dataset: dataset, gene: gene },
         });
         return response;
     } catch (error) {
-        console.error("Error getGenePositions:", error);
+        console.error("Error getGeneLocation:", error);
         throw error;
     }
 };
 
-export const getSnpPosition = async (dataset, snp) => {
+export const getSnpLocation = async (dataset, snp) => {
     try {
-        const response = await axios.get(`${QTL_URL}/getsnpposition`, {
+        const response = await axios.get(`${QTL_URL}/getsnplocation`, {
             params: { dataset: dataset, snp: snp },
         });
         return response;
     } catch (error) {
-        console.error("Error getSnpPosition:", error);
+        console.error("Error getSnpLocation:", error);
         throw error;
     }
 };
@@ -121,6 +121,30 @@ export const getGeneDataForSnp = async (dataset, snp, celltype) => {
         return response;
     } catch (error) {
         console.error("Error getGeneDataForSnp:", error);
+        throw error;
+    }
+};
+
+export const getGeneLocationsInChromosome = async (dataset, chromosome) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgenelocationsinchromosome`, {
+            params: { dataset: dataset, chromosome: chromosome },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGeneLocationsInChromosome:", error);
+        throw error;
+    }
+}
+
+export const getSnpLocationsInChromosome = async (dataset, chromosome) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getsnplocationsinchromosome`, {
+            params: { dataset: dataset, chromosome: chromosome },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getSnpLocationsInChromosome:", error);
         throw error;
     }
 };

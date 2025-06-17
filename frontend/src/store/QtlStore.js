@@ -8,6 +8,8 @@ import {
     getGeneDataForSnp,
     getGeneChromosome,
     getSnpChromosome,
+    getGeneLocationsInChromosome,
+    getSnpLocationsInChromosome,
 } from "../api/qtl.js";
 
 const useQtlStore = create((set, get) => ({
@@ -227,6 +229,52 @@ const useQtlStore = create((set, get) => ({
             }
         } catch (error) {
             console.error("Error fetching gene data for SNP:", error);
+        }
+    },
+
+    fetchGeneLocations: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGeneLocations: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const response = await getGeneLocationsInChromosome(
+                dataset,
+                get().selectedChromosome,
+            );
+            const genes = response.data;
+            return genes;
+        } catch (error) {
+            console.error("Error fetching gene locations:", error);
+        }
+    },
+
+    fetchSnpLocations: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchSnpLocations: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const response = await getSnpLocationsInChromosome(
+                dataset,
+                get().selectedChromosome,
+            );
+            const snps = response.data;
+            return snps;
+        } catch (error) {
+            console.error("Error fetching SNP locations:", error);
         }
     },
 }));
