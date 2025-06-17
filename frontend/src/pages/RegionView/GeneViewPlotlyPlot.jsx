@@ -58,7 +58,8 @@ const GeneViewPlotlyPlot = ({
     console.log("Rendering gene plot: ", celltype);
     console.log("SNPs loaded:", snpData.length);
     console.log("Gene start and end", geneStart, geneEnd);
-    console.log("range", initialXRange, initialYRange);
+    console.log("initialRange", initialXRange, initialYRange);
+    console.log("range", xRange, yRange);
   }, [
     celltype,
     snpData.length,
@@ -66,6 +67,8 @@ const GeneViewPlotlyPlot = ({
     geneEnd,
     initialXRange,
     initialYRange,
+    xRange,
+    yRange,
   ]);
 
   const snpTraces = snps.map((snp) => ({
@@ -305,6 +308,7 @@ const GeneViewPlotlyPlot = ({
         layout={layout}
         useResizeHandler
         config={{
+          doubleClick: "reset", // Double-click to reset zoom
           responsive: true, // Makes it adapt to screen size
           displaylogo: false, // Removes the Plotly logo
           scrollZoom: true, // Enable zooming with scroll wheel
@@ -314,12 +318,12 @@ const GeneViewPlotlyPlot = ({
             filename: `BDP_png-${geneTrace.name}-${celltype}`, // TODO name
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
-          modeBarButtonsToRemove: [
-            "autoScale2d",
-            // "resetScale2d",
-            // "select2d",
-            // "lasso2d",
-          ],
+          /* modeBarButtonsToRemove: [ */
+          /*   "autoScale2d", */
+          /*   // "resetScale2d", */
+          /*   // "select2d", */
+          /*   // "lasso2d", */
+          /* ], */
           modeBarButtonsToAdd: [
             [
               {
@@ -343,14 +347,8 @@ const GeneViewPlotlyPlot = ({
           ],
         }}
         onRelayout={(e) => {
-          if (e["xaxis.autorange"] || e["yaxis.autorange"]) {
-            console.log(initialXRange, initialYRange);
-            setXRange(initialXRange);
-            setYRange(initialYRange);
-            return;
-          }
-          // home button
           if (e["xaxis.range[0]"] == null && e["yaxis.range[0]"] == null) {
+            console.log(initialXRange, initialYRange);
             setXRange(initialXRange);
             setYRange(initialYRange);
             return;
