@@ -76,7 +76,10 @@ const SNPViewPlotlyPlot = ({
 
   // Calculate X and Y ranges
   const oneMb = 1_000_000;
-  const xValues = geneList.map((gene) => gene.x);
+  const xValues = geneList.flatMap((gene) => [
+    gene.position_start,
+    gene.position_end,
+  ]);
   const yValues = geneList.map((gene) => gene.y);
   const betaValues = geneList.map((gene) => gene.beta);
   const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
