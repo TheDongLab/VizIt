@@ -255,6 +255,7 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
       showlegend: false,
       margin: { l: "auto", r: 5, t: 30, b: "auto" },
       autosize: true,
+      dragmode: "pan",
       xaxis: {
         title: { text: "Genomic Position" },
         range: xRange,
@@ -275,6 +276,8 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
         title: { text: "−log10(p)" },
         autorange: false,
         range: yRange,
+        // minallowed: yMin,
+        // maxallowed: yMax,
         showgrid: false,
         zeroline: false,
         ticks: "outside",
@@ -397,12 +400,12 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
             filename: `BDP_png-${geneName}-${celltype}`, // TODO name
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
-          /* modeBarButtonsToRemove: [ */
-          /*   "autoScale2d", */
-          /*   // "resetScale2d", */
-          /*   // "select2d", */
-          /*   // "lasso2d", */
-          /* ], */
+          modeBarButtonsToRemove: [
+            "autoScale2d",
+            /* "resetScale2d", */
+            /* "select2d", */
+            /* "lasso2d", */
+          ],
           modeBarButtonsToAdd: [
             [
               {
@@ -431,10 +434,12 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
           const yr0 = e["yaxis.range[0]"] ?? e["yaxis.range"]?.[0];
           const yr1 = e["yaxis.range[1]"] ?? e["yaxis.range"]?.[1];
 
-          if (r0 == null && yr0 == null) {
+          console.log(e);
+          if (e["xaxis.autorange"]) setXRange([xMin, xMax]);
+          if (e["yaxis.autorange"]) setYRange([yMin, yMax]);
+          if (e["autosize"]) {
             setXRange([xMin, xMax]);
             setYRange([yMin, yMax]);
-            return;
           }
 
           if (r0 != null && r1 != null) setXRange([r0, r1]);
