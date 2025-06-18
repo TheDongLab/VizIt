@@ -100,65 +100,119 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
     console.log("range", xRange, yRange);
   }, [snpData.length, geneStart, geneEnd, xRange, yRange, celltype]);
 
-  const snpTraces = snps.map((snp) => ({
-    x: [snp.x],
-    y: [snp.y],
-    type: "scatter",
-    mode: "markers",
-    marker: {
-      color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
-      size: 6,
-    },
-    name: snp.id,
-    hoverinfo: "text",
-    text: `<b>ID:</b> ${snp.id}<br><b>β:</b> ${round(snp.beta, 4)}<br><b>-log10(p):</b> ${round(snp.y, 4) * Math.sign(snp.beta)}`,
-    pointType: "snp",
-    showlegend: false,
-  }));
-
-  const annotation = useMemo(() => {
-    return {
-      x: annotationEnd,
-      y: 0,
-      ax: annotationStart,
-      ay: 0,
-      xref: "x",
-      yref: "y",
-      axref: "x",
-      ayref: "y",
-      showarrow: true,
-      arrowhead: 3,
-      arrowsize: 1,
-      arrowwidth: 2,
-      arrowcolor: "black",
+  const snpTraces = snps.map((snp) => {
+    const formatNumber = (num) => {
+      const rounded = round(num, 4);
+      return rounded < 0
+        ? rounded.toString().replace("-", "−")
+        : rounded.toString();
     };
-  }, [annotationEnd, annotationStart]);
+    return {
+      x: [snp.x],
+      y: [snp.y],
+      type: "scatter",
+      mode: "markers",
+      marker: {
+        color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
+        size: 6,
+      },
+      name: snp.id,
+      hoverinfo: "text",
+      text:
+        `<b>ID:</b> ${snp.id}<br>` +
+        `<b>Position:</b> ${snp.x}<br>` +
+        `<b>β:</b> ${formatNumber(snp.beta)}<br>` +
+        `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta))}`,
+      pointType: "snp",
+      showlegend: false,
+    };
+  });
 
-  const getClippedAnnotation = useCallback(
+  const visibleGenes = useMemo(() => {
+    const [xMin, xMax] = xRange;
+    return genes.filter(
+      (g) =>
+        g.position_end >= xMin - 100_000 && g.position_start <= xMax + 100_000,
+    );
+  }, [genes, xRange]);
+
+  useEffect(() => {
+    console.log(
+      "Visible genes:",
+      visibleGenes.map((g) => g.gene_id),
+    );
+  }, [visibleGenes]);
+
+  const jitterMap = useMemo(() => {
+    const map = new Map();
+    const minDistanceFromZero = 0.25;
+    const maxAmplitude = 1.75;
+
+    genes.forEach((gene) => {
+      const sign = Math.random() > 0.5 ? 1 : -1;
+      const amplitude =
+        minDistanceFromZero +
+        Math.random() * (maxAmplitude - minDistanceFromZero);
+      map.set(gene.gene_id, sign * amplitude);
+    });
+    return map;
+  }, [genes]);
+
+  const annotations = useMemo(() => {
+    return visibleGenes.map((gene) => {
+      const start =
+        gene.strand === "-" ? gene.position_end : gene.position_start;
+      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
+      const isTargetGene = gene.gene_id === geneName;
+      const jitter = jitterMap.get(gene.gene_id);
+
+      return {
+        x: end,
+        y: isTargetGene ? 0 : jitter,
+        ax: start,
+        ay: isTargetGene ? 0 : jitter,
+        xref: "x",
+        yref: "y",
+        axref: "x",
+        ayref: "y",
+        showarrow: true,
+        arrowhead: isTargetGene ? 3 : 2,
+        arrowsize: 1,
+        arrowwidth: isTargetGene ? 2 : 1,
+        arrowcolor: isTargetGene ? "black" : "rgb(161, 161, 161)",
+      };
+    });
+  }, [geneName, jitterMap, visibleGenes]);
+
+  const getClippedAnnotations = useCallback(
     (xRange) => {
-      const { ax, x, y } = annotation;
+      return annotations
+        .map((a) => {
+          const { ax, x, y } = a;
 
-      // const [min, max] = currentLayout.xaxis.range;
-      const [xMin, xMax] = xRange;
-      const [yMin, yMax] = yRange;
+          // const [min, max] = currentLayout.xaxis.range;
+          const [xMin, xMax] = xRange;
+          const [yMin, yMax] = yRange;
 
-      // Completely outside the view
-      if ((ax < xMin && x < xMin) || (ax > xMax && x > xMax)) return null;
-      if (y < yMin || y > yMax) return null;
+          // Completely outside the view
+          if ((ax < xMin && x < xMin) || (ax > xMax && x > xMax)) return null;
+          if (y < yMin || y > yMax) return null;
 
-      // Truncate at edges
-      const clippedAx = Math.max(xMin, Math.min(ax, xMax));
-      const clippedX = Math.max(xMin, Math.min(x, xMax));
-      const clipped = { ...annotation, ax: clippedAx, x: clippedX };
+          // Truncate at edges
+          const clippedAx = Math.max(xMin, Math.min(ax, xMax));
+          const clippedX = Math.max(xMin, Math.min(x, xMax));
+          const clipped = { ...a, ax: clippedAx, x: clippedX };
 
-      // Don't show arrowhead if truncated
-      if (x !== clippedX) {
-        clipped.arrowhead = 0;
-      }
+          // Don't show arrowhead if truncated
+          if (x !== clippedX) {
+            clipped.arrowhead = 0;
+          }
 
-      return clipped;
+          return clipped;
+        })
+        .filter(Boolean);
     },
-    [annotation, yRange],
+    [annotations, yRange],
   );
 
   // Handle resize TODO
@@ -177,24 +231,34 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
   // }, [updateScale]);
 
   // maybe useMemo
-  const geneTrace = useMemo(() => {
-    return {
-      x: [annotationStart],
-      y: [0],
-      type: "scatter",
-      mode: "markers+text",
-      marker: {
-        color: "black",
-        size: 10,
-      },
-      text: [geneName],
-      textposition: "top center",
-      name: geneName,
-      pointType: "gene",
-      showlegend: false,
-      hoverinfo: "text",
-    };
-  }, [annotationStart, geneName]);
+
+  const geneTraces = useMemo(() => {
+    // Create traces for all visible genes
+    return visibleGenes.map((gene) => {
+      const isTargetGene = gene.gene_id === geneName;
+      const xPosition =
+        gene.strand === "-" ? gene.position_end : gene.position_start;
+      const jitter = isTargetGene ? 0 : jitterMap.get(gene.gene_id); // No jitter for target gene
+
+      return {
+        x: [xPosition],
+        y: [jitter],
+        type: "scatter",
+        mode: isTargetGene ? "markers+text" : "markers",
+        marker: {
+          color: isTargetGene ? "black" : "rgb(161, 161, 161)",
+          size: isTargetGene ? 10 : 8,
+        },
+        text: isTargetGene ? [gene.gene_id] : undefined,
+        textposition: isTargetGene ? "top center" : undefined,
+        name: gene.gene_id,
+        pointType: "gene",
+        showlegend: false,
+        hoverinfo: "text",
+        hovertext: `<b>Gene:</b> ${gene.gene_id}<br><b>Start:</b> ${gene.position_start}<br><b>End:</b> ${gene.position_end}<br>`,
+      };
+    });
+  }, [visibleGenes, geneName, jitterMap]);
 
   // Plotly layout
   const layout = useMemo(
@@ -294,9 +358,9 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
           layer: "below",
         },
       ],
-      annotations: [getClippedAnnotation(xRange)],
+      annotations: getClippedAnnotations(xRange),
     }),
-    [geneName, celltype, xRange, yRange, getClippedAnnotation],
+    [geneName, celltype, xRange, yRange, getClippedAnnotations],
   );
 
   // TODO test this instead of my thing
@@ -332,7 +396,7 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
       }}
     >
       <Plot
-        data={[geneTrace, ...snpTraces]}
+        data={[...geneTraces, ...snpTraces]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
         useResizeHandler
@@ -344,7 +408,7 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${geneTrace.name}-${celltype}`, // TODO name
+            filename: `BDP_png-${geneName}-${celltype}`, // TODO name
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           /* modeBarButtonsToRemove: [ */
@@ -361,7 +425,7 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
                 click: function (gd) {
                   Plotly.downloadImage(gd, {
                     format: "svg",
-                    filename: `BDP_svg-${geneTrace.name}-${celltype}`, // TODO name
+                    filename: `BDP_svg-${geneName}-${celltype}`, // TODO name
                   });
                 },
               },
