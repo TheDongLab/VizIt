@@ -37,11 +37,12 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
-const GeneViewPlotlyPlot = ({
-  geneName,
-  chromosome,
+const SNPViewPlotlyPlot = ({
+  snpName,
+  snpPosition,
   genes,
-  snpData,
+  chromosome,
+  geneData,
   celltype,
 }) => {
   // TODO
@@ -51,34 +52,41 @@ const GeneViewPlotlyPlot = ({
   // });
   // const [displayScale, setDisplayScale] = useState(1);
 
-  const snpList = snpData.map(
-    ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+  const geneList = geneData.map(
+    ({
+      gene_id,
+      p_value,
+      beta_value,
+      position_start,
+      position_end,
+      strand,
+      ...rest
+    }) => ({
       ...rest,
-      id: snp_id,
+      id: gene_id,
       y: -Math.log10(p_value) * Math.sign(beta_value),
       beta: beta_value,
-      x: position,
+      x: strand === "-" ? position_end : position_start,
+      position_start,
+      position_end,
       p_value,
+      strand,
     }),
   );
 
-  const gene = genes.find((g) => g.gene_id === geneName);
-  const geneStart = gene ? gene.position_start : 0;
-  const geneEnd = gene ? gene.position_end : 0;
-
   // Calculate X and Y ranges
   const oneMb = 1_000_000;
-  const xValues = snpList.map((snp) => snp.x);
-  const yValues = snpList.map((snp) => snp.y);
-  const betaValues = snpList.map((snp) => snp.beta);
+  const xValues = geneList.map((gene) => gene.x);
+  const yValues = geneList.map((gene) => gene.y);
+  const betaValues = geneList.map((gene) => gene.beta);
   const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
   const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
 
-  const snpMin = Math.min(...xValues);
-  const snpMax = Math.max(...xValues);
+  const geneMin = Math.min(...xValues);
+  const geneMax = Math.max(...xValues);
 
-  const combinedMin = Math.min(snpMin, geneStart);
-  const combinedMax = Math.max(snpMax, geneEnd);
+  const combinedMin = Math.min(geneMin, snpPosition);
+  const combinedMax = Math.max(geneMax, snpPosition);
   const combinedRange = combinedMax - combinedMin;
 
   const xPadding = Math.round((combinedRange * 0.05) / 1000) * 1000; // 5% of range
@@ -86,8 +94,8 @@ const GeneViewPlotlyPlot = ({
   const paddedMin = combinedMin - xPadding;
   const paddedMax = combinedMax + xPadding;
 
-  const xMin = Math.max(paddedMin, geneStart - oneMb);
-  const xMax = Math.min(paddedMax, geneEnd + oneMb);
+  const xMin = Math.max(paddedMin, snpPosition - oneMb);
+  const xMax = Math.min(paddedMax, snpPosition + oneMb);
 
   const yPadding = 1;
   const yMin = Math.min(...yValues, -2) - yPadding;
@@ -103,35 +111,34 @@ const GeneViewPlotlyPlot = ({
       : rounded.toString();
   };
 
-  const snpTraces = snpList.map((snp) => {
-    return {
-      x: [snp.x],
-      y: [snp.y],
-      type: "scatter",
-      mode: "markers",
-      marker: {
-        color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
-        size: 6,
-      },
-      name: snp.id,
-      hoverinfo: "text",
-      text:
-        `<b>SNP:</b> ${snp.id}<br>` +
-        `<b>Position:</b> ${snp.x}<br>` +
-        `<b>β:</b> ${formatNumber(snp.beta)}<br>` +
-        `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta))}`,
-      pointType: "snp",
-      showlegend: false,
-    };
-  });
+  const snpTrace = {
+    x: [snpPosition],
+    y: [0],
+    type: "scatter",
+    mode: "markers+text",
+    marker: {
+      color: "black",
+      size: 10,
+    },
+    text: [snpName],
+    textposition: "top center",
+    name: snpName,
+    pointType: "snp",
+    showlegend: false,
+    hoverinfo: "text",
+    hovertext: `<b>SNP ID:</b> ${snpName}<br><b>Position:</b> ${snpPosition}<br>`,
+  };
 
   const visibleNearbyGenes = useMemo(() => {
     const [xMin, xMax] = xRange;
+    const geneListIds = new Set(geneList.map((g) => g.id));
     return genes.filter(
       (g) =>
-        g.position_end >= xMin - 100_000 && g.position_start <= xMax + 100_000,
+        g.position_end >= xMin - 100_000 &&
+        g.position_start <= xMax + 100_000 &&
+        !geneListIds.has(g.gene_id),
     );
-  }, [genes, xRange]);
+  }, [geneList, genes, xRange]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
@@ -149,30 +156,52 @@ const GeneViewPlotlyPlot = ({
   }, [genes]);
 
   const annotations = useMemo(() => {
-    return visibleNearbyGenes.map((gene) => {
+    const nearbyGenes = visibleNearbyGenes.map((gene) => {
       const start =
         gene.strand === "-" ? gene.position_end : gene.position_start;
       const end = gene.strand === "-" ? gene.position_start : gene.position_end;
-      const isTargetGene = gene.gene_id === geneName;
       const jitter = jitterMap.get(gene.gene_id);
 
       return {
         x: end,
-        y: isTargetGene ? 0 : jitter,
+        y: jitter,
         ax: start,
-        ay: isTargetGene ? 0 : jitter,
+        ay: jitter,
         xref: "x",
         yref: "y",
         axref: "x",
         ayref: "y",
         showarrow: true,
-        arrowhead: isTargetGene ? 3 : 2,
+        arrowhead: 2,
         arrowsize: 1,
-        arrowwidth: isTargetGene ? 2 : 1,
-        arrowcolor: isTargetGene ? "black" : "rgb(161, 161, 161)",
+        arrowwidth: 1,
+        arrowcolor: "rgb(161, 161, 161)",
       };
     });
-  }, [geneName, jitterMap, visibleNearbyGenes]);
+
+    const genes = geneList.map((gene) => {
+      const start =
+        gene.strand === "-" ? gene.position_end : gene.position_start;
+      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
+      return {
+        x: end,
+        y: gene.y,
+        ax: start,
+        ay: gene.y,
+        xref: "x",
+        yref: "y",
+        axref: "x",
+        ayref: "y",
+        showarrow: true,
+        arrowhead: 3, // TODO act as the target or not?
+        arrowsize: 1,
+        arrowwidth: 2,
+        arrowcolor: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
+      };
+    });
+
+    return [...nearbyGenes, ...genes];
+  }, [geneList, jitterMap, visibleNearbyGenes]);
 
   const getClippedAnnotations = useCallback(
     (xRange) => {
@@ -223,24 +252,20 @@ const GeneViewPlotlyPlot = ({
   // maybe useMemo
 
   const geneTraces = useMemo(() => {
-    // Create traces for all visible genes
-    return visibleNearbyGenes.map((gene) => {
-      const isTargetGene = gene.gene_id === geneName;
+    const nearbyGenes = visibleNearbyGenes.map((gene) => {
       const xPosition =
         gene.strand === "-" ? gene.position_end : gene.position_start;
-      const jitter = isTargetGene ? 0 : jitterMap.get(gene.gene_id); // No jitter for target gene
+      const jitter = jitterMap.get(gene.gene_id);
 
       return {
         x: [xPosition],
         y: [jitter],
         type: "scatter",
-        mode: isTargetGene ? "markers+text" : "markers",
+        mode: "markers",
         marker: {
-          color: isTargetGene ? "black" : "rgb(161, 161, 161)",
-          size: isTargetGene ? 10 : 8,
+          color: "rgb(161, 161, 161)",
+          size: 8,
         },
-        text: isTargetGene ? [gene.gene_id] : undefined,
-        textposition: isTargetGene ? "top center" : undefined,
         name: gene.gene_id,
         pointType: "gene",
         showlegend: false,
@@ -252,12 +277,41 @@ const GeneViewPlotlyPlot = ({
           `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>`,
       };
     });
-  }, [visibleNearbyGenes, geneName, jitterMap]);
+
+    const genes = geneList.map((gene) => {
+      const start =
+        gene.strand === "-" ? gene.position_end : gene.position_start;
+      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
+      return {
+        x: [gene.x],
+        y: [gene.y],
+        type: "scatter",
+        mode: "markers+text",
+        marker: {
+          color: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
+          size: 8,
+        },
+        name: gene.id,
+        pointType: "gene",
+        showlegend: false,
+        hoverinfo: "text",
+        hovertext:
+          `<b>Gene:</b> ${gene.id}<br>` +
+          `<b>Start:</b> ${gene.position_start}<br>` +
+          `<b>End:</b> ${gene.position_end}<br>` +
+          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>` +
+          `<b>β:</b> ${formatNumber(gene.beta)}<br>` +
+          `−<b>log10(p):</b> ${formatNumber(gene.y * Math.sign(gene.beta))}`,
+      };
+    });
+
+    return [...nearbyGenes, ...genes];
+  }, [visibleNearbyGenes, geneList, jitterMap]);
 
   // Plotly layout
   const layout = useMemo(
     () => ({
-      title: `SNPs around ${geneName} (${celltype})`,
+      title: `Genes around ${snpName} (${celltype})`,
       plot_bgcolor: "white",
       paper_bgcolor: "#f5f5f5",
       showlegend: false,
@@ -357,7 +411,7 @@ const GeneViewPlotlyPlot = ({
       ],
       annotations: getClippedAnnotations(xRange),
     }),
-    [geneName, celltype, xRange, yRange, getClippedAnnotations],
+    [snpName, celltype, chromosome, xRange, yRange, getClippedAnnotations],
   );
 
   // TODO test this instead of my thing
@@ -393,7 +447,7 @@ const GeneViewPlotlyPlot = ({
       }}
     >
       <Plot
-        data={[...geneTraces, ...snpTraces]}
+        data={[...geneTraces, snpTrace]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
         useResizeHandler
@@ -405,7 +459,7 @@ const GeneViewPlotlyPlot = ({
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${geneName}-${celltype}`, // TODO name
+            filename: `BDP_png-${snpName}-${celltype}`, // TODO name
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           modeBarButtonsToRemove: [
@@ -422,7 +476,7 @@ const GeneViewPlotlyPlot = ({
                 click: function (gd) {
                   Plotly.downloadImage(gd, {
                     format: "svg",
-                    filename: `BDP_svg-${geneName}-${celltype}`, // TODO name
+                    filename: `BDP_svg-${snpName}-${celltype}`, // TODO name
                   });
                 },
               },
@@ -458,8 +512,9 @@ const GeneViewPlotlyPlot = ({
   );
 };
 
-GeneViewPlotlyPlot.propTypes = {
-  geneName: PropTypes.string.isRequired,
+SNPViewPlotlyPlot.propTypes = {
+  snpName: PropTypes.string.isRequired,
+  snpPosition: PropTypes.number.isRequired,
   genes: PropTypes.arrayOf(
     PropTypes.shape({
       gene_id: PropTypes.string.isRequired,
@@ -469,15 +524,17 @@ GeneViewPlotlyPlot.propTypes = {
     }),
   ).isRequired,
   chromosome: PropTypes.string.isRequired,
-  snpData: PropTypes.arrayOf(
+  geneData: PropTypes.arrayOf(
     PropTypes.shape({
-      snp_id: PropTypes.string.isRequired,
+      gene_id: PropTypes.string.isRequired,
       p_value: PropTypes.number.isRequired,
       beta_value: PropTypes.number.isRequired,
-      position: PropTypes.number.isRequired,
+      position_start: PropTypes.number.isRequired,
+      position_end: PropTypes.number.isRequired,
+      strand: PropTypes.string.isRequired,
     }),
   ).isRequired,
   celltype: PropTypes.string.isRequired,
 };
 
-export default GeneViewPlotlyPlot;
+export default SNPViewPlotlyPlot;

@@ -21,6 +21,9 @@ import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
 
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
+import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
+
+import { getSnpLocation } from "../../api/qtl.js";
 
 // import ListboxComponent from "../../components/Listbox";
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
@@ -177,7 +180,7 @@ function RegionView() {
   };
 
   const [genes, setGenes] = useState([]);
-  const [snps, setSnps] = useState([]);
+  const [snpPosition, setSnpPosition] = useState(null);
 
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
@@ -203,8 +206,11 @@ function RegionView() {
       setDataLoading(true);
       await fetchSnpCellTypes(datasetId);
       await fetchSnpChromosome(datasetId);
-      const locations = await fetchSnpLocations(datasetId);
-      setSnps(locations);
+      const locations = await fetchGeneLocations(datasetId);
+      setGenes(locations);
+      const snpLocation = await getSnpLocation(datasetId, selectedSnp);
+      console.log("SNP Position:", snpLocation.data.position);
+      setSnpPosition(snpLocation.data.position);
 
       await fetchGeneData(datasetId);
       setDataLoading(false);
@@ -392,6 +398,7 @@ function RegionView() {
               </Box>
             </>
           )}
+
           {datasetId === "" || datasetId === "all" || datasetId == null ? (
             <Typography
               sx={{ color: "text.secondary", paddingTop: "100px" }}
@@ -403,7 +410,47 @@ function RegionView() {
             <Typography color="error">{error}</Typography>
           ) : (
             <div className="qtl-container">
-              <div key={`${selectedGene}-view`} className={`view-container`}>
+              {/* Gene View Label */}
+              {selectedGene && selectedChromosome && (
+                <div key={`${selectedGene}-label`} className="view-label">
+                  <Box
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    sx={{ mt: 1 }}
+                  >
+                    <Typography variant="h6">Gene: {selectedGene}</Typography>
+                    <Typography variant="h6">
+                      Chromosome: {selectedChromosome}
+                    </Typography>
+                  </Box>
+                </div>
+              )}
+
+              {/* SNP View Label */}
+              {selectedSnp && selectedChromosome && (
+                <div key={`${selectedSnp}-label`} className="view-label">
+                  <Box
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    sx={{ mt: 1 }}
+                  >
+                    <Typography variant="h6">SNP: {selectedSnp}</Typography>
+                    <Typography variant="h6">
+                      Chromosome: {selectedChromosome}
+                    </Typography>
+                  </Box>
+                </div>
+              )}
+
+              {/* Plot Container */}
+              <div
+                key={`${selectedGene || selectedSnp || "plot"}-view`}
+                className={`view-container`}
+              >
                 {selectedCellTypes.length > 0 ? (
                   selectedGene ? (
                     selectedCellTypes.map(
@@ -418,7 +465,29 @@ function RegionView() {
                             <GeneViewPlotlyPlot
                               geneName={selectedGene}
                               genes={genes}
+                              chromosome={selectedChromosome}
                               snpData={snpData[cellType]}
+                              celltype={cellType}
+                            />
+                          </div>
+                        ),
+                    )
+                  ) : selectedSnp ? (
+                    selectedCellTypes.map(
+                      (cellType, index) =>
+                        geneData[cellType] &&
+                        !loading && (
+                          <div
+                            key={`${cellType}-plot`}
+                            className="snp-plot"
+                            data-celltype={cellType}
+                          >
+                            <SNPViewPlotlyPlot
+                              snpName={selectedSnp}
+                              snpPosition={snpPosition}
+                              genes={genes}
+                              chromosome={selectedChromosome}
+                              geneData={geneData[cellType]}
                               celltype={cellType}
                             />
                           </div>
@@ -429,7 +498,7 @@ function RegionView() {
                       sx={{ color: "text.secondary", paddingTop: "100px" }}
                       variant="h5"
                     >
-                      No gene selected for exploration
+                      No gene or SNP selected for exploration
                     </Typography>
                   )
                 ) : (
@@ -437,7 +506,7 @@ function RegionView() {
                     sx={{ color: "text.secondary", paddingTop: "100px" }}
                     variant="h5"
                   >
-                    No cell types selected for exploration
+                    No cell types available
                   </Typography>
                 )}
               </div>

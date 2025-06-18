@@ -180,6 +180,6 @@ async def getgenedataforsnp(request: Request):
     celltype = request.query_params.get("celltype")
 
     response = get_gene_data_for_snp(dataset_id, snp, celltype)
-    if response is None or "Error" in response:
+    if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene data.")
     return response

@@ -52,7 +52,10 @@ def get_snp_location(dataset, snp):
                 snp_df = df[df["snp_id"] == snp]
                 if not snp_df.empty:
                     snp = snp_df.iloc[0]
-                    return snp["position"]
+                    return {
+                        "position": int(snp["position"]),
+                    }
+
                 else:
                     return f"Error: SNP {snp} not found in {chromosome} chromosome."
         else:
@@ -70,7 +73,7 @@ def get_gene_locations_in_chromosome(dataset, chromosome):
         if os.path.exists(chromosome_file):
             df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
             if not df.empty:
-                return df.drop_duplicates(subset=["gene_id"])[["gene_id", "position_start", "position_end", "strand"]].to_dict(orient="records")
+                return df.to_dict(orient="records")
             else:
                 return f"Error: No genes found in {chromosome} chromosome."
         else:
@@ -86,7 +89,7 @@ def get_snp_locations_in_chromosome(dataset, chromosome):
         if os.path.exists(chromosome_file):
             df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
             if not df.empty:
-                return df.drop_duplicates(subset=["snp_id"])[["snp_id", "position"]].to_dict(orient="records")
+                return df.to_dict(orient="records")
             else:
                 return f"Error: No SNPs found in {chromosome} chromosome."
         else:
@@ -282,7 +285,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         if os.path.exists(chromosome_file):
             genes_df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
             snp_df = snp_df[snp_df["gene_id"].isin(genes_df["gene_id"])]
-            snp_df = snp_df.merge(genes_df[["gene_id", "position_start", "position_end"]], on="gene_id", how="left")
+            snp_df = snp_df.merge(genes_df[["gene_id", "position_start", "position_end", "strand"]], on="gene_id", how="left")
 
             if snp_df.empty:
                 return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
