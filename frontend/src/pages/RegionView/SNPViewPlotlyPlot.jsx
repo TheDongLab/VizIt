@@ -75,7 +75,7 @@ const SNPViewPlotlyPlot = ({
   );
 
   // Calculate X and Y ranges
-  const oneMb = 1_000_000;
+  const radius = 1_100_000;
   const xValues = geneList.flatMap((gene) => [
     gene.position_start,
     gene.position_end,
@@ -97,8 +97,8 @@ const SNPViewPlotlyPlot = ({
   const paddedMin = combinedMin - xPadding;
   const paddedMax = combinedMax + xPadding;
 
-  const xMin = Math.max(paddedMin, snpPosition - oneMb);
-  const xMax = Math.min(paddedMax, snpPosition + oneMb);
+  const xMin = Math.max(paddedMin, snpPosition - radius);
+  const xMax = Math.min(paddedMax, snpPosition + radius);
 
   const yPadding = 1;
   const yMin = Math.min(...yValues, -2) - yPadding;
