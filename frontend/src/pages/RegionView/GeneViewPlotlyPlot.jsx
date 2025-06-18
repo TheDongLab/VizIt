@@ -93,13 +93,6 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
   const [xRange, setXRange] = useState([xMin, xMax]);
   const [yRange, setYRange] = useState([yMin, yMax]);
 
-  useEffect(() => {
-    console.log("Rendering gene plot: ", celltype);
-    console.log("SNPs loaded:", snpData.length);
-    console.log("Gene start and end", geneStart, geneEnd);
-    console.log("range", xRange, yRange);
-  }, [snpData.length, geneStart, geneEnd, xRange, yRange, celltype]);
-
   const snpTraces = snps.map((snp) => {
     const formatNumber = (num) => {
       const rounded = round(num, 4);
@@ -135,13 +128,6 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
         g.position_end >= xMin - 100_000 && g.position_start <= xMax + 100_000,
     );
   }, [genes, xRange]);
-
-  useEffect(() => {
-    console.log(
-      "Visible genes:",
-      visibleGenes.map((g) => g.gene_id),
-    );
-  }, [visibleGenes]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
@@ -265,9 +251,9 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
     () => ({
       title: `SNPs around ${geneName} (${celltype})`,
       plot_bgcolor: "white",
+      paper_bgcolor: "#f5f5f5",
       showlegend: false,
-      automargin: true,
-      /* margin: { l: "auto", r: "auto", t: "auto", b: "auto" }, */
+      margin: { l: "auto", r: 5, t: 30, b: "auto" },
       autosize: true,
       xaxis: {
         title: { text: "Genomic Position" },
@@ -286,7 +272,7 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
         linecolor: "black",
       },
       yaxis: {
-        title: { text: "-log10(p)" },
+        title: { text: "−log10(p)" },
         autorange: false,
         range: yRange,
         showgrid: false,
