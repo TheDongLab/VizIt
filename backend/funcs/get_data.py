@@ -70,7 +70,7 @@ def get_gene_locations_in_chromosome(dataset, chromosome):
         if os.path.exists(chromosome_file):
             df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
             if not df.empty:
-                return df[["gene_id", "position_start", "position_end", "strand"]].to_dict(orient="records")
+                return df.drop_duplicates(subset=["gene_id"])[["gene_id", "position_start", "position_end", "strand"]].to_dict(orient="records")
             else:
                 return f"Error: No genes found in {chromosome} chromosome."
         else:
@@ -86,7 +86,7 @@ def get_snp_locations_in_chromosome(dataset, chromosome):
         if os.path.exists(chromosome_file):
             df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
             if not df.empty:
-                return df[["snp_id", "position"]].to_dict(orient="records")
+                return df.drop_duplicates(subset=["snp_id"])[["snp_id", "position"]].to_dict(orient="records")
             else:
                 return f"Error: No SNPs found in {chromosome} chromosome."
         else:
