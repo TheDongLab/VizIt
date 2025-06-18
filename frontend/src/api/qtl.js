@@ -77,26 +77,26 @@ export const getSnpChromosome = async (dataset, snp) => {
     }
 };
 
-export const getCellTypesForGene = async (dataset, gene) => {
+export const getGeneCellTypes = async (dataset, gene) => {
     try {
-        const response = await axios.get(`${QTL_URL}/getcelltypesforgene`, {
+        const response = await axios.get(`${QTL_URL}/getgenecelltypes`, {
             params: { dataset: dataset, gene: gene },
         });
         return response;
     } catch (error) {
-        console.error("Error getCellTypesForGene:", error);
+        console.error("Error getGeneCellTypes:", error);
         throw error;
     }
 };
 
-export const getCellTypesForSnp = async (dataset, snp) => {
+export const getSnpCellTypes = async (dataset, snp) => {
     try {
-        const response = await axios.get(`${QTL_URL}/getcelltypesforsnp`, {
+        const response = await axios.get(`${QTL_URL}/getsnpcelltypes`, {
             params: { dataset: dataset, snp: snp },
         });
         return response;
     } catch (error) {
-        console.error("Error getCellTypesForSnp:", error);
+        console.error("Error getSnpCellTypes:", error);
         throw error;
     }
 };
@@ -127,21 +127,27 @@ export const getGeneDataForSnp = async (dataset, snp, celltype) => {
 
 export const getGeneLocationsInChromosome = async (dataset, chromosome) => {
     try {
-        const response = await axios.get(`${QTL_URL}/getgenelocationsinchromosome`, {
-            params: { dataset: dataset, chromosome: chromosome },
-        });
+        const response = await axios.get(
+            `${QTL_URL}/getgenelocationsinchromosome`,
+            {
+                params: { dataset: dataset, chromosome: chromosome },
+            },
+        );
         return response;
     } catch (error) {
         console.error("Error getGeneLocationsInChromosome:", error);
         throw error;
     }
-}
+};
 
 export const getSnpLocationsInChromosome = async (dataset, chromosome) => {
     try {
-        const response = await axios.get(`${QTL_URL}/getsnplocationsinchromosome`, {
-            params: { dataset: dataset, chromosome: chromosome },
-        });
+        const response = await axios.get(
+            `${QTL_URL}/getsnplocationsinchromosome`,
+            {
+                params: { dataset: dataset, chromosome: chromosome },
+            },
+        );
         return response;
     } catch (error) {
         console.error("Error getSnpLocationsInChromosome:", error);

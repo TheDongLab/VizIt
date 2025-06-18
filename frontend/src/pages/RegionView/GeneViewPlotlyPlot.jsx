@@ -60,8 +60,6 @@ const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
   const geneStart = gene ? gene.position_start : 0;
   const geneEnd = gene ? gene.position_end : 0;
   const geneStrand = gene ? gene.strand : "+";
-  const annotationStart = geneStrand === "-" ? geneEnd : geneStart;
-  const annotationEnd = geneStrand === "-" ? geneStart : geneEnd;
 
   // Calculate X and Y ranges
   const oneMb = 1_000_000;

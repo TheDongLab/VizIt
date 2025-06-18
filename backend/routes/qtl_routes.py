@@ -9,8 +9,8 @@ from backend.funcs.get_data import (
     get_qtl_snp_list,
     get_snp_data_for_gene,
     get_gene_data_for_snp,
-    get_celltypes_for_gene,
-    get_celltypes_for_snp,
+    get_gene_celltypes,
+    get_snp_celltypes,
     get_gene_chromosome,
     get_snp_chromosome,
     get_gene_location,
@@ -131,13 +131,13 @@ async def getsnplist(request: Request):
     return response
 
 
-@router.get("/getcelltypesforgene")
-async def getcelltypesforgene(request: Request):
-    print("getcelltypesforgene() called================")
+@router.get("/getgenecelltypes")
+async def getgenecelltypes(request: Request):
+    print("getgenecelltypes() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
 
-    response = get_celltypes_for_gene(dataset_id, gene)
+    response = get_gene_celltypes(dataset_id, gene)
     if "Error" in response:
         raise HTTPException(
             status_code=404, detail="Error in getting cell types for gene."
@@ -145,13 +145,13 @@ async def getcelltypesforgene(request: Request):
     return response
 
 
-@router.get("/getcelltypesforsnp")
-async def getcelltypesforsnp(request: Request):
-    print("getcelltypesforsnp() called================")
+@router.get("/getsnpcelltypes")
+async def getsnpcelltypes(request: Request):
+    print("getsnpcelltypes() called================")
     dataset_id = request.query_params.get("dataset")
     snp = request.query_params.get("snp")
 
-    response = get_celltypes_for_snp(dataset_id, snp)
+    response = get_snp_celltypes(dataset_id, snp)
     if "Error" in response:
         raise HTTPException(
             status_code=404, detail="Error in getting cell types for SNP."

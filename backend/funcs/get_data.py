@@ -157,7 +157,6 @@ def get_qtl_gene_list(dataset, query_str="all"):
             return list(data.keys())
         else:
             return [gene for gene in data.keys() if gene.lower().startswith(query_str.lower())]
-            # return [gene for gene in data if gene.lower().startswith(query_str.lower())]
     else:
         print(genes_file + " not found")
         return "Error: Gene list file not found"
@@ -179,7 +178,7 @@ def get_qtl_snp_list(dataset, query_str="all"):
         print(snps_file + " not found")
         return "Error: SNP list file not found"
 
-def get_celltypes_for_gene(dataset, gene):
+def get_gene_celltypes(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -196,7 +195,7 @@ def get_celltypes_for_gene(dataset, gene):
         print(genes_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
 
-def get_celltypes_for_snp(dataset, snp):
+def get_snp_celltypes(dataset, snp):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:

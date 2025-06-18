@@ -2,8 +2,8 @@ import { create } from "zustand";
 import {
     getGeneList,
     getSnpList,
-    getCellTypesForGene,
-    getCellTypesForSnp,
+    getGeneCellTypes,
+    getSnpCellTypes,
     getSnpDataForGene,
     getGeneDataForSnp,
     getGeneChromosome,
@@ -132,7 +132,7 @@ const useQtlStore = create((set, get) => ({
         set({ loading: true });
 
         try {
-            const response = await getCellTypesForGene(
+            const response = await getGeneCellTypes(
                 dataset,
                 get().selectedGene,
             );
@@ -155,10 +155,7 @@ const useQtlStore = create((set, get) => ({
         set({ loading: true });
 
         try {
-            const response = await getCellTypesForSnp(
-                dataset,
-                get().selectedSnp,
-            );
+            const response = await getSnpCellTypes(dataset, get().selectedSnp);
             const cellTypes = response.data;
             set({ selectedCellTypes: cellTypes, loading: false });
         } catch (error) {
