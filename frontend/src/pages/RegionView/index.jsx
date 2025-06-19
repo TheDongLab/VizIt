@@ -68,7 +68,6 @@ function RegionView() {
     fetchGeneChromosome,
     fetchSnpChromosome,
     fetchGeneLocations,
-    fetchSnpLocations,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
   const [dataLoading, setDataLoading] = useState(false);
@@ -129,7 +128,7 @@ function RegionView() {
     selectedGene && newParams.set("gene", selectedGene);
     selectedSnp && newParams.set("snp", selectedSnp);
     setQueryParams(newParams);
-  }, [datasetId, selectedGene, selectedSnp]);
+  }, [datasetId, selectedGene, selectedSnp, setQueryParams]);
 
   const listLength = 15000; // Limit the list length for performance
 
@@ -454,7 +453,7 @@ function RegionView() {
                 {selectedCellTypes.length > 0 ? (
                   selectedGene ? (
                     selectedCellTypes.map(
-                      (cellType, index) =>
+                      (cellType) =>
                         snpData[cellType] &&
                         !loading && (
                           <div
@@ -465,7 +464,6 @@ function RegionView() {
                             <GeneViewPlotlyPlot
                               geneName={selectedGene}
                               genes={genes}
-                              chromosome={selectedChromosome}
                               snpData={snpData[cellType]}
                               celltype={cellType}
                             />
@@ -474,7 +472,7 @@ function RegionView() {
                     )
                   ) : selectedSnp ? (
                     selectedCellTypes.map(
-                      (cellType, index) =>
+                      (cellType) =>
                         geneData[cellType] &&
                         !loading && (
                           <div
@@ -486,7 +484,6 @@ function RegionView() {
                               snpName={selectedSnp}
                               snpPosition={snpPosition}
                               genes={genes}
-                              chromosome={selectedChromosome}
                               geneData={geneData[cellType]}
                               celltype={cellType}
                             />

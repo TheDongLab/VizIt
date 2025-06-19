@@ -1,12 +1,7 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
-import {
-  calculateMinMax,
-  isCategorical,
-  sortObjectByKey,
-} from "../../utils/funcs.js";
 
 function dataToRGB({ beta, y }, min = 2, max = 3) {
   const maxLevel = 230;
@@ -37,13 +32,7 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
-const GeneViewPlotlyPlot = ({
-  geneName,
-  chromosome,
-  genes,
-  snpData,
-  celltype,
-}) => {
+const GeneViewPlotlyPlot = ({ geneName, genes, snpData, celltype }) => {
   // TODO
   // const [naturalDimensions, setNaturalDimensions] = useState({
   //   width: 0,
@@ -265,7 +254,7 @@ const GeneViewPlotlyPlot = ({
       autosize: true,
       dragmode: "pan",
       xaxis: {
-        title: { text: `Genomic Position (${chromosome})` },
+        title: { text: `Genomic Position` },
         range: xRange,
         autorange: false,
         tickfont: { size: 10 },
@@ -468,7 +457,6 @@ GeneViewPlotlyPlot.propTypes = {
       strand: PropTypes.string.isRequired,
     }),
   ).isRequired,
-  chromosome: PropTypes.string.isRequired,
   snpData: PropTypes.arrayOf(
     PropTypes.shape({
       snp_id: PropTypes.string.isRequired,

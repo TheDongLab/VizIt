@@ -1,12 +1,7 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
-import {
-  calculateMinMax,
-  isCategorical,
-  sortObjectByKey,
-} from "../../utils/funcs.js";
 
 function dataToRGB({ beta, y }, min = 2, max = 3) {
   const maxLevel = 230;
@@ -41,7 +36,6 @@ const SNPViewPlotlyPlot = ({
   snpName,
   snpPosition,
   genes,
-  chromosome,
   geneData,
   celltype,
 }) => {
@@ -204,7 +198,13 @@ const SNPViewPlotlyPlot = ({
     });
 
     return [...nearbyGenes, ...genes];
-  }, [geneList, jitterMap, visibleNearbyGenes]);
+  }, [
+    geneList,
+    jitterMap,
+    maxBetaMagnitude,
+    minBetaMagnitude,
+    visibleNearbyGenes,
+  ]);
 
   const getClippedAnnotations = useCallback(
     (xRange) => {
@@ -282,9 +282,6 @@ const SNPViewPlotlyPlot = ({
     });
 
     const genes = geneList.map((gene) => {
-      const start =
-        gene.strand === "-" ? gene.position_end : gene.position_start;
-      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
       return {
         x: [gene.x],
         y: [gene.y],
@@ -309,7 +306,13 @@ const SNPViewPlotlyPlot = ({
     });
 
     return [...nearbyGenes, ...genes];
-  }, [visibleNearbyGenes, geneList, jitterMap]);
+  }, [
+    visibleNearbyGenes,
+    geneList,
+    jitterMap,
+    minBetaMagnitude,
+    maxBetaMagnitude,
+  ]);
 
   // Plotly layout
   const layout = useMemo(
@@ -322,7 +325,7 @@ const SNPViewPlotlyPlot = ({
       autosize: true,
       dragmode: "pan",
       xaxis: {
-        title: { text: `Genomic Position (${chromosome})` },
+        title: { text: `Genomic Position` },
         range: xRange,
         autorange: false,
         tickfont: { size: 10 },
@@ -414,7 +417,7 @@ const SNPViewPlotlyPlot = ({
       ],
       annotations: getClippedAnnotations(xRange),
     }),
-    [snpName, celltype, chromosome, xRange, yRange, getClippedAnnotations],
+    [snpName, celltype, xRange, yRange, getClippedAnnotations],
   );
 
   // TODO test this instead of my thing
@@ -526,7 +529,6 @@ SNPViewPlotlyPlot.propTypes = {
       strand: PropTypes.string.isRequired,
     }),
   ).isRequired,
-  chromosome: PropTypes.string.isRequired,
   geneData: PropTypes.arrayOf(
     PropTypes.shape({
       gene_id: PropTypes.string.isRequired,
