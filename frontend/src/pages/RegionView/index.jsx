@@ -79,6 +79,9 @@ function RegionView() {
     } else if (type === "snp") {
       setSelectedGene("");
       setSelectedSnp(value);
+    } else if (type === "reset") {
+      setSelectedGene("");
+      setSelectedSnp("");
     }
   };
 
@@ -115,7 +118,7 @@ function RegionView() {
     };
 
     initialize();
-  }, [datasetId]);
+  }, [datasetId, setDataset]);
 
   const [geneSearchText, setGeneSearchText] = useState("");
   const [snpSearchText, setSnpSearchText] = useState("");
@@ -157,6 +160,8 @@ function RegionView() {
     if (!value) {
       setFilteredSnpList(snpList.slice(0, listLength));
     } else if (value === "rs") {
+      // Ignore if only the prefix is provided. There are some SNPs that aren't
+      // stored in rsID format, but those are rare.
       setFilteredSnpList(snpList.slice(0, listLength));
     } else {
       const results = snpList.filter((id) =>
@@ -217,18 +222,13 @@ function RegionView() {
   };
 
   useEffect(() => {
-    console.log("genes", geneList.length);
-    console.log("snps", snpList.length);
-  }, [geneList, snpList]);
-
-  useEffect(() => {
     fetchGeneOrSnpData();
   }, [selectedGene, selectedSnp, datasetId]);
 
   const handleDatasetChange = (event, newValue) => {
-    // TODO clear both gene and snp selections?
     setDataset(newValue);
     setDatasetId(newValue);
+    selectGeneOrSnp("reset", null);
   };
 
   /** Handles gene selection change */

@@ -32,13 +32,13 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
-const SNPViewPlotlyPlot = ({
+function SNPViewPlotlyPlot({
   snpName,
   snpPosition,
   genes,
   geneData,
   celltype,
-}) => {
+}) {
   // TODO
   // const [naturalDimensions, setNaturalDimensions] = useState({
   //   width: 0,
@@ -516,7 +516,7 @@ const SNPViewPlotlyPlot = ({
       />
     </div>
   );
-};
+}
 
 SNPViewPlotlyPlot.propTypes = {
   snpName: PropTypes.string.isRequired,
