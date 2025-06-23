@@ -125,13 +125,12 @@ function RegionView() {
         await fetchGeneList(datasetId);
         await fetchSnpList(datasetId);
 
-        // if the selectedgene is not in the list, reset it
-        if (urlGene && !geneList.includes(urlGene)) {
-          setSelectedGene("");
+        if (urlGene) {
+          setSelectedGene(urlGene);
         }
-        // if the selectedsnp is not in the list, reset it
-        if (urlSnp && !snpList.includes(urlSnp)) {
-          setSelectedSnp("");
+
+        if (urlSnp) {
+          setSelectedSnp(urlSnp);
         }
 
         // if (selectedGene && selectedGene !== "") {
@@ -317,8 +316,8 @@ function RegionView() {
             isOpen={isDialogOpen}
             handleClose={handleClose}
             handleConfirm={handleConfirm}
-            title={`Do you want to open details for ${selectedPoint}?`}
-            description={selectedPointData}
+            title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
+            description={selectedPointData ?? "No additional data available."}
           />
           <Typography variant="subtitle1">Select a Dataset </Typography>
           {/* Dataset Selection */}
