@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -32,7 +32,7 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
-function GeneViewPlotlyPlot({
+const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   geneName,
   genes,
   snpData,
@@ -508,7 +508,7 @@ function GeneViewPlotlyPlot({
       />
     </div>
   );
-}
+});
 
 GeneViewPlotlyPlot.propTypes = {
   geneName: PropTypes.string.isRequired,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Typography,
   Box,
@@ -31,7 +31,6 @@ import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
 
 import { getSnpLocation } from "../../api/qtl.js";
 
-// import ListboxComponent from "../../components/Listbox";
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
 function ConfirmationDialog({
@@ -165,34 +164,40 @@ function RegionView() {
 
   const listLength = 15000; // Limit the list length for performance
 
-  useEffect(() => {
-    setFilteredSnpList(snpList.slice(0, listLength));
-  }, [snpList]);
+  const initialSlicedGeneList = useMemo(() => {
+    return geneList.slice(0, listLength);
+  }, [geneList, listLength]);
+
+  const initialSlicedSnpList = useMemo(() => {
+    return snpList.slice(0, listLength);
+  }, [snpList, listLength]);
 
   useEffect(() => {
-    setFilteredGeneList(geneList.slice(0, listLength));
-  }, [geneList]);
+    setFilteredSnpList(initialSlicedSnpList);
+  }, [initialSlicedSnpList]);
+
+  useEffect(() => {
+    setFilteredGeneList(initialSlicedGeneList);
+  }, [initialSlicedGeneList]);
 
   const handleGeneInputChange = (event, value) => {
     setGeneSearchText(value);
     if (!value || value === selectedGene) {
-      setFilteredGeneList(geneList.slice(0, listLength));
+      setFilteredGeneList(initialSlicedGeneList);
     } else {
       const results = geneList.filter((id) =>
         id.toLowerCase().includes(value.toLowerCase()),
       );
-      setFilteredGeneList(results.slice(0, listLength));
+      setFilteredGeneList(results.slice(0, 100));
     }
   };
 
   const handleSnpInputChange = (event, value) => {
     setSnpSearchText(value);
-    if (!value) {
-      setFilteredSnpList(snpList.slice(0, listLength));
-    } else if (value === "rs") {
+    if (!value || value === "rs") {
       // Ignore if only the prefix is provided. There are some SNPs that aren't
       // stored in rsID format, but those are rare.
-      setFilteredSnpList(snpList.slice(0, listLength));
+      setFilteredSnpList(initialSlicedSnpList);
     } else {
       const results = snpList.filter((id) =>
         id.toLowerCase().includes(value.toLowerCase()),
@@ -203,13 +208,13 @@ function RegionView() {
 
   const handleGeneAutocompleteOpen = () => {
     if (geneSearchText == selectedGene) {
-      setFilteredGeneList(geneList.slice(0, listLength));
+      setFilteredGeneList(initialSlicedGeneList);
     }
   };
 
   const handleSnpAutocompleteOpen = () => {
     if (snpSearchText == selectedSnp) {
-      setFilteredSnpList(snpList.slice(0, listLength));
+      setFilteredSnpList(initialSlicedSnpList);
     }
   };
 
@@ -243,7 +248,6 @@ function RegionView() {
       const locations = await fetchGeneLocations(datasetId);
       setGenes(locations);
       const snpLocation = await getSnpLocation(datasetId, selectedSnp);
-      console.log("SNP Position:", snpLocation.data.position);
       setSnpPosition(snpLocation.data.position);
 
       await fetchGeneData(datasetId);
@@ -281,11 +285,11 @@ function RegionView() {
   const [selectedPointData, setSelectedPointData] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleSelect = (name, data) => {
+  const handleSelect = useCallback((name, data) => {
     setSelectedPoint(name);
     setSelectedPointData(data);
     setIsDialogOpen(true);
-  };
+  }, []);
 
   const handleClose = () => {
     setIsDialogOpen(false);
