@@ -38,6 +38,7 @@ function SNPViewPlotlyPlot({
   genes,
   geneData,
   celltype,
+  handleSelect,
 }) {
   // TODO
   // const [naturalDimensions, setNaturalDimensions] = useState({
@@ -101,9 +102,9 @@ function SNPViewPlotlyPlot({
   const [xRange, setXRange] = useState([xMin, xMax]);
   const [yRange, setYRange] = useState([yMin, yMax]);
 
-  const formatNumber = (num) => {
-    const rounded = round(num, 4);
-    return rounded < 0
+  const formatNumber = (num, precision) => {
+    const rounded = round(num, precision);
+    return rounded < 0 // Just in case there's a hyphen in there somehow
       ? rounded.toString().replace("-", "−")
       : rounded.toString();
   };
@@ -126,16 +127,18 @@ function SNPViewPlotlyPlot({
     hovertext: `<b>SNP ID:</b> ${snpName}<br><b>Position:</b> ${snpPosition}<br>`,
   };
 
+  const nearbyGenes = useMemo(() => {
+    const geneListIds = new Set(geneList.map((g) => g.id));
+    return genes.filter((g) => !geneListIds.has(g.gene_id));
+  }, [geneList, genes]);
+
   const visibleNearbyGenes = useMemo(() => {
     const [xMin, xMax] = xRange;
-    const geneListIds = new Set(geneList.map((g) => g.id));
-    return genes.filter(
+    return nearbyGenes.filter(
       (g) =>
-        g.position_end >= xMin - 100_000 &&
-        g.position_start <= xMax + 100_000 &&
-        !geneListIds.has(g.gene_id),
+        g.position_end >= xMin - 100_000 && g.position_start <= xMax + 100_000,
     );
-  }, [geneList, genes, xRange]);
+  }, [nearbyGenes, xRange]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
@@ -300,8 +303,8 @@ function SNPViewPlotlyPlot({
           `<b>Start:</b> ${gene.position_start}<br>` +
           `<b>End:</b> ${gene.position_end}<br>` +
           `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>` +
-          `<b>β:</b> ${formatNumber(gene.beta)}<br>` +
-          `−<b>log10(p):</b> ${formatNumber(gene.y * Math.sign(gene.beta))}`,
+          `<b>β:</b> ${formatNumber(gene.beta, 3)}<br>` +
+          `−<b>log10(p):</b> ${formatNumber(gene.y * Math.sign(gene.beta), 3)}`,
       };
     });
 
@@ -313,6 +316,75 @@ function SNPViewPlotlyPlot({
     minBetaMagnitude,
     maxBetaMagnitude,
   ]);
+
+  // Handle clicking points
+  const onClick = (data) => {
+    console.log("onClick data:", data);
+    if (!data.points || data.points.length === 0) return;
+
+    const point = data.points[0];
+    const pointData = point.data;
+    const pointType = pointData.pointType;
+
+    if (pointType === "snp") {
+      const name = pointData.name;
+      if (name === snpName) {
+        const formattedData = (
+          <>
+            <strong>SNP:</strong> {snpName}
+            <br />
+            <strong>Position:</strong> {snpPosition}
+          </>
+        );
+        handleSelect(name, formattedData);
+        return;
+      } else {
+        console.log("Invalid point clicked");
+        return;
+      }
+    } else if (pointType === "gene") {
+      const name = pointData.name;
+      const data = geneList.find((g) => g.id === name);
+      if (data) {
+        const formattedData = (
+          <>
+            <strong>Gene:</strong> {data.id}
+            <br />
+            <strong>Start:</strong> {data.position_start}
+            <br />
+            <strong>End:</strong> {data.position_end}
+            <br />
+            <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"}
+            <br />
+            <strong>β:</strong> {formatNumber(data.beta, 6)}
+            <br />−<strong>log10(p):</strong>{" "}
+            {formatNumber(data.y * Math.sign(data.beta), 6)}
+          </>
+        );
+
+        handleSelect(name, formattedData);
+        return;
+      } else {
+        const otherGeneData = nearbyGenes.find((g) => g.gene_id === name);
+        if (!otherGeneData) return;
+
+        const formattedData = (
+          <>
+            <strong>Gene:</strong> {otherGeneData.gene_id}
+            <br />
+            <strong>Start:</strong> {otherGeneData.position_start}
+            <br />
+            <strong>End:</strong> {otherGeneData.position_end}
+            <br />
+            <strong>Strand:</strong> {otherGeneData.strand === "-" ? "−" : "+"}
+          </>
+        );
+
+        handleSelect(name, formattedData);
+        return;
+      }
+    }
+  };
 
   // Plotly layout
   const layout = useMemo(
@@ -453,6 +525,7 @@ function SNPViewPlotlyPlot({
       }}
     >
       <Plot
+        onClick={onClick}
         data={[...geneTraces, snpTrace]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
@@ -526,7 +599,7 @@ SNPViewPlotlyPlot.propTypes = {
       gene_id: PropTypes.string.isRequired,
       position_start: PropTypes.number.isRequired,
       position_end: PropTypes.number.isRequired,
-      strand: PropTypes.string.isRequired,
+      strand: PropTypes.oneOf(["+", "-"]).isRequired,
     }),
   ).isRequired,
   geneData: PropTypes.arrayOf(
@@ -536,10 +609,11 @@ SNPViewPlotlyPlot.propTypes = {
       beta_value: PropTypes.number.isRequired,
       position_start: PropTypes.number.isRequired,
       position_end: PropTypes.number.isRequired,
-      strand: PropTypes.string.isRequired,
+      strand: PropTypes.oneOf(["+", "-"]).isRequired,
     }),
   ).isRequired,
   celltype: PropTypes.string.isRequired,
+  handleSelect: PropTypes.func.isRequired,
 };
 
 export default SNPViewPlotlyPlot;

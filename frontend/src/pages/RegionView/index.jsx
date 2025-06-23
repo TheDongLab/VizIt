@@ -10,7 +10,13 @@ import {
   CircularProgress,
   Autocomplete,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
 } from "@mui/material";
+import { PropTypes } from "prop-types";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import { useSearchParams } from "react-router-dom";
@@ -27,6 +33,31 @@ import { getSnpLocation } from "../../api/qtl.js";
 
 // import ListboxComponent from "../../components/Listbox";
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
+
+function ConfirmationDialog({
+  isOpen,
+  handleClose,
+  handleConfirm,
+  title,
+  description,
+}) {
+  return (
+    <Dialog
+      open={isOpen}
+      onClose={handleClose}
+      aria-labelledby="alert-dialog-title"
+    >
+      <DialogTitle id="alert-dialog-title">{title}</DialogTitle>
+      <DialogContent>{description}</DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>No</Button>
+        <Button onClick={handleConfirm} autoFocus>
+          Yes
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
 
 function RegionView() {
   // Get all the pre-selected values
@@ -246,6 +277,28 @@ function RegionView() {
     await fetchGeneOrSnpData();
   };
 
+  // Handle clicking points
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [selectedPointData, setSelectedPointData] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleSelect = (name, data) => {
+    setSelectedPoint(name);
+    setSelectedPointData(data);
+    setIsDialogOpen(true);
+  };
+
+  const handleClose = () => {
+    setIsDialogOpen(false);
+    setSelectedPoint(null);
+    setSelectedPointData(null);
+  };
+
+  const handleConfirm = () => {
+    setIsDialogOpen(false);
+    // TODO
+  };
+
   return (
     <div
       className="plot-page-container"
@@ -260,6 +313,13 @@ function RegionView() {
       <div className="plot-content">
         {/* Right Panel for Sample & Gene Selection (20%) */}
         <div className="plot-panel">
+          <ConfirmationDialog
+            isOpen={isDialogOpen}
+            handleClose={handleClose}
+            handleConfirm={handleConfirm}
+            title={`Do you want to open details for ${selectedPoint}?`}
+            description={selectedPointData}
+          />
           <Typography variant="subtitle1">Select a Dataset </Typography>
           {/* Dataset Selection */}
           <Autocomplete
@@ -466,6 +526,7 @@ function RegionView() {
                               genes={genes}
                               snpData={snpData[cellType]}
                               celltype={cellType}
+                              handleSelect={handleSelect}
                             />
                           </div>
                         ),
@@ -486,6 +547,7 @@ function RegionView() {
                               genes={genes}
                               geneData={geneData[cellType]}
                               celltype={cellType}
+                              handleSelect={handleSelect}
                             />
                           </div>
                         ),
@@ -514,5 +576,14 @@ function RegionView() {
     </div>
   );
 }
+
+ConfirmationDialog.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  handleClose: PropTypes.func.isRequired,
+  handleConfirm: PropTypes.func.isRequired,
+  title: PropTypes.string.isRequired,
+  description: PropTypes.oneOfType([PropTypes.string, PropTypes.node])
+    .isRequired,
+};
 
 export default RegionView;

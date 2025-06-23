@@ -32,7 +32,13 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
-function GeneViewPlotlyPlot({ geneName, genes, snpData, celltype }) {
+function GeneViewPlotlyPlot({
+  geneName,
+  genes,
+  snpData,
+  celltype,
+  handleSelect,
+}) {
   // TODO
   // const [naturalDimensions, setNaturalDimensions] = useState({
   //   width: 0,
@@ -85,9 +91,9 @@ function GeneViewPlotlyPlot({ geneName, genes, snpData, celltype }) {
   const [xRange, setXRange] = useState([xMin, xMax]);
   const [yRange, setYRange] = useState([yMin, yMax]);
 
-  const formatNumber = (num) => {
-    const rounded = round(num, 4);
-    return rounded < 0
+  const formatNumber = (num, precision) => {
+    const rounded = round(num, precision);
+    return rounded < 0 // Just in case there's a hyphen in there somehow
       ? rounded.toString().replace("-", "−")
       : rounded.toString();
   };
@@ -107,8 +113,8 @@ function GeneViewPlotlyPlot({ geneName, genes, snpData, celltype }) {
       text:
         `<b>SNP:</b> ${snp.id}<br>` +
         `<b>Position:</b> ${snp.x}<br>` +
-        `<b>β:</b> ${formatNumber(snp.beta)}<br>` +
-        `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta))}`,
+        `<b>β:</b> ${formatNumber(snp.beta, 3)}<br>` +
+        `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta), 3)}`,
       pointType: "snp",
       showlegend: false,
     };
@@ -242,6 +248,62 @@ function GeneViewPlotlyPlot({ geneName, genes, snpData, celltype }) {
       };
     });
   }, [visibleNearbyGenes, geneName, jitterMap]);
+
+  // Handle clicking points
+  const onClick = (data) => {
+    console.log("onClick data:", data);
+    if (!data.points || data.points.length === 0) return;
+
+    const point = data.points[0];
+    const pointData = point.data;
+    const pointType = pointData.pointType;
+
+    if (pointType === "snp") {
+      const name = pointData.name;
+      const data = snpList.find((s) => s.id === name);
+
+      const formattedData = (
+        <>
+          <strong>SNP:</strong> {data.id}
+          <br />
+          <strong>Position:</strong> {data.x}
+          <br />
+          <strong>β:</strong> {formatNumber(data.beta, 6)}
+          <br />−<strong>log10(p):</strong>{" "}
+          {formatNumber(data.y * Math.sign(data.beta), 6)}
+        </>
+      );
+
+      handleSelect(name, formattedData);
+      return;
+    } else if (pointType === "gene") {
+      const name = pointData.name;
+      const data = genes.find((g) => g.gene_id === name);
+      if (!data) return;
+
+      // const formattedData = `
+      //   Gene: ${data.gene_id}
+      //   Start: ${data.position_start}
+      //   End: ${data.position_end}
+      //   Strand: ${data.strand === "-" ? "−" : "+"}
+      // `.trim();
+
+      const formattedData = (
+        <>
+          <strong>Gene:</strong> {data.gene_id}
+          <br />
+          <strong>Start:</strong> {data.position_start}
+          <br />
+          <strong>End:</strong> {data.position_end}
+          <br />
+          <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"}
+        </>
+      );
+
+      handleSelect(name, formattedData);
+      return;
+    }
+  };
 
   // Plotly layout
   const layout = useMemo(
@@ -382,6 +444,7 @@ function GeneViewPlotlyPlot({ geneName, genes, snpData, celltype }) {
       }}
     >
       <Plot
+        onClick={onClick}
         data={[...geneTraces, ...snpTraces]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
@@ -454,7 +517,7 @@ GeneViewPlotlyPlot.propTypes = {
       gene_id: PropTypes.string.isRequired,
       position_start: PropTypes.number.isRequired,
       position_end: PropTypes.number.isRequired,
-      strand: PropTypes.string.isRequired,
+      strand: PropTypes.oneOf(["+", "-"]).isRequired,
     }),
   ).isRequired,
   snpData: PropTypes.arrayOf(
@@ -466,6 +529,7 @@ GeneViewPlotlyPlot.propTypes = {
     }),
   ).isRequired,
   celltype: PropTypes.string.isRequired,
+  handleSelect: PropTypes.func.isRequired,
 };
 
 export default GeneViewPlotlyPlot;
