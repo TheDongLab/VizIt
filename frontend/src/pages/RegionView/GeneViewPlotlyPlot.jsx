@@ -312,11 +312,11 @@ function GeneViewPlotlyPlot({
       plot_bgcolor: "white",
       paper_bgcolor: "#f5f5f5",
       showlegend: false,
-      margin: { l: "auto", r: 5, t: 30, b: "auto" },
+      margin: { l: "auto", r: 5, t: 30, b: 30 },
       autosize: true,
       dragmode: "pan",
       xaxis: {
-        title: { text: `Genomic Position` },
+        // title: { text: `Genomic Position` },
         range: xRange,
         autorange: false,
         tickfont: { size: 10 },
