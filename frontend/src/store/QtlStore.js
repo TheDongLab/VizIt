@@ -52,6 +52,7 @@ const useQtlStore = create((set, get) => ({
             const response = await getGeneList(dataset, query_str);
             const geneList = response.data;
             set({ geneList: geneList, loading: false });
+            return geneList;
         } catch (error) {
             console.error("Error fetching gene list:", error);
         }
@@ -72,6 +73,7 @@ const useQtlStore = create((set, get) => ({
             const response = await getSnpList(dataset, query_str);
             const snpList = response.data;
             set({ snpList: snpList, loading: false });
+            return snpList;
         } catch (error) {
             console.error("Error fetching SNP list:", error);
         }

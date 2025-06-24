@@ -121,15 +121,23 @@ function RegionView() {
 
       try {
         await setDataset(datasetId);
-        await fetchGeneList(datasetId);
-        await fetchSnpList(datasetId);
+        const genes = await fetchGeneList(datasetId);
+        const snps = await fetchSnpList(datasetId);
 
         if (urlGene) {
-          setSelectedGene(urlGene);
+          if (genes.includes(urlGene)) {
+            setSelectedGene(urlGene);
+          } else {
+            setSelectedGene("");
+          }
         }
 
         if (urlSnp) {
-          setSelectedSnp(urlSnp);
+          if (snps.includes(urlSnp)) {
+            setSelectedSnp(urlSnp);
+          } else {
+            setSelectedSnp("");
+          }
         }
 
         // if (selectedGene && selectedGene !== "") {
