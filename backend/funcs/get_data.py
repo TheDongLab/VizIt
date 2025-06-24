@@ -256,10 +256,6 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         data_file = os.path.join(
             "backend", "datasets", dataset, "celltypes", celltype_file
         )
-        chromosome = get_gene_chromosome(dataset, gene)
-        chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "snp_locations", chromosome + ".tsv"
-        )
 
     if os.path.exists(data_file):
         df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
@@ -269,22 +265,15 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         if gene_df.empty:
             return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
 
-        if os.path.exists(chromosome_file):
-            snps_df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
-            gene_df = gene_df[gene_df["snp_id"].isin(snps_df["snp_id"])]
-            gene_df = gene_df.merge(
-                snps_df[["snp_id", "position"]], on="snp_id", how="left"
-            )
+        for index, row in gene_df.iterrows():
+            snp_id = row["snp_id"]
+            snp_location = get_snp_location(dataset, snp_id)
+            if isinstance(snp_location, dict) and "position" in snp_location:
+                gene_df.at[index, "position"] = snp_location["position"]
+            else:
+                gene_df.at[index, "position"] = None
 
-            if gene_df.empty:
-                return (
-                    f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
-                )
-
-            return gene_df.to_dict(orient="records")
-        else:
-            print(chromosome_file + " not found")
-            return "Error: SNP chromosome file not found for the specified dataset and gene."
+        return gene_df.to_dict(orient="records")
     else:
         print(data_file + " not found")
         return (
@@ -310,10 +299,6 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         data_file = os.path.join(
             "backend", "datasets", dataset, "celltypes", celltype_file
         )
-        chromosome = get_snp_chromosome(dataset, snp)
-        chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "gene_locations", chromosome + ".tsv"
-        )
 
     if os.path.exists(data_file):
         df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
@@ -323,22 +308,17 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         if snp_df.empty:
             return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
 
-        if os.path.exists(chromosome_file):
-            genes_df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
-            snp_df = snp_df[snp_df["gene_id"].isin(genes_df["gene_id"])]
-            snp_df = snp_df.merge(
-                genes_df[["gene_id", "position_start", "position_end", "strand"]],
-                on="gene_id",
-                how="left",
-            )
+        for index, row in snp_df.iterrows():
+            gene_id = row["gene_id"]
+            gene_location = get_gene_location(dataset, gene_id)
+            if isinstance(gene_location, dict) and "start" in gene_location:
+                snp_df.at[index, "start"] = gene_location["start"]
+                snp_df.at[index, "end"] = gene_location["end"]
+            else:
+                snp_df.at[index, "start"] = None
+                snp_df.at[index, "end"] = None
 
-            if snp_df.empty:
-                return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
-
-            return snp_df.to_dict(orient="records")
-        else:
-            print(chromosome_file + " not found")
-            return "Error: Gene chromosome file not found for the specified dataset and SNP."
+        return snp_df.to_dict(orient="records")
     else:
         print(data_file + " not found")
         return (
