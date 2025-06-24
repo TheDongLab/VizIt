@@ -99,7 +99,9 @@ function RegionView() {
     fetchSnpChromosome,
     fetchGeneLocations,
   } = useQtlStore();
-  const { loading, error } = useQtlStore();
+  const { loading, loadingCellTypes, error } = useQtlStore();
+
+  console.log(loadingCellTypes);
   const [dataLoading, setDataLoading] = useState(false);
 
   const selectGeneOrSnp = (type, value) => {
@@ -526,7 +528,8 @@ function RegionView() {
                     selectedCellTypes.map(
                       (cellType) =>
                         snpData[cellType] &&
-                        !loading && (
+                        !loading &&
+                        !loadingCellTypes.get(cellType) && (
                           <div
                             key={`${cellType}-plot`}
                             className="gene-plot"

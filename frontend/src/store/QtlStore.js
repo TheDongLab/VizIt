@@ -23,6 +23,7 @@ const useQtlStore = create((set, get) => ({
     snpData: {},
     geneData: {},
     loading: false,
+    loadingCellTypes: new Map(),
     error: null,
 
     setDataset: (dataset) => {
@@ -175,22 +176,28 @@ const useQtlStore = create((set, get) => ({
             return;
         }
         set({ loading: true });
+        const cellTypes = get().selectedCellTypes;
+        const loadingMap = new Map();
+        cellTypes.forEach((c) => loadingMap.set(c, true));
+        set({ loadingCellTypes: loadingMap, loading: false });
 
         try {
-            for (const celltype of get().selectedCellTypes) {
+            for (const c of cellTypes) {
                 const response = await getSnpDataForGene(
                     dataset,
                     get().selectedGene,
-                    celltype,
+                    c,
                 );
                 const snpData = response.data;
+
+                loadingMap.set(c, false);
 
                 set((state) => ({
                     snpData: {
                         ...state.snpData,
-                        [celltype]: snpData,
+                        [c]: snpData,
                     },
-                    loading: false,
+                    loadingCellTypes: loadingMap,
                 }));
             }
         } catch (error) {
@@ -208,22 +215,28 @@ const useQtlStore = create((set, get) => ({
             return;
         }
         set({ loading: true });
+        const cellTypes = get().selectedCellTypes;
+        const loadingMap = new Map();
+        cellTypes.forEach((c) => loadingMap.set(c, true));
+        set({ loadingCellTypes: loadingMap, loading: false });
 
         try {
-            for (const celltype of get().selectedCellTypes) {
+            for (const c of cellTypes) {
                 const response = await getGeneDataForSnp(
                     dataset,
                     get().selectedSnp,
-                    celltype,
+                    c,
                 );
                 const geneData = response.data;
+
+                loadingMap.set(c, false);
 
                 set((state) => ({
                     geneData: {
                         ...state.geneData,
-                        [celltype]: geneData,
+                        [c]: geneData,
                     },
-                    loading: false,
+                    loadingCellTypes: loadingMap,
                 }));
             }
         } catch (error) {
