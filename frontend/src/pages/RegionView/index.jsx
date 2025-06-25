@@ -101,7 +101,6 @@ function RegionView() {
   } = useQtlStore();
   const { loading, loadingCellTypes, error } = useQtlStore();
 
-  console.log(loadingCellTypes);
   const [dataLoading, setDataLoading] = useState(false);
 
   const selectGeneOrSnp = (type, value) => {

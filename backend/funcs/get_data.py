@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import polars as pl
 import json
 import toml
 import re
@@ -23,11 +24,13 @@ def get_gene_location(dataset, gene):
         if data:
             position_start = data["position_start"]
             position_end = data["position_end"]
+            strand = data["strand"]
 
             if position_start is not None and position_end is not None:
                 return {
                     "start": position_start,
                     "end": position_end,
+                    "strand": strand,
                 }
             else:
                 return f"Error: Gene {gene} does not have valid position data in {dataset} dataset."
@@ -74,10 +77,10 @@ def get_gene_locations_in_chromosome(dataset, chromosome):
         )
 
         if os.path.exists(chromosome_file):
-            df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
-            if not df.empty:
-                df = df.dropna()
-                return df.to_dict(orient="records")
+            df = pl.read_csv(chromosome_file, separator="\t")
+            if df.is_empty:
+                df = df.drop_nulls()
+                return df.to_dicts()
             else:
                 return f"Error: No genes found in {chromosome} chromosome."
         else:
@@ -94,10 +97,10 @@ def get_snp_locations_in_chromosome(dataset, chromosome):
         )
 
         if os.path.exists(chromosome_file):
-            df = pd.read_csv(chromosome_file, sep="\t", index_col=None, header=0)
-            if not df.empty:
-                df = df.dropna()
-                return df.to_dict(orient="records")
+            df = pl.read_csv(chromosome_file, separator="\t")
+            if df.is_empty:
+                df = df.drop_nulls()
+                return df.to_dicts()
             else:
                 return f"Error: No SNPs found in {chromosome} chromosome."
         else:
@@ -260,23 +263,24 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         )
 
     if os.path.exists(data_file):
-        df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
-        gene_df = df[df["gene_id"] == gene]
-        gene_df = gene_df.drop(columns=["gene_id"])
+        df = pl.read_csv(data_file, separator="\t")
+        gene_df = df.filter(pl.col("gene_id") == gene).drop("gene_id")
 
-        if gene_df.empty:
+        if gene_df.is_empty():
             return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
 
-        for index, row in gene_df.iterrows():
-            snp_id = row["snp_id"]
+        def get_position(snp_id: str):
             snp_location = get_snp_location(dataset, snp_id)
-            if isinstance(snp_location, dict) and "position" in snp_location:
-                gene_df.at[index, "position"] = snp_location["position"]
-            else:
-                gene_df.at[index, "position"] = None
+            if isinstance(snp_location, dict):
+                return snp_location.get("position")
+            return None
 
-        gene_df = gene_df.dropna()
-        return gene_df.to_dict(orient="records")
+        gene_df = gene_df.with_columns(
+            [pl.col("snp_id").map_elements(get_position).alias("position")]
+        )
+
+        gene_df = gene_df.drop_nulls()
+        return gene_df.to_dicts()
     else:
         print(data_file + " not found")
         return (
@@ -304,25 +308,34 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         )
 
     if os.path.exists(data_file):
-        df = pd.read_csv(data_file, sep="\t", index_col=None, header=0)
-        snp_df = df[df["snp_id"] == snp]
-        snp_df = snp_df.drop(columns=["snp_id"])
+        df = pl.read_csv(data_file, separator="\t")
+        snp_df = df.filter(pl.col("snp_id") == snp).drop("snp_id")
 
-        if snp_df.empty:
+        if snp_df.is_empty():
             return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
 
-        for index, row in snp_df.iterrows():
-            gene_id = row["gene_id"]
-            gene_location = get_gene_location(dataset, gene_id)
-            if isinstance(gene_location, dict) and "start" in gene_location:
-                snp_df.at[index, "start"] = gene_location["start"]
-                snp_df.at[index, "end"] = gene_location["end"]
-            else:
-                snp_df.at[index, "start"] = None
-                snp_df.at[index, "end"] = None
+        def get_start(gene_id):
+            loc = get_gene_location(dataset, gene_id)
+            return loc.get("start") if isinstance(loc, dict) else None
 
-        snp_df = snp_df.dropna()
-        return snp_df.to_dict(orient="records")
+        def get_end(gene_id):
+            loc = get_gene_location(dataset, gene_id)
+            return loc.get("end") if isinstance(loc, dict) else None
+
+        def get_strand(gene_id):
+            loc = get_gene_location(dataset, gene_id)
+            return loc.get("strand") if isinstance(loc, dict) else None
+
+        snp_df = snp_df.with_columns(
+            [
+                pl.col("gene_id").map_elements(get_start).alias("position_start"),
+                pl.col("gene_id").map_elements(get_end).alias("position_end"),
+                pl.col("gene_id").map_elements(get_strand).alias("strand"),
+            ]
+        )
+
+        snp_df = snp_df.drop_nulls()
+        return snp_df.to_dicts()
     else:
         print(data_file + " not found")
         return (
