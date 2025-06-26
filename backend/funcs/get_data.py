@@ -73,12 +73,12 @@ def get_gene_locations_in_chromosome(dataset, chromosome):
         return "Error: Dataset is not specified."
     else:
         chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "gene_locations", chromosome + ".tsv"
+            "backend", "datasets", dataset, "gene_locations", chromosome + ".parquet"
         )
 
         if os.path.exists(chromosome_file):
-            df = pl.read_csv(chromosome_file, separator="\t")
-            if df.is_empty:
+            df = pl.read_parquet(chromosome_file)
+            if not df.is_empty():
                 df = df.drop_nulls()
                 return df.to_dicts()
             else:
@@ -93,12 +93,12 @@ def get_snp_locations_in_chromosome(dataset, chromosome):
         return "Error: Dataset is not specified."
     else:
         chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "snp_locations", chromosome + ".tsv"
+            "backend", "datasets", dataset, "snp_locations", chromosome + ".parquet"
         )
 
         if os.path.exists(chromosome_file):
-            df = pl.read_csv(chromosome_file, separator="\t")
-            if df.is_empty:
+            df = pl.read_parquet(chromosome_file)
+            if not df.is_empty():
                 df = df.drop_nulls()
                 return df.to_dicts()
             else:
@@ -263,8 +263,8 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         )
 
     if os.path.exists(data_file):
-        df = pl.read_csv(data_file, separator="\t")
-        gene_df = df.filter(pl.col("gene_id") == gene).drop("gene_id")
+        df = pl.scan_parquet(data_file).filter(pl.col("gene_id") == gene).collect()
+        gene_df = df.drop("gene_id")
 
         if gene_df.is_empty():
             return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
@@ -276,10 +276,13 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
             return None
 
         gene_df = gene_df.with_columns(
-            [pl.col("snp_id").map_elements(get_position).alias("position")]
-        )
+            [
+                pl.col("snp_id")
+                .map_elements(get_position, return_dtype=pl.Int64)
+                .alias("position")
+            ]
+        ).drop_nulls()
 
-        gene_df = gene_df.drop_nulls()
         return gene_df.to_dicts()
     else:
         print(data_file + " not found")
@@ -308,8 +311,8 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         )
 
     if os.path.exists(data_file):
-        df = pl.read_csv(data_file, separator="\t")
-        snp_df = df.filter(pl.col("snp_id") == snp).drop("snp_id")
+        df = pl.scan_parquet(data_file).filter(pl.col("snp_id") == snp).collect()
+        snp_df = df.drop("snp_id")
 
         if snp_df.is_empty():
             return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
@@ -328,13 +331,18 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
 
         snp_df = snp_df.with_columns(
             [
-                pl.col("gene_id").map_elements(get_start).alias("position_start"),
-                pl.col("gene_id").map_elements(get_end).alias("position_end"),
-                pl.col("gene_id").map_elements(get_strand).alias("strand"),
+                pl.col("gene_id")
+                .map_elements(get_start, return_dtype=pl.Int64)
+                .alias("position_start"),
+                pl.col("gene_id")
+                .map_elements(get_end, return_dtype=pl.Int64)
+                .alias("position_end"),
+                pl.col("gene_id")
+                .map_elements(get_strand, return_dtype=pl.String)
+                .alias("strand"),
             ]
-        )
+        ).drop_nulls()
 
-        snp_df = snp_df.drop_nulls()
         return snp_df.to_dicts()
     else:
         print(data_file + " not found")
