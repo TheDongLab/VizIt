@@ -99,7 +99,7 @@ function RegionView() {
     fetchSnpChromosome,
     fetchGeneLocations,
   } = useQtlStore();
-  const { loading, loadingCellTypes, error } = useQtlStore();
+  const { loading, error } = useQtlStore();
 
   const [dataLoading, setDataLoading] = useState(false);
 
@@ -197,7 +197,7 @@ function RegionView() {
       const results = geneList.filter((id) =>
         id.toLowerCase().includes(value.toLowerCase()),
       );
-      setFilteredGeneList(results.slice(0, 100));
+      setFilteredGeneList(results.slice(0, listLength));
     }
   };
 
@@ -234,8 +234,6 @@ function RegionView() {
     if (!datasetId) return;
     const isGene = selectedGene && selectedGene !== "";
     const isSnp = selectedSnp && selectedSnp !== "";
-
-    // TODO clear the graph if nothing is selected?
 
     if (!isGene && !isSnp) {
       return;
@@ -308,8 +306,51 @@ function RegionView() {
 
   const handleConfirm = () => {
     setIsDialogOpen(false);
-    // TODO
   };
+
+  const [renderedGraphs, setRenderedGraphs] = useState([]);
+  const [isRenderingGraphs, setIsRenderingGraphs] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCellTypes.length || dataLoading || loading) {
+      setRenderedGraphs([]);
+      return;
+    }
+
+    const renderGraphsIncrementally = async () => {
+      setRenderedGraphs([]);
+      setIsRenderingGraphs(true);
+
+      const cellTypesToRender = selectedCellTypes.filter((cellType) =>
+        selectedGene ? snpData[cellType] : geneData[cellType],
+      );
+
+      for (let i = 0; i < cellTypesToRender.length; i++) {
+        const cellType = cellTypesToRender[i];
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay
+
+        setRenderedGraphs((prev) => [...prev, cellType]);
+      }
+
+      setIsRenderingGraphs(false);
+    };
+
+    renderGraphsIncrementally();
+  }, [
+    selectedCellTypes,
+    selectedGene,
+    selectedSnp,
+    snpData,
+    geneData,
+    dataLoading,
+    loading,
+  ]);
+
+  // Set the initial selected gene and SNP from URL parameters
+  useEffect(() => {
+    if (urlGene !== selectedGene) setSelectedGene(urlGene || "");
+    if (urlSnp !== selectedSnp) setSelectedSnp(urlSnp || "");
+  }, []);
 
   return (
     <div
@@ -462,13 +503,14 @@ function RegionView() {
 
         {/* Left UMAP Plot Area (80%) */}
         <div className="plot-main">
-          {dataLoading && (
-            <>
-              <Box sx={{ width: "100%" }}>
-                <LinearProgress />
-              </Box>
-            </>
-          )}
+          {dataLoading ||
+            (isRenderingGraphs && (
+              <>
+                <Box sx={{ width: "100%" }}>
+                  <LinearProgress />
+                </Box>
+              </>
+            ))}
 
           {datasetId === "" || datasetId === "all" || datasetId == null ? (
             <Typography
@@ -522,13 +564,15 @@ function RegionView() {
                 key={`${selectedGene || selectedSnp || "plot"}-view`}
                 className={`view-container`}
               >
-                {selectedCellTypes.length > 0 ? (
+                {selectedCellTypes.length > 0 &&
+                (selectedGene || selectedSnp) ? (
                   selectedGene ? (
                     selectedCellTypes.map(
                       (cellType) =>
                         snpData[cellType] &&
+                        !dataLoading &&
                         !loading &&
-                        !loadingCellTypes.get(cellType) && (
+                        renderedGraphs.includes(cellType) && (
                           <div
                             key={`${cellType}-plot`}
                             className="gene-plot"
@@ -548,7 +592,9 @@ function RegionView() {
                     selectedCellTypes.map(
                       (cellType) =>
                         geneData[cellType] &&
-                        !loading && (
+                        !dataLoading &&
+                        !loading &&
+                        renderedGraphs.includes(cellType) && (
                           <div
                             key={`${cellType}-plot`}
                             className="snp-plot"

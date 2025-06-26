@@ -23,7 +23,7 @@ const useQtlStore = create((set, get) => ({
     snpData: {},
     geneData: {},
     loading: false,
-    loadingCellTypes: new Map(),
+    // loadingCellTypes: new Map(),
     error: null,
 
     setDataset: (dataset) => {
@@ -177,9 +177,9 @@ const useQtlStore = create((set, get) => ({
         }
         set({ loading: true });
         const cellTypes = get().selectedCellTypes;
-        const loadingMap = new Map();
-        cellTypes.forEach((c) => loadingMap.set(c, true));
-        set({ loadingCellTypes: loadingMap, loading: false });
+        // const loadingMap = new Map();
+        // cellTypes.forEach((c) => loadingMap.set(c, true));
+        // set({ loadingCellTypes: loadingMap, loading: false });
 
         try {
             for (const c of cellTypes) {
@@ -190,16 +190,17 @@ const useQtlStore = create((set, get) => ({
                 );
                 const snpData = response.data;
 
-                loadingMap.set(c, false);
+                // loadingMap.set(c, false);
 
                 set((state) => ({
                     snpData: {
                         ...state.snpData,
                         [c]: snpData,
                     },
-                    loadingCellTypes: loadingMap,
+                    // loadingCellTypes: loadingMap,
                 }));
             }
+            set({ loading: false });
         } catch (error) {
             console.error("Error fetching SNP data for gene:", error);
         }
@@ -216,9 +217,9 @@ const useQtlStore = create((set, get) => ({
         }
         set({ loading: true });
         const cellTypes = get().selectedCellTypes;
-        const loadingMap = new Map();
-        cellTypes.forEach((c) => loadingMap.set(c, true));
-        set({ loadingCellTypes: loadingMap, loading: false });
+        // const loadingMap = new Map();
+        // cellTypes.forEach((c) => loadingMap.set(c, true));
+        // set({ loadingCellTypes: loadingMap, loading: false });
 
         try {
             for (const c of cellTypes) {
@@ -229,16 +230,17 @@ const useQtlStore = create((set, get) => ({
                 );
                 const geneData = response.data;
 
-                loadingMap.set(c, false);
+                // loadingMap.set(c, false);
 
                 set((state) => ({
                     geneData: {
                         ...state.geneData,
                         [c]: geneData,
                     },
-                    loadingCellTypes: loadingMap,
+                    // loadingCellTypes: loadingMap,
                 }));
             }
+            set({ loading: false });
         } catch (error) {
             console.error("Error fetching gene data for SNP:", error);
         }

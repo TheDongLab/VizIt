@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -98,8 +98,14 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const yMin = Math.min(...yValues, -2) - yPadding;
   const yMax = Math.max(...yValues, 2) + yPadding;
 
-  const [xRange, setXRange] = useState([xMin, xMax]);
-  const [yRange, setYRange] = useState([yMin, yMax]);
+  const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
+  const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
+
+  const nearbyGenesRadius = 10_000_000;
+  const nearbyGenesRange = useMemo(
+    () => [snpPosition - nearbyGenesRadius, snpPosition + nearbyGenesRadius],
+    [snpPosition],
+  );
 
   const formatNumber = (num, precision) => {
     const rounded = round(num, precision);
@@ -127,17 +133,15 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   };
 
   const nearbyGenes = useMemo(() => {
+    const [xMin, xMax] = nearbyGenesRange;
     const geneListIds = new Set(geneList.map((g) => g.id));
-    return genes.filter((g) => !geneListIds.has(g.gene_id));
-  }, [geneList, genes]);
-
-  const visibleNearbyGenes = useMemo(() => {
-    const [xMin, xMax] = xRange;
-    return nearbyGenes.filter(
+    return genes.filter(
       (g) =>
-        g.position_end >= xMin - 100_000 && g.position_start <= xMax + 100_000,
+        !geneListIds.has(g.gene_id) &&
+        g.position_end >= xMin - 100_000 &&
+        g.position_start <= xMax + 100_000,
     );
-  }, [nearbyGenes, xRange]);
+  }, [geneList, genes, nearbyGenesRange]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
@@ -172,7 +176,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   // maybe useMemo
 
   const geneTraces = useMemo(() => {
-    const nearbyGenes = visibleNearbyGenes.map((gene) => {
+    const nearbyGeneTraces = nearbyGenes.map((gene) => {
       const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
       const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
       const y0 = jitterMap.get(gene.gene_id);
@@ -207,7 +211,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       };
     });
 
-    const genes = geneList.map((gene) => {
+    const qtlGeneTraces = geneList.map((gene) => {
       const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
       const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
       const y0 = gene.y;
@@ -247,14 +251,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       };
     });
 
-    return [...nearbyGenes, ...genes];
-  }, [
-    visibleNearbyGenes,
-    geneList,
-    jitterMap,
-    minBetaMagnitude,
-    maxBetaMagnitude,
-  ]);
+    return [...nearbyGeneTraces, ...qtlGeneTraces];
+  }, [nearbyGenes, geneList, jitterMap, minBetaMagnitude, maxBetaMagnitude]);
 
   // Handle clicking points
   const onClick = (data) => {
@@ -337,7 +335,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       dragmode: "pan",
       xaxis: {
         // title: { text: `Genomic Position` },
-        range: xRange,
+        range: initialXRange,
+        minallowed: nearbyGenesRange[0],
+        maxallowed: nearbyGenesRange[1],
         autorange: false,
         tickfont: { size: 10 },
         showgrid: false,
@@ -354,7 +354,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       yaxis: {
         title: { text: "−log10(p)" },
         autorange: false,
-        range: yRange,
+        range: initialYRange,
         // minallowed: yMin,
         // maxallowed: yMax,
         showgrid: false,
@@ -427,7 +427,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         },
       ],
     }),
-    [snpName, celltype, xRange, yRange],
+    [snpName, celltype, initialXRange, nearbyGenesRange, initialYRange],
   );
 
   // TODO test this instead of my thing
@@ -506,23 +506,6 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
               /* }, */
             ],
           ],
-        }}
-        onRelayout={(e) => {
-          const r0 = e["xaxis.range[0]"] ?? e["xaxis.range"]?.[0];
-          const r1 = e["xaxis.range[1]"] ?? e["xaxis.range"]?.[1];
-          const yr0 = e["yaxis.range[0]"] ?? e["yaxis.range"]?.[0];
-          const yr1 = e["yaxis.range[1]"] ?? e["yaxis.range"]?.[1];
-
-          console.log(e);
-          if (e["xaxis.autorange"]) setXRange([xMin, xMax]);
-          if (e["yaxis.autorange"]) setYRange([yMin, yMax]);
-          if (e["autosize"]) {
-            setXRange([xMin, xMax]);
-            setYRange([yMin, yMax]);
-          }
-
-          if (r0 != null && r1 != null) setXRange([r0, r1]);
-          if (yr0 != null && yr1 != null) setYRange([yr0, yr1]);
         }}
       />
     </div>

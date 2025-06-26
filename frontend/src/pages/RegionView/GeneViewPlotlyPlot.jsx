@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -62,7 +62,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const geneEnd = gene ? gene.position_end : 0;
 
   // Calculate X and Y ranges
-  const oneMb = 1_000_000;
+  const radius = 1_000_000;
   const xValues = snpList.map((snp) => snp.x);
   const yValues = snpList.map((snp) => snp.y);
   const betaValues = snpList.map((snp) => snp.beta);
@@ -81,15 +81,21 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const paddedMin = combinedMin - xPadding;
   const paddedMax = combinedMax + xPadding;
 
-  const xMin = Math.max(paddedMin, geneStart - oneMb);
-  const xMax = Math.min(paddedMax, geneEnd + oneMb);
+  const xMin = Math.max(paddedMin, geneStart - radius);
+  const xMax = Math.min(paddedMax, geneEnd + radius);
 
   const yPadding = 1;
   const yMin = Math.min(...yValues, -2) - yPadding;
   const yMax = Math.max(...yValues, 2) + yPadding;
 
-  const [xRange, setXRange] = useState([xMin, xMax]);
-  const [yRange, setYRange] = useState([yMin, yMax]);
+  const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
+  const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
+
+  const nearbyGenesRadius = 10_000_000;
+  const nearbyGenesRange = useMemo(
+    () => [geneStart - nearbyGenesRadius, geneEnd + nearbyGenesRadius],
+    [geneStart, geneEnd, nearbyGenesRadius],
+  );
 
   const formatNumber = (num, precision) => {
     const rounded = round(num, precision);
@@ -120,13 +126,12 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     };
   });
 
-  const visibleNearbyGenes = useMemo(() => {
-    const [xMin, xMax] = xRange;
+  const nearbyGenes = useMemo(() => {
+    const [xMin, xMax] = nearbyGenesRange;
     return genes.filter(
-      (g) =>
-        g.position_end >= xMin - 100_000 && g.position_start <= xMax + 100_000,
+      (g) => g.position_end >= xMin && g.position_start <= xMax,
     );
-  }, [genes, xRange]);
+  }, [genes, nearbyGenesRange]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
@@ -161,7 +166,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   // maybe useMemo
 
   const geneTraces = useMemo(() => {
-    return visibleNearbyGenes.map((gene) => {
+    return nearbyGenes.map((gene) => {
       const isTarget = gene.gene_id === geneName;
       const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
       const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
@@ -199,7 +204,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         showlegend: false,
       };
     });
-  }, [visibleNearbyGenes, geneName, jitterMap]);
+  }, [nearbyGenes, geneName, jitterMap]);
 
   // Handle clicking points
   const onClick = (data) => {
@@ -269,7 +274,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       dragmode: "pan",
       xaxis: {
         // title: { text: `Genomic Position` },
-        range: xRange,
+        range: initialXRange,
+        minallowed: nearbyGenesRange[0],
+        maxallowed: nearbyGenesRange[1],
         autorange: false,
         tickfont: { size: 10 },
         showgrid: false,
@@ -286,7 +293,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       yaxis: {
         title: { text: "−log10(p)" },
         autorange: false,
-        range: yRange,
+        range: initialYRange,
         // minallowed: yMin,
         // maxallowed: yMax,
         showgrid: false,
@@ -359,7 +366,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         },
       ],
     }),
-    [geneName, celltype, xRange, yRange],
+    [geneName, celltype, initialXRange, nearbyGenesRange, initialYRange],
   );
 
   // TODO test this instead of my thing
@@ -438,22 +445,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
               /* }, */
             ],
           ],
-        }}
-        onRelayout={(e) => {
-          const r0 = e["xaxis.range[0]"] ?? e["xaxis.range"]?.[0];
-          const r1 = e["xaxis.range[1]"] ?? e["xaxis.range"]?.[1];
-          const yr0 = e["yaxis.range[0]"] ?? e["yaxis.range"]?.[0];
-          const yr1 = e["yaxis.range[1]"] ?? e["yaxis.range"]?.[1];
-
-          if (e["xaxis.autorange"]) setXRange([xMin, xMax]);
-          if (e["yaxis.autorange"]) setYRange([yMin, yMax]);
-          if (e["autosize"]) {
-            setXRange([xMin, xMax]);
-            setYRange([yMin, yMax]);
-          }
-
-          if (r0 != null && r1 != null) setXRange([r0, r1]);
-          if (yr0 != null && yr1 != null) setYRange([yr0, yr1]);
         }}
       />
     </div>
