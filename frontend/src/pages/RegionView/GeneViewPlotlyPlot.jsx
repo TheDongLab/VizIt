@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -7,7 +7,7 @@ function dataToRGB({ beta, y }, min = 2, max = 3) {
   const maxLevel = 230;
 
   if (Math.abs(y) < 2)
-    return beta > 0 ? `rgb(181, 161, 161)` : `rgb(161, 161, 181)`;
+    return beta > 0 ? `rgb(200, 161, 161)` : `rgb(161, 161, 200)`;
 
   const absBeta = Math.abs(beta);
   let intensity;
@@ -106,7 +106,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       mode: "markers",
       marker: {
         color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
-        size: 6,
+        size: Math.abs(snp.y) < 2 ? 6 : 8,
       },
       name: snp.id,
       hoverinfo: "text",
@@ -143,63 +143,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     return map;
   }, [genes]);
 
-  const annotations = useMemo(() => {
-    return visibleNearbyGenes.map((gene) => {
-      const start =
-        gene.strand === "-" ? gene.position_end : gene.position_start;
-      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
-      const isTargetGene = gene.gene_id === geneName;
-      const jitter = jitterMap.get(gene.gene_id);
-
-      return {
-        x: end,
-        y: isTargetGene ? 0 : jitter,
-        ax: start,
-        ay: isTargetGene ? 0 : jitter,
-        xref: "x",
-        yref: "y",
-        axref: "x",
-        ayref: "y",
-        showarrow: true,
-        arrowhead: isTargetGene ? 3 : 2,
-        arrowsize: 1,
-        arrowwidth: isTargetGene ? 2 : 1,
-        arrowcolor: isTargetGene ? "black" : "rgb(161, 161, 161)",
-      };
-    });
-  }, [geneName, jitterMap, visibleNearbyGenes]);
-
-  const getClippedAnnotations = useCallback(
-    (xRange) => {
-      return annotations
-        .map((a) => {
-          const { ax, x, y } = a;
-
-          // const [min, max] = currentLayout.xaxis.range;
-          const [xMin, xMax] = xRange;
-          const [yMin, yMax] = yRange;
-
-          // Completely outside the view
-          if ((ax < xMin && x < xMin) || (ax > xMax && x > xMax)) return null;
-          if (y < yMin || y > yMax) return null;
-
-          // Truncate at edges
-          const clippedAx = Math.max(xMin, Math.min(ax, xMax));
-          const clippedX = Math.max(xMin, Math.min(x, xMax));
-          const clipped = { ...a, ax: clippedAx, x: clippedX };
-
-          // Don't show arrowhead if truncated
-          if (x !== clippedX) {
-            clipped.arrowhead = 0;
-          }
-
-          return clipped;
-        })
-        .filter(Boolean);
-    },
-    [annotations, yRange],
-  );
-
   // Handle resize TODO
   // const updateScale = useCallback(() => {
   //   if (!containerRef.current || !naturalDimensions.width) return;
@@ -218,33 +161,42 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   // maybe useMemo
 
   const geneTraces = useMemo(() => {
-    // Create traces for all visible genes
     return visibleNearbyGenes.map((gene) => {
-      const isTargetGene = gene.gene_id === geneName;
-      const xPosition =
-        gene.strand === "-" ? gene.position_end : gene.position_start;
-      const jitter = isTargetGene ? 0 : jitterMap.get(gene.gene_id); // No jitter for target gene
+      const isTarget = gene.gene_id === geneName;
+      const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
+      const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
+      const y0 = isTarget ? 0 : jitterMap.get(gene.gene_id);
+      const y1 = y0;
+      const arrowSymbol =
+        gene.strand === "+" ? "triangle-right" : "triangle-left";
 
       return {
-        x: [xPosition],
-        y: [jitter],
+        x: [x0, x1],
+        y: [y0, y1],
         type: "scatter",
-        mode: isTargetGene ? "markers+text" : "markers",
-        marker: {
-          color: isTargetGene ? "black" : "rgb(161, 161, 161)",
-          size: isTargetGene ? 10 : 8,
+        mode: "lines+markers",
+        line: {
+          color: isTarget ? "black" : "rgb(161,161,161)",
+          width: isTarget ? 3 : 2,
         },
-        text: isTargetGene ? [gene.gene_id] : undefined,
-        textposition: isTargetGene ? "top center" : undefined,
-        name: gene.gene_id,
-        pointType: "gene",
-        showlegend: false,
+        marker: {
+          symbol: ["circle", arrowSymbol],
+          size: [0, isTarget ? 12 : 8],
+          color: [
+            isTarget ? "black" : "rgb(161,161,161)",
+            isTarget ? "black" : "rgb(161,161,161)",
+          ],
+          opacity: [0, 1],
+        },
         hoverinfo: "text",
         hovertext:
           `<b>Gene:</b> ${gene.gene_id}<br>` +
           `<b>Start:</b> ${gene.position_start}<br>` +
           `<b>End:</b> ${gene.position_end}<br>` +
-          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>`,
+          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`,
+        name: gene.gene_id,
+        pointType: "gene",
+        showlegend: false,
       };
     });
   }, [visibleNearbyGenes, geneName, jitterMap]);
@@ -406,9 +358,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           layer: "below",
         },
       ],
-      annotations: getClippedAnnotations(xRange),
     }),
-    [geneName, celltype, xRange, yRange, getClippedAnnotations],
+    [geneName, celltype, xRange, yRange],
   );
 
   // TODO test this instead of my thing
@@ -494,7 +445,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           const yr0 = e["yaxis.range[0]"] ?? e["yaxis.range"]?.[0];
           const yr1 = e["yaxis.range[1]"] ?? e["yaxis.range"]?.[1];
 
-          console.log(e);
           if (e["xaxis.autorange"]) setXRange([xMin, xMax]);
           if (e["yaxis.autorange"]) setYRange([yMin, yMax]);
           if (e["autosize"]) {

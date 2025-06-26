@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -7,7 +7,7 @@ function dataToRGB({ beta, y }, min = 2, max = 3) {
   const maxLevel = 230;
 
   if (Math.abs(y) < 2)
-    return beta > 0 ? `rgb(181, 161, 161)` : `rgb(161, 161, 181)`;
+    return beta > 0 ? `rgb(200, 161, 161)` : `rgb(161, 161, 200)`;
 
   const absBeta = Math.abs(beta);
   let intensity;
@@ -61,7 +61,6 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       id: gene_id,
       y: -Math.log10(p_value) * Math.sign(beta_value),
       beta: beta_value,
-      x: strand === "-" ? position_end : position_start,
       position_start,
       position_end,
       p_value,
@@ -116,7 +115,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     mode: "markers+text",
     marker: {
       color: "black",
-      size: 10,
+      size: 12,
     },
     text: [snpName],
     textposition: "top center",
@@ -155,91 +154,6 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     return map;
   }, [genes]);
 
-  const annotations = useMemo(() => {
-    const nearbyGenes = visibleNearbyGenes.map((gene) => {
-      const start =
-        gene.strand === "-" ? gene.position_end : gene.position_start;
-      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
-      const jitter = jitterMap.get(gene.gene_id);
-
-      return {
-        x: end,
-        y: jitter,
-        ax: start,
-        ay: jitter,
-        xref: "x",
-        yref: "y",
-        axref: "x",
-        ayref: "y",
-        showarrow: true,
-        arrowhead: 2,
-        arrowsize: 1,
-        arrowwidth: 1,
-        arrowcolor: "rgb(161, 161, 161)",
-      };
-    });
-
-    const genes = geneList.map((gene) => {
-      const start =
-        gene.strand === "-" ? gene.position_end : gene.position_start;
-      const end = gene.strand === "-" ? gene.position_start : gene.position_end;
-      return {
-        x: end,
-        y: gene.y,
-        ax: start,
-        ay: gene.y,
-        xref: "x",
-        yref: "y",
-        axref: "x",
-        ayref: "y",
-        showarrow: true,
-        arrowhead: 3, // TODO act as the target or not?
-        arrowsize: 1,
-        arrowwidth: 2,
-        arrowcolor: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
-      };
-    });
-
-    return [...nearbyGenes, ...genes];
-  }, [
-    geneList,
-    jitterMap,
-    maxBetaMagnitude,
-    minBetaMagnitude,
-    visibleNearbyGenes,
-  ]);
-
-  const getClippedAnnotations = useCallback(
-    (xRange) => {
-      return annotations
-        .map((a) => {
-          const { ax, x, y } = a;
-
-          // const [min, max] = currentLayout.xaxis.range;
-          const [xMin, xMax] = xRange;
-          const [yMin, yMax] = yRange;
-
-          // Completely outside the view
-          if ((ax < xMin && x < xMin) || (ax > xMax && x > xMax)) return null;
-          if (y < yMin || y > yMax) return null;
-
-          // Truncate at edges
-          const clippedAx = Math.max(xMin, Math.min(ax, xMax));
-          const clippedX = Math.max(xMin, Math.min(x, xMax));
-          const clipped = { ...a, ax: clippedAx, x: clippedX };
-
-          // Don't show arrowhead if truncated
-          if (x !== clippedX) {
-            clipped.arrowhead = 0;
-          }
-
-          return clipped;
-        })
-        .filter(Boolean);
-    },
-    [annotations, yRange],
-  );
-
   // Handle resize TODO
   // const updateScale = useCallback(() => {
   //   if (!containerRef.current || !naturalDimensions.width) return;
@@ -259,44 +173,66 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 
   const geneTraces = useMemo(() => {
     const nearbyGenes = visibleNearbyGenes.map((gene) => {
-      const xPosition =
-        gene.strand === "-" ? gene.position_end : gene.position_start;
-      const jitter = jitterMap.get(gene.gene_id);
+      const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
+      const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
+      const y0 = jitterMap.get(gene.gene_id);
+      const y1 = y0;
+      const arrowSymbol =
+        gene.strand === "+" ? "triangle-right" : "triangle-left";
 
       return {
-        x: [xPosition],
-        y: [jitter],
+        x: [x0, x1],
+        y: [y0, y1],
         type: "scatter",
-        mode: "markers",
-        marker: {
-          color: "rgb(161, 161, 161)",
-          size: 8,
+        mode: "lines+markers",
+        line: {
+          color: "rgb(161,161,161)",
+          width: 2,
         },
-        name: gene.gene_id,
-        pointType: "gene",
-        showlegend: false,
+        marker: {
+          symbol: ["circle", arrowSymbol],
+          size: [0, 8],
+          color: ["rgb(161,161,161)", "rgb(161,161,161)"],
+          opacity: [0, 1],
+        },
         hoverinfo: "text",
         hovertext:
           `<b>Gene:</b> ${gene.gene_id}<br>` +
           `<b>Start:</b> ${gene.position_start}<br>` +
           `<b>End:</b> ${gene.position_end}<br>` +
-          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>`,
+          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`,
+        name: gene.gene_id,
+        pointType: "gene",
+        showlegend: false,
       };
     });
 
     const genes = geneList.map((gene) => {
+      const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
+      const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
+      const y0 = gene.y;
+      const y1 = y0;
+      const arrowSymbol =
+        gene.strand === "+" ? "triangle-right" : "triangle-left";
+
       return {
-        x: [gene.x],
-        y: [gene.y],
+        x: [x0, x1],
+        y: [y0, y1],
         type: "scatter",
-        mode: "markers+text",
-        marker: {
+        mode: "lines+markers",
+        line: {
           color: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
-          size: 8,
+          width: 3,
         },
-        name: gene.id,
-        pointType: "gene",
-        showlegend: false,
+        marker: {
+          symbol: ["circle", arrowSymbol],
+          size: [0, 12],
+          color: [
+            dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
+            dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
+          ],
+          opacity: [0, 1],
+        },
         hoverinfo: "text",
         hovertext:
           `<b>Gene:</b> ${gene.id}<br>` +
@@ -305,6 +241,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>` +
           `<b>β:</b> ${formatNumber(gene.beta, 3)}<br>` +
           `−<b>log10(p):</b> ${formatNumber(gene.y * Math.sign(gene.beta), 3)}`,
+        name: gene.id,
+        pointType: "gene",
+        showlegend: false,
       };
     });
 
@@ -487,9 +426,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           layer: "below",
         },
       ],
-      annotations: getClippedAnnotations(xRange),
     }),
-    [snpName, celltype, xRange, yRange, getClippedAnnotations],
+    [snpName, celltype, xRange, yRange],
   );
 
   // TODO test this instead of my thing
