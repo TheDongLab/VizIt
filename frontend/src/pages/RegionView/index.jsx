@@ -29,8 +29,6 @@ import useQtlStore from "../../store/QtlStore.js";
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
 
-import { getSnpLocation } from "../../api/qtl.js";
-
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
 function ConfirmationDialog({
@@ -98,6 +96,7 @@ function RegionView() {
     fetchGeneChromosome,
     fetchSnpChromosome,
     fetchGeneLocations,
+    fetchSnpLocations,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
 
@@ -228,7 +227,7 @@ function RegionView() {
   };
 
   const [genes, setGenes] = useState([]);
-  const [snpPosition, setSnpPosition] = useState(null);
+  const [snps, setSnps] = useState([]);
 
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
@@ -243,7 +242,7 @@ function RegionView() {
       setDataLoading(true);
       await fetchGeneCellTypes(datasetId);
       await fetchGeneChromosome(datasetId);
-      const locations = await fetchGeneLocations(datasetId);
+      const locations = await fetchGeneLocations(datasetId, 10000000);
       setGenes(locations);
 
       await fetchSnpData(datasetId);
@@ -252,10 +251,8 @@ function RegionView() {
       setDataLoading(true);
       await fetchSnpCellTypes(datasetId);
       await fetchSnpChromosome(datasetId);
-      const locations = await fetchGeneLocations(datasetId);
-      setGenes(locations);
-      const snpLocation = await getSnpLocation(datasetId, selectedSnp);
-      setSnpPosition(snpLocation.data.position);
+      const locations = await fetchSnpLocations(datasetId, 2000000);
+      setSnps(locations);
 
       await fetchGeneData(datasetId);
       setDataLoading(false);
@@ -602,8 +599,7 @@ function RegionView() {
                           >
                             <SNPViewPlotlyPlot
                               snpName={selectedSnp}
-                              snpPosition={snpPosition}
-                              genes={genes}
+                              snps={snps}
                               geneData={geneData[cellType]}
                               celltype={cellType}
                               handleSelect={handleSelect}

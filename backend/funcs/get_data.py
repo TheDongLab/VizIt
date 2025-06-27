@@ -68,7 +68,7 @@ def get_snp_location(dataset, snp):
         return "Error: SNP list file not found for the specified dataset."
 
 
-def get_gene_locations_in_chromosome(dataset, chromosome):
+def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -77,7 +77,10 @@ def get_gene_locations_in_chromosome(dataset, chromosome):
         )
 
         if os.path.exists(chromosome_file):
-            df = pl.read_parquet(chromosome_file)
+            df = pl.read_parquet(chromosome_file).filter(
+                (pl.col("position_start") >= start) & (pl.col("position_end") <= end)
+            )
+
             if not df.is_empty():
                 df = df.drop_nulls()
                 return df.to_dicts()
@@ -88,7 +91,7 @@ def get_gene_locations_in_chromosome(dataset, chromosome):
             return "Error: Chromosome file not found for the specified dataset."
 
 
-def get_snp_locations_in_chromosome(dataset, chromosome):
+def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -97,7 +100,9 @@ def get_snp_locations_in_chromosome(dataset, chromosome):
         )
 
         if os.path.exists(chromosome_file):
-            df = pl.read_parquet(chromosome_file)
+            df = pl.read_parquet(chromosome_file).filter(
+                (pl.col("position") >= start) & (pl.col("position") <= end)
+            )
             if not df.is_empty():
                 df = df.drop_nulls()
                 return df.to_dicts()

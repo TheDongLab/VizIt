@@ -58,8 +58,13 @@ async def getgenelocationsinchromosome(request: Request):
     print("getgenelocationsinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
 
-    response = get_gene_locations_in_chromosome(dataset_id, chromosome)
+    start = int(start) if start else None
+    end = int(end) if end else None
+
+    response = get_gene_locations_in_chromosome(dataset_id, chromosome, start, end)
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene locations.")
@@ -71,8 +76,13 @@ async def getsnplocationsinchromosome(request: Request):
     print("getsnplocationsinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
 
-    response = get_snp_locations_in_chromosome(dataset_id, chromosome)
+    start = int(start) if start else None
+    end = int(end) if end else None
+
+    response = get_snp_locations_in_chromosome(dataset_id, chromosome, start, end)
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting SNP locations.")

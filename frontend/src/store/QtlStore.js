@@ -8,6 +8,8 @@ import {
     getGeneDataForSnp,
     getGeneChromosome,
     getSnpChromosome,
+    getGeneLocation,
+    getSnpLocation,
     getGeneLocationsInChromosome,
     getSnpLocationsInChromosome,
 } from "../api/qtl.js";
@@ -246,7 +248,7 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
-    fetchGeneLocations: async (dataset) => {
+    fetchGeneLocations: async (dataset, radius) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({
@@ -258,9 +260,18 @@ const useQtlStore = create((set, get) => ({
         set({ loading: true });
 
         try {
+            const positionResponse = await getGeneLocation(
+                dataset,
+                get().selectedGene,
+            );
+            const startPosition = positionResponse.data.start;
+            const endPosition = positionResponse.data.end;
+
             const response = await getGeneLocationsInChromosome(
                 dataset,
                 get().selectedChromosome,
+                startPosition - radius,
+                endPosition + radius,
             );
             const genes = response.data;
             return genes;
@@ -269,7 +280,7 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
-    fetchSnpLocations: async (dataset) => {
+    fetchSnpLocations: async (dataset, radius) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({
@@ -281,9 +292,17 @@ const useQtlStore = create((set, get) => ({
         set({ loading: true });
 
         try {
+            const positionResponse = await getSnpLocation(
+                dataset,
+                get().selectedSnp,
+            );
+            const position = positionResponse.data.position;
+
             const response = await getSnpLocationsInChromosome(
                 dataset,
                 get().selectedChromosome,
+                position - radius,
+                position + radius,
             );
             const snps = response.data;
             return snps;

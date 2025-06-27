@@ -125,12 +125,22 @@ export const getGeneDataForSnp = async (dataset, snp, celltype) => {
     }
 };
 
-export const getGeneLocationsInChromosome = async (dataset, chromosome) => {
+export const getGeneLocationsInChromosome = async (
+    dataset,
+    chromosome,
+    start,
+    end,
+) => {
     try {
         const response = await axios.get(
             `${QTL_URL}/getgenelocationsinchromosome`,
             {
-                params: { dataset: dataset, chromosome: chromosome },
+                params: {
+                    dataset: dataset,
+                    chromosome: chromosome,
+                    start: start,
+                    end: end,
+                },
             },
         );
         return response;
@@ -140,12 +150,22 @@ export const getGeneLocationsInChromosome = async (dataset, chromosome) => {
     }
 };
 
-export const getSnpLocationsInChromosome = async (dataset, chromosome) => {
+export const getSnpLocationsInChromosome = async (
+    dataset,
+    chromosome,
+    start,
+    end,
+) => {
     try {
         const response = await axios.get(
             `${QTL_URL}/getsnplocationsinchromosome`,
             {
-                params: { dataset: dataset, chromosome: chromosome },
+                params: {
+                    dataset: dataset,
+                    chromosome: chromosome,
+                    start: start,
+                    end: end,
+                },
             },
         );
         return response;

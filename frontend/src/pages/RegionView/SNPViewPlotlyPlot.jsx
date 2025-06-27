@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -34,8 +34,7 @@ function round(num, precision = 6) {
 
 const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   snpName,
-  snpPosition,
-  genes,
+  snps,
   geneData,
   celltype,
   handleSelect,
@@ -67,6 +66,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       strand,
     }),
   );
+
+  const snp = snps.find((s) => s.snp_id === snpName);
+  const snpPosition = snp ? snp.position : 0;
 
   // Calculate X and Y ranges
   const radius = 1_100_000;
@@ -101,9 +103,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
   const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
 
-  const nearbyGenesRadius = 10_000_000;
-  const nearbyGenesRange = useMemo(
-    () => [snpPosition - nearbyGenesRadius, snpPosition + nearbyGenesRadius],
+  const nearbySnpsRadius = 2_000_000;
+  const nearbySnpsRange = useMemo(
+    () => [snpPosition - nearbySnpsRadius, snpPosition + nearbySnpsRadius],
     [snpPosition],
   );
 
@@ -114,49 +116,86 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       : rounded.toString();
   };
 
-  const snpTrace = {
-    x: [snpPosition],
-    y: [0],
-    type: "scatter",
-    mode: "markers+text",
-    marker: {
-      color: "black",
-      size: 12,
-    },
-    text: [snpName],
-    textposition: "top center",
-    name: snpName,
-    pointType: "snp",
-    showlegend: false,
-    hoverinfo: "text",
-    hovertext: `<b>SNP ID:</b> ${snpName}<br><b>Position:</b> ${snpPosition}<br>`,
-  };
-
-  const nearbyGenes = useMemo(() => {
-    const [xMin, xMax] = nearbyGenesRange;
-    const geneListIds = new Set(geneList.map((g) => g.id));
-    return genes.filter(
-      (g) =>
-        !geneListIds.has(g.gene_id) &&
-        g.position_end >= xMin - 100_000 &&
-        g.position_start <= xMax + 100_000,
+  const nearbySnps = useMemo(() => {
+    const [xMin, xMax] = nearbySnpsRange;
+    return snps.filter(
+      (s) => s.snp_id !== snp && s.position >= xMin && s.position <= xMax,
     );
-  }, [geneList, genes, nearbyGenesRange]);
+  }, [nearbySnpsRange, snps, snp]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
     const minDistanceFromZero = 0.25;
     const maxAmplitude = 1.75;
 
-    genes.forEach((gene) => {
+    snps.forEach((s) => {
       const sign = Math.random() > 0.5 ? 1 : -1;
       const amplitude =
         minDistanceFromZero +
         Math.random() * (maxAmplitude - minDistanceFromZero);
-      map.set(gene.gene_id, sign * amplitude);
+      map.set(s.snp_id, sign * amplitude);
     });
     return map;
-  }, [genes]);
+  }, [snps]);
+
+  // const snpTraces = useMemo(() => {
+  //   return nearbySnps.map((s) => {
+  //     const isTarget = s.snp_id === snpName;
+  //     const x = s.position;
+  //     const y = isTarget ? 0 : jitterMap.get(s.snp_id);
+
+  //     return {
+  //       x: [x],
+  //       y: [y],
+  //       type: "scatter",
+  //       mode: isTarget ? "markers+text" : "markers",
+  //       marker: {
+  //         color: isTarget ? "black" : "rgb(161, 161, 161)",
+  //         size: isTarget ? 12 : 8,
+  //       },
+  //       text: isTarget ? [s.snp_id] : [],
+  //       textposition: isTarget ? "top center" : "none",
+  //       name: s.snp_id,
+  //       pointType: "snp",
+  //       showlegend: false,
+  //       hoverinfo: "text",
+  //       hovertext: `<b>SNP ID:</b> ${s.snp_id}<br><b>Position:</b> ${s.position}<br>`,
+  //     };
+  //   });
+  // }, [nearbySnps, snpName, jitterMap]);
+
+  const snpTrace = useMemo(() => {
+    return {
+      x: nearbySnps.map((s) => s.position),
+      y: nearbySnps.map((s) =>
+        s.snp_id === snpName ? 0 : jitterMap.get(s.snp_id),
+      ),
+      type: "scatter",
+      mode: "markers+text",
+      marker: {
+        color: nearbySnps.map((s) =>
+          s.snp_id === snpName ? "black" : "rgb(161, 161, 161)",
+        ),
+        opacity: 1,
+        size: nearbySnps.map((s) => (s.snp_id === snpName ? 12 : 8)),
+        line: {
+          width: 0.2,
+          opacity: 0.8,
+        },
+      },
+      text: nearbySnps.map((s) => (s.snp_id === snpName ? s.snp_id : "")),
+      customdata: nearbySnps.map((s) => s.snp_id),
+      textposition: "top center",
+      name: "SNPs",
+      pointType: "snp",
+      showlegend: false,
+      hoverinfo: "text",
+      hovertext: nearbySnps.map(
+        (s) =>
+          `<b>SNP ID:</b> ${s.snp_id}<br><b>Position:</b> ${s.position}<br>`,
+      ),
+    };
+  }, [nearbySnps, snpName, jitterMap]);
 
   // Handle resize TODO
   // const updateScale = useCallback(() => {
@@ -175,49 +214,15 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 
   // maybe useMemo
 
+  // Multiple gene traces so each line can have its own color
   const geneTraces = useMemo(() => {
-    const nearbyGeneTraces = nearbyGenes.map((gene) => {
-      const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
-      const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
-      const y0 = jitterMap.get(gene.gene_id);
-      const y1 = y0;
-      const arrowSymbol =
-        gene.strand === "+" ? "triangle-right" : "triangle-left";
-
-      return {
-        x: [x0, x1],
-        y: [y0, y1],
-        type: "scatter",
-        mode: "lines+markers",
-        line: {
-          color: "rgb(161,161,161)",
-          width: 2,
-        },
-        marker: {
-          symbol: ["circle", arrowSymbol],
-          size: [0, 8],
-          color: ["rgb(161,161,161)", "rgb(161,161,161)"],
-          opacity: [0, 1],
-        },
-        hoverinfo: "text",
-        hovertext:
-          `<b>Gene:</b> ${gene.gene_id}<br>` +
-          `<b>Start:</b> ${gene.position_start}<br>` +
-          `<b>End:</b> ${gene.position_end}<br>` +
-          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`,
-        name: gene.gene_id,
-        pointType: "gene",
-        showlegend: false,
-      };
-    });
-
-    const qtlGeneTraces = geneList.map((gene) => {
+    return geneList.map((gene) => {
       const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
       const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
       const y0 = gene.y;
       const y1 = y0;
       const arrowSymbol =
-        gene.strand === "+" ? "triangle-right" : "triangle-left";
+        gene.strand === "-" ? "triangle-left" : "triangle-right";
 
       return {
         x: [x0, x1],
@@ -237,6 +242,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           ],
           opacity: [0, 1],
         },
+        customdata: [gene.id],
         hoverinfo: "text",
         hovertext:
           `<b>Gene:</b> ${gene.id}<br>` +
@@ -250,9 +256,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         showlegend: false,
       };
     });
-
-    return [...nearbyGeneTraces, ...qtlGeneTraces];
-  }, [nearbyGenes, geneList, jitterMap, minBetaMagnitude, maxBetaMagnitude]);
+  }, [geneList, minBetaMagnitude, maxBetaMagnitude]);
 
   // Handle clicking points
   const onClick = (data) => {
@@ -264,62 +268,42 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     const pointType = pointData.pointType;
 
     if (pointType === "snp") {
-      const name = pointData.name;
-      if (name === snpName) {
-        const formattedData = (
-          <>
-            <strong>SNP:</strong> {snpName}
-            <br />
-            <strong>Position:</strong> {snpPosition}
-          </>
-        );
-        handleSelect(name, formattedData);
-        return;
-      } else {
-        console.log("Invalid point clicked");
-        return;
-      }
+      const name = point.customdata || pointData.name;
+      const data = nearbySnps.find((s) => s.snp_id === name);
+      if (!data) return;
+
+      const formattedData = (
+        <>
+          <strong>SNP:</strong> {data.snp_id}
+          <br />
+          <strong>Position:</strong> {data.position}
+        </>
+      );
+      handleSelect(name, formattedData);
+      return;
     } else if (pointType === "gene") {
-      const name = pointData.name;
+      const name = point.customdata || pointData.name;
       const data = geneList.find((g) => g.id === name);
-      if (data) {
-        const formattedData = (
-          <>
-            <strong>Gene:</strong> {data.id}
-            <br />
-            <strong>Start:</strong> {data.position_start}
-            <br />
-            <strong>End:</strong> {data.position_end}
-            <br />
-            <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"}
-            <br />
-            <strong>β:</strong> {formatNumber(data.beta, 6)}
-            <br />−<strong>log10(p):</strong>{" "}
-            {formatNumber(data.y * Math.sign(data.beta), 6)}
-          </>
-        );
+      if (!data) return;
 
-        handleSelect(name, formattedData);
-        return;
-      } else {
-        const otherGeneData = nearbyGenes.find((g) => g.gene_id === name);
-        if (!otherGeneData) return;
+      const formattedData = (
+        <>
+          <strong>Gene:</strong> {data.id}
+          <br />
+          <strong>Start:</strong> {data.position_start}
+          <br />
+          <strong>End:</strong> {data.position_end}
+          <br />
+          <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"}
+          <br />
+          <strong>β:</strong> {formatNumber(data.beta, 6)}
+          <br />−<strong>log10(p):</strong>{" "}
+          {formatNumber(data.y * Math.sign(data.beta), 6)}
+        </>
+      );
 
-        const formattedData = (
-          <>
-            <strong>Gene:</strong> {otherGeneData.gene_id}
-            <br />
-            <strong>Start:</strong> {otherGeneData.position_start}
-            <br />
-            <strong>End:</strong> {otherGeneData.position_end}
-            <br />
-            <strong>Strand:</strong> {otherGeneData.strand === "-" ? "−" : "+"}
-          </>
-        );
-
-        handleSelect(name, formattedData);
-        return;
-      }
+      handleSelect(name, formattedData);
+      return;
     }
   };
 
@@ -336,8 +320,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       xaxis: {
         // title: { text: `Genomic Position` },
         range: initialXRange,
-        minallowed: nearbyGenesRange[0],
-        maxallowed: nearbyGenesRange[1],
+        minallowed: Math.min(nearbySnpsRange[0], paddedMin),
+        maxallowed: Math.max(nearbySnpsRange[1], paddedMax),
         autorange: false,
         tickfont: { size: 10 },
         showgrid: false,
@@ -427,7 +411,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         },
       ],
     }),
-    [snpName, celltype, initialXRange, nearbyGenesRange, initialYRange],
+    [snpName, celltype, initialXRange, nearbySnpsRange, initialYRange],
   );
 
   // TODO test this instead of my thing
@@ -514,13 +498,10 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 
 SNPViewPlotlyPlot.propTypes = {
   snpName: PropTypes.string.isRequired,
-  snpPosition: PropTypes.number.isRequired,
-  genes: PropTypes.arrayOf(
+  snps: PropTypes.arrayOf(
     PropTypes.shape({
-      gene_id: PropTypes.string.isRequired,
-      position_start: PropTypes.number.isRequired,
-      position_end: PropTypes.number.isRequired,
-      strand: PropTypes.oneOf(["+", "-"]).isRequired,
+      snp_id: PropTypes.string.isRequired,
+      position: PropTypes.number.isRequired,
     }),
   ).isRequired,
   geneData: PropTypes.arrayOf(

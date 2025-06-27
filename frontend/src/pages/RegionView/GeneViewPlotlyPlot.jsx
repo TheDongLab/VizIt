@@ -104,27 +104,59 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       : rounded.toString();
   };
 
-  const snpTraces = snpList.map((snp) => {
+  // const snpTraces = snpList.map((snp) => {
+  //   return {
+  //     x: [snp.x],
+  //     y: [snp.y],
+  //     type: "scatter",
+  //     mode: "markers",
+  //     marker: {
+  //       color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
+  //       size: Math.abs(snp.y) < 2 ? 6 : 8,
+  //     },
+  //     name: snp.id,
+  //     hoverinfo: "text",
+  //     text:
+  //       `<b>SNP:</b> ${snp.id}<br>` +
+  //       `<b>Position:</b> ${snp.x}<br>` +
+  //       `<b>β:</b> ${formatNumber(snp.beta, 3)}<br>` +
+  //       `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta), 3)}`,
+  //     pointType: "snp",
+  //     showlegend: false,
+  //   };
+  // });
+  //
+  const snpTrace = useMemo(() => {
     return {
-      x: [snp.x],
-      y: [snp.y],
+      x: snpList.map((snp) => snp.x),
+      y: snpList.map((snp) => snp.y),
       type: "scatter",
       mode: "markers",
       marker: {
-        color: dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
-        size: Math.abs(snp.y) < 2 ? 6 : 8,
+        color: snpList.map((snp) =>
+          dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
+        ),
+        opacity: 1,
+        size: snpList.map((snp) => (Math.abs(snp.y) < 2 ? 8 : 10)),
+        line: {
+          width: 0.2,
+          opacity: 0.8,
+        },
       },
-      name: snp.id,
+      name: "SNPs",
+      customdata: snpList.map((snp) => snp.id),
       hoverinfo: "text",
-      text:
-        `<b>SNP:</b> ${snp.id}<br>` +
-        `<b>Position:</b> ${snp.x}<br>` +
-        `<b>β:</b> ${formatNumber(snp.beta, 3)}<br>` +
-        `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta), 3)}`,
+      text: snpList.map(
+        (snp) =>
+          `<b>SNP:</b> ${snp.id}<br>` +
+          `<b>Position:</b> ${snp.x}<br>` +
+          `<b>β:</b> ${formatNumber(snp.beta, 3)}<br>` +
+          `−<b>log10(p):</b> ${formatNumber(snp.y * Math.sign(snp.beta), 3)}`,
+      ),
       pointType: "snp",
       showlegend: false,
     };
-  });
+  }, [snpList, minBetaMagnitude, maxBetaMagnitude, formatNumber]);
 
   const nearbyGenes = useMemo(() => {
     const [xMin, xMax] = nearbyGenesRange;
@@ -166,44 +198,86 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   // maybe useMemo
 
   const geneTraces = useMemo(() => {
-    return nearbyGenes.map((gene) => {
+    const others = {
+      x: [],
+      y: [],
+      type: "scatter",
+      mode: "lines+markers",
+      line: {
+        color: "rgb(161,161,161)",
+        width: 2,
+      },
+      marker: {
+        symbol: [],
+        size: [],
+        color: [],
+        opacity: [],
+      },
+      text: [],
+      customdata: [],
+      textposition: "none",
+      hoverinfo: "text",
+      hovertext: [],
+      name: "Nearby Genes",
+      pointType: "gene",
+      showlegend: false,
+    };
+
+    let targetTrace = null;
+
+    for (const gene of nearbyGenes) {
       const isTarget = gene.gene_id === geneName;
       const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
       const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
-      const y0 = isTarget ? 0 : jitterMap.get(gene.gene_id);
-      const y1 = y0;
+      const y = isTarget ? 0 : jitterMap.get(gene.gene_id);
       const arrowSymbol =
-        gene.strand === "+" ? "triangle-right" : "triangle-left";
+        gene.strand === "-" ? "triangle-left" : "triangle-right";
+      const hover =
+        `<b>Gene:</b> ${gene.gene_id}<br>` +
+        `<b>Start:</b> ${gene.position_start}<br>` +
+        `<b>End:</b> ${gene.position_end}<br>` +
+        `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`;
+      const customData = `${gene.gene_id}`;
 
-      return {
-        x: [x0, x1],
-        y: [y0, y1],
-        type: "scatter",
-        mode: "lines+markers",
-        line: {
-          color: isTarget ? "black" : "rgb(161,161,161)",
-          width: isTarget ? 3 : 2,
-        },
-        marker: {
-          symbol: ["circle", arrowSymbol],
-          size: [0, isTarget ? 12 : 8],
-          color: [
-            isTarget ? "black" : "rgb(161,161,161)",
-            isTarget ? "black" : "rgb(161,161,161)",
-          ],
-          opacity: [0, 1],
-        },
-        hoverinfo: "text",
-        hovertext:
-          `<b>Gene:</b> ${gene.gene_id}<br>` +
-          `<b>Start:</b> ${gene.position_start}<br>` +
-          `<b>End:</b> ${gene.position_end}<br>` +
-          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`,
-        name: gene.gene_id,
-        pointType: "gene",
-        showlegend: false,
-      };
-    });
+      if (isTarget) {
+        targetTrace = {
+          x: [x0, x1],
+          y: [y, y],
+          type: "scatter",
+          mode: "lines+markers+text",
+          line: {
+            color: "black",
+            width: 3,
+          },
+          marker: {
+            symbol: ["circle", arrowSymbol],
+            size: [0, 12],
+            color: ["black", "black"],
+            opacity: [0, 1],
+          },
+          text: [gene.gene_id],
+          customdata: [customData],
+          textposition: "top center",
+          hoverinfo: "text",
+          hovertext: hover,
+          name: gene.gene_id,
+          pointType: "gene",
+          showlegend: false,
+        };
+      } else {
+        others.x.push(x0, x1, null);
+        others.y.push(y, y, null);
+        others.marker.symbol.push("circle", arrowSymbol, null);
+        others.marker.size.push(0, 8, null);
+        others.marker.color.push("rgb(161,161,161)", "rgb(161,161,161)", null);
+        others.marker.opacity.push(0, 1, null);
+        others.text.push("", "", null);
+        others.customdata.push(customData, customData, null);
+        others.hovertext.push(hover, hover, null);
+      }
+    }
+
+    return targetTrace ? [others, targetTrace] : [others];
   }, [nearbyGenes, geneName, jitterMap]);
 
   // Handle clicking points
@@ -216,8 +290,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const pointType = pointData.pointType;
 
     if (pointType === "snp") {
-      const name = pointData.name;
+      const name = point.customdata || pointData.name;
       const data = snpList.find((s) => s.id === name);
+      if (!data) return;
 
       const formattedData = (
         <>
@@ -234,7 +309,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       handleSelect(name, formattedData);
       return;
     } else if (pointType === "gene") {
-      const name = pointData.name;
+      const name = point.customdata || pointData.name;
+      console.log("Clicked gene:", name);
       const data = genes.find((g) => g.gene_id === name);
       if (!data) return;
 
@@ -275,8 +351,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       xaxis: {
         // title: { text: `Genomic Position` },
         range: initialXRange,
-        minallowed: nearbyGenesRange[0],
-        maxallowed: nearbyGenesRange[1],
+        minallowed: Math.min(nearbyGenesRange[0], paddedMin),
+        maxallowed: Math.max(nearbyGenesRange[1], paddedMax),
         autorange: false,
         tickfont: { size: 10 },
         showgrid: false,
@@ -403,7 +479,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     >
       <Plot
         onClick={onClick}
-        data={[...geneTraces, ...snpTraces]}
+        data={[...geneTraces, snpTrace]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
         useResizeHandler
