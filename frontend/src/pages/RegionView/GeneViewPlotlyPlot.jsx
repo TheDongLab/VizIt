@@ -226,6 +226,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     };
 
     let targetTrace = null;
+    let labelTrace = null;
 
     for (const gene of genes) {
       const isTarget = gene.gene_id === geneName;
@@ -248,7 +249,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           xaxis: "x",
           yaxis: "y",
           type: "scatter",
-          mode: "lines+markers+text",
+          mode: "lines+markers",
           line: {
             color: "black",
             width: 3,
@@ -259,14 +260,26 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             color: ["black", "black"],
             opacity: [0, 1],
           },
-          text: [gene.gene_id],
           customdata: [customData],
-          textposition: "top center",
           hoverinfo: "text",
           hovertext: hover,
           name: gene.gene_id,
           pointType: "gene",
           showlegend: false,
+        };
+
+        labelTrace = {
+          x: [(x0 + x1) / 2],
+          y: [y - 0.2],
+          type: "scatter",
+          mode: "text",
+          text: [gene.gene_id],
+          textposition: "bottom center",
+          showlegend: false,
+          hoverinfo: "skip",
+          textfont: {
+            color: "black",
+          },
         };
       } else {
         others.x.push(x0, x1, null);
@@ -281,7 +294,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       }
     }
 
-    return targetTrace ? [others, targetTrace] : [others];
+    return targetTrace ? [others, targetTrace, labelTrace] : [others];
   }, [geneName, genes, jitterMap]);
 
   // Handle clicking points
