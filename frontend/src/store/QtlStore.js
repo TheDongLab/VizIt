@@ -177,7 +177,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
-        set({ loading: true });
+        set({ loading: true, snpData: {} });
         const cellTypes = get().selectedCellTypes;
         // const loadingMap = new Map();
         // cellTypes.forEach((c) => loadingMap.set(c, true));
@@ -217,7 +217,7 @@ const useQtlStore = create((set, get) => ({
             });
             return;
         }
-        set({ loading: true });
+        set({ loading: true, geneData: {} });
         const cellTypes = get().selectedCellTypes;
         // const loadingMap = new Map();
         // cellTypes.forEach((c) => loadingMap.set(c, true));

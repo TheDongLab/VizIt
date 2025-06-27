@@ -564,26 +564,17 @@ function RegionView() {
                 {selectedCellTypes.length > 0 &&
                 (selectedGene || selectedSnp) ? (
                   selectedGene ? (
-                    selectedCellTypes.map(
-                      (cellType) =>
-                        snpData[cellType] &&
-                        !dataLoading &&
-                        !loading &&
-                        renderedGraphs.includes(cellType) && (
-                          <div
-                            key={`${cellType}-plot`}
-                            className="gene-plot"
-                            data-celltype={cellType}
-                          >
-                            <GeneViewPlotlyPlot
-                              geneName={selectedGene}
-                              genes={genes}
-                              snpData={snpData[cellType]}
-                              celltype={cellType}
-                              handleSelect={handleSelect}
-                            />
-                          </div>
-                        ),
+                    !dataLoading &&
+                    !loading && (
+                      <div key={`${selectedGene}-plot`} className="gene-plot">
+                        <GeneViewPlotlyPlot
+                          geneName={selectedGene}
+                          genes={genes}
+                          snpData={snpData}
+                          cellTypes={selectedCellTypes}
+                          handleSelect={handleSelect}
+                        />
+                      </div>
                     )
                   ) : selectedSnp ? (
                     selectedCellTypes.map(
