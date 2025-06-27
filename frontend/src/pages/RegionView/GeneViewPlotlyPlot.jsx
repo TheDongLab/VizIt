@@ -363,7 +363,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
       showlegend: false,
       // automargin: true,
-      margin: { l: 180, r: 3, t: 27, b: 100 },
+      margin: { l: 180, r: 1, t: 1, b: 100 },
       autosize: true,
       dragmode: "pan",
       grid: {
