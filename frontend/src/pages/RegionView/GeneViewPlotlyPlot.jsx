@@ -87,7 +87,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const xMax = Math.min(paddedMax, geneEnd + radius);
 
   const yPadding = 1;
-  const yMin = Math.min(...yValues, -2) - yPadding;
+  const yMin = Math.min(...yValues, 0);
   const yMax = Math.max(...yValues, 2) + yPadding;
 
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
@@ -355,15 +355,19 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     }
   };
 
+  const subplotSpacing = 0.02;
+  const totalSubplots = cellTypes.length + 1; // +1 for the gene trace
+  const heightPerTrack =
+    (1 - subplotSpacing * (totalSubplots - 1)) / totalSubplots;
+
   // Plotly layout
   const layout = useMemo(
     () => ({
-      title: `SNPs around ${geneName} (${celltype})`,
       // plot_bgcolor: "rgba(0,0,0,0)", // Transparent background
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
       showlegend: false,
       // automargin: true,
-      margin: { l: 180, r: 1, t: 1, b: 100 },
+      margin: { l: "auto", r: 1, t: 1, b: "auto" },
       autosize: true,
       dragmode: "pan",
       grid: {
@@ -374,20 +378,21 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         // pattern: "independent",
       },
       xaxis: {
-        // title: { text: `Genomic Position` },
+        title: { text: `Genomic Position` },
         range: initialXRange,
         minallowed: nearbyGenesRange[0],
         maxallowed: nearbyGenesRange[1],
         autorange: false,
         tickfont: { size: 10 },
         showgrid: true,
-        ticks: "outside",
+        ticks: "inside",
         ticklen: 6,
         tickwidth: 1,
         tickcolor: "black",
         zeroline: false,
         showline: true,
         mirror: "all",
+        // mirror: true,
         linewidth: 1,
         linecolor: "black",
         side: "bottom",
@@ -397,16 +402,16 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         // side: "bottom",
       },
       ...cellTypes.reduce((acc, celltype, i) => {
+        const start = (heightPerTrack + subplotSpacing) * (i + 1);
+        const end = start + heightPerTrack;
+
         acc[`yaxis${i + 2}`] = {
-          // title: { text: `−log10(p) (${celltype})` },
-          title: {
-            text: celltype,
-            standoff: i % 2 === 0 ? 35 : 5, // Add standoff for every second cell type
-          },
-          domain: [
-            (i + 1) / (cellTypes.length + 1),
-            (i + 2) / (cellTypes.length + 1),
-          ],
+          title: { text: `−log10(p)`, font: { size: 12 } },
+          // title: {
+          //   text: celltype,
+          //   standoff: i % 2 === 0 ? 35 : 5, // Add standoff for every second cell type
+          // },
+          domain: [start, end],
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
@@ -425,19 +430,16 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         return acc;
       }, {}),
       yaxis: {
-        title: { text: "Genes", standoff: 5 },
         autorange: false,
-        domain: [0, 1 / (cellTypes.length + 1)],
+        domain: [0, heightPerTrack],
         range: [-2, 2],
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,
         // maxallowed: yMax,
         showgrid: false,
         zeroline: false,
-        ticks: "outside",
-        ticklen: 6,
-        tickwidth: 1,
-        tickcolor: "black",
+        ticks: "",
+        showticklabels: false,
         showline: true,
         mirror: true,
         linewidth: 1,
@@ -445,23 +447,23 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         anchor: "x",
       },
       shapes: [
-        ...Array(cellTypes.length - 1)
-          .fill(0)
-          .map((_, i) => ({
-            type: "line",
-            xref: "paper",
-            yref: "paper", // coordinates relative to entire plot (0-1)
-            x0: 0,
-            x1: 1,
-            y0: (i + 2) / (cellTypes.length + 1),
-            y1: (i + 2) / (cellTypes.length + 1),
-            line: {
-              color: "black",
-              width: 1,
-              dash: "dot",
-            },
-            layer: "above",
-          })),
+        // ...Array(cellTypes.length - 1)
+        //   .fill(0)
+        //   .map((_, i) => ({
+        //     type: "line",
+        //     xref: "paper",
+        //     yref: "paper", // coordinates relative to entire plot (0-1)
+        //     x0: 0,
+        //     x1: 1,
+        //     y0: (i + 2) / (cellTypes.length + 1),
+        //     y1: (i + 2) / (cellTypes.length + 1),
+        //     line: {
+        //       color: "black",
+        //       width: 1,
+        //       dash: "dot",
+        //     },
+        //     layer: "above",
+        //   })),
         {
           type: "rect",
           xref: "paper",
@@ -475,50 +477,71 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           layer: "below",
           line: { width: 0 },
         },
-        {
-          type: "line",
-          xref: "paper",
-          yref: "y",
-          x0: 0,
-          x1: 1,
-          y0: 0,
-          y1: 0,
-          line: {
-            color: "black",
-            width: 1,
-            dash: "dash",
+        // {
+        //   type: "line",
+        //   xref: "paper",
+        //   yref: "y",
+        //   x0: 0,
+        //   x1: 1,
+        //   y0: 0,
+        //   y1: 0,
+        //   line: {
+        //     color: "black",
+        //     width: 1,
+        //     dash: "dash",
+        //   },
+        //   layer: "below",
+        // },
+        ...cellTypes.flatMap((celltype, i) => [
+          {
+            type: "rect",
+            xref: "paper",
+            yref: `y${i + 2}`,
+            x0: 0,
+            x1: 1,
+            y0: -2,
+            y1: 2,
+            fillcolor: "lightgray",
+            opacity: 0.3,
+            // layer: "below",
+            line: { width: 0 },
           },
-          layer: "below",
-        },
+          // {
+          //   type: "line",
+          //   xref: "paper",
+          //   yref: `y${i + 2}`,
+          //   x0: 0,
+          //   x1: 1,
+          //   y0: 0,
+          //   y1: 0,
+          //   line: {
+          //     color: "black",
+          //     width: 1,
+          //     dash: "dash",
+          //   },
+          //   layer: "below",
+          // },
+        ]),
       ],
       annotations: [
-        {
-          text: "−log10(p)",
-          font: {
-            size: 16,
-          },
-          xref: "paper",
-          yref: "paper",
-          x: -0.07, // Position to the left of the y-axis
-          y: 0.5, // Center vertically
-          showarrow: false,
-          textangle: -90, // Rotate vertically
-          xanchor: "center",
-          yanchor: "middle",
-        },
-        {
-          text: "Genomic Position",
-          font: {
-            size: 16,
-          },
-          xref: "paper",
-          yref: "paper",
-          x: 0.5, // Position to the left of the y-axis
-          y: -0.05, // Center vertically
-          showarrow: false,
-          xanchor: "center",
-          yanchor: "middle",
-        },
+        ...cellTypes.map((celltype, i) => {
+          const start = (heightPerTrack + subplotSpacing) * (i + 1);
+          const top = start + heightPerTrack;
+
+          return {
+            text: celltype,
+            font: {
+              size: 16,
+            },
+            xref: "paper",
+            yref: "paper",
+            x: 0.001,
+            y: top,
+            showarrow: false,
+            xanchor: "left",
+            yanchor: "top",
+          };
+        }),
       ],
     }),
     [geneName, cellTypes, initialXRange, nearbyGenesRange, initialYRange],

@@ -493,21 +493,20 @@ function RegionView() {
               disabled={loading || dataLoading}
               onClick={handleLoadPlot}
             >
-              {loading ? "Loading plots..." : "Refresh Plots"}
+              {loading || dataLoading ? "Loading plots..." : "Refresh Plots"}
             </Button>
           </Box>
         </div>
 
         {/* Left UMAP Plot Area (80%) */}
         <div className="plot-main">
-          {dataLoading ||
-            (isRenderingGraphs && (
-              <>
-                <Box sx={{ width: "100%" }}>
-                  <LinearProgress />
-                </Box>
-              </>
-            ))}
+          {(dataLoading || isRenderingGraphs) && (
+            <>
+              <Box sx={{ width: "100%" }}>
+                <LinearProgress />
+              </Box>
+            </>
+          )}
 
           {datasetId === "" || datasetId === "all" || datasetId == null ? (
             <Typography

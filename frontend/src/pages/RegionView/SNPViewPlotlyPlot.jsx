@@ -310,7 +310,6 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   // Plotly layout
   const layout = useMemo(
     () => ({
-      title: `Genes around ${snpName} (${celltype})`,
       plot_bgcolor: "white",
       paper_bgcolor: "#f5f5f5",
       showlegend: false,
