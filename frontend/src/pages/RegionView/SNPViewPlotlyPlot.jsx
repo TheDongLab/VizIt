@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -36,6 +36,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   snpName,
   snps,
   geneData,
+  chromosome,
   cellTypes,
   handleSelect,
 }) {
@@ -351,10 +352,13 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   // Plotly layout
   const layout = useMemo(
     () => ({
-      // plot_bgcolor: "rgba(0,0,0,0)", // Transparent background
+      title: {
+        text: `<b>${snpName}</b><br>${chromosome}`,
+        font: { size: 20 },
+      },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
       showlegend: false,
-      margin: { l: "auto", r: 1, t: 1, b: "auto" },
+      margin: { l: 80, r: 80, t: 80, b: 80 },
       autosize: true,
       dragmode: "pan",
       grid: {
@@ -493,7 +497,17 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         }),
       ],
     }),
-    [cellTypes, initialXRange, nearbySnpsRange, heightPerTrack, initialYRange],
+    [
+      snpName,
+      chromosome,
+      cellTypes,
+      initialXRange,
+      nearbySnpsRange,
+      xMin,
+      xMax,
+      heightPerTrack,
+      initialYRange,
+    ],
   );
 
   // TODO test this instead of my thing
@@ -598,6 +612,7 @@ SNPViewPlotlyPlot.propTypes = {
       }),
     ),
   ).isRequired,
+  chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
 };

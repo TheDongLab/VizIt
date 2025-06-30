@@ -251,7 +251,10 @@ function RegionView() {
       setDataLoading(true);
       await fetchSnpCellTypes(datasetId);
       await fetchSnpChromosome(datasetId);
-      const locations = await fetchSnpLocations(datasetId, 2000000);
+      console.time("fetchSnpLocations");
+      const locations = await fetchSnpLocations(datasetId, 1500000);
+      console.log("SNP locations fetched:", locations.length);
+      console.timeEnd("fetchSnpLocations");
       setSnps(locations);
 
       await fetchGeneData(datasetId);
@@ -361,7 +364,7 @@ function RegionView() {
       </Box>
       <Divider />
       <div className="plot-content">
-        {/* Right Panel for Sample & Gene Selection (20%) */}
+        {/* Left Panel for Gene and SNP Selection (20%) */}
         <div className="plot-panel">
           <ConfirmationDialog
             isOpen={isDialogOpen}
@@ -377,7 +380,6 @@ function RegionView() {
             disableListWrap
             options={datasetOptions}
             value={datasetId}
-            /* value={datasetOptions.includes(datasetId) ? datasetId : null} */
             onChange={handleDatasetChange}
             inputValue={datasetSearchText}
             onInputChange={(event, newInputValue) =>
@@ -416,7 +418,7 @@ function RegionView() {
             Search Gene or SNP
           </Typography>
 
-          {/* Gene Selection with Fuzzy Search & Chips */}
+          {/* Gene Selection */}
           <Autocomplete
             /* multiple */
             disableListWrap
@@ -448,7 +450,7 @@ function RegionView() {
             )}
           />
 
-          {/* SNP Selection with Fuzzy Search & Chips */}
+          {/* SNP Selection */}
           <Autocomplete
             disableListWrap
             size="small"
@@ -479,7 +481,7 @@ function RegionView() {
             )}
           />
 
-          {/* a button to fetch data and a loading indicator*/}
+          {/* Button to fetch data and a loading indicator*/}
           <Box
             sx={{
               display: "flex",
@@ -498,7 +500,7 @@ function RegionView() {
           </Box>
         </div>
 
-        {/* Left UMAP Plot Area (80%) */}
+        {/* Rirhg Plot Area (80%) */}
         <div className="plot-main">
           {(dataLoading || isRenderingGraphs) && (
             <>
@@ -519,42 +521,6 @@ function RegionView() {
             <Typography color="error">{error}</Typography>
           ) : (
             <div className="qtl-container">
-              {/* Gene View Label */}
-              {selectedGene && selectedChromosome && (
-                <div key={`${selectedGene}-label`} className="view-label">
-                  <Box
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="center"
-                    justifyContent="center"
-                    sx={{ mt: 1 }}
-                  >
-                    <Typography variant="h6">Gene: {selectedGene}</Typography>
-                    <Typography variant="h6">
-                      Chromosome: {selectedChromosome}
-                    </Typography>
-                  </Box>
-                </div>
-              )}
-
-              {/* SNP View Label */}
-              {selectedSnp && selectedChromosome && (
-                <div key={`${selectedSnp}-label`} className="view-label">
-                  <Box
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="center"
-                    justifyContent="center"
-                    sx={{ mt: 1 }}
-                  >
-                    <Typography variant="h6">SNP: {selectedSnp}</Typography>
-                    <Typography variant="h6">
-                      Chromosome: {selectedChromosome}
-                    </Typography>
-                  </Box>
-                </div>
-              )}
-
               {/* Plot Container */}
               <div
                 key={`${selectedGene || selectedSnp || "plot"}-view`}
@@ -564,12 +530,14 @@ function RegionView() {
                 (selectedGene || selectedSnp) ? (
                   selectedGene ? (
                     !dataLoading &&
-                    !loading && (
+                    !loading &&
+                    selectedChromosome && (
                       <div key={`${selectedGene}-plot`} className="gene-plot">
                         <GeneViewPlotlyPlot
                           geneName={selectedGene}
                           genes={genes}
                           snpData={snpData}
+                          chromosome={selectedChromosome}
                           cellTypes={selectedCellTypes}
                           handleSelect={handleSelect}
                         />
@@ -577,12 +545,14 @@ function RegionView() {
                     )
                   ) : selectedSnp ? (
                     !dataLoading &&
-                    !loading && (
+                    !loading &&
+                    selectedChromosome && (
                       <div key={`${selectedSnp}-plot`} className="snp-plot">
                         <SNPViewPlotlyPlot
                           snpName={selectedSnp}
                           snps={snps}
                           geneData={geneData}
+                          chromosome={selectedChromosome}
                           cellTypes={selectedCellTypes}
                           handleSelect={handleSelect}
                         />

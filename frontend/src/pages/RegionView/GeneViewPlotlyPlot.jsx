@@ -36,6 +36,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   geneName,
   genes,
   snpData,
+  chromosome,
   cellTypes,
   handleSelect,
 }) {
@@ -46,7 +47,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   // });
   // const [displayScale, setDisplayScale] = useState(1);
 
-  const celltype = "Astrocytes"; // TODO: make this dynamic
   const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
     snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
@@ -200,7 +200,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const isTargetGene = (gene) => gene.gene_id === geneName;
 
     const otherGenes = genes.filter((g) => !isTargetGene(g));
-    const targetGene = genes.find((g) => isTargetGene(g));
+    const targetGene = gene;
+    if (!targetGene) return [];
 
     // We need null values to create breaks in the line
     const others = {
@@ -283,7 +284,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     };
 
     return [others, target];
-  }, [geneName, genes, jitterMap]);
+  }, [gene, geneName, genes, jitterMap]);
 
   // Handle clicking points
   const onClick = (data) => {
@@ -377,11 +378,13 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   // Plotly layout
   const layout = useMemo(
     () => ({
-      // plot_bgcolor: "rgba(0,0,0,0)", // Transparent background
+      title: {
+        text: `<b>${geneName}</b><br>${chromosome}`,
+        font: { size: 20 },
+      },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
       showlegend: false,
-      // automargin: true,
-      margin: { l: "auto", r: 1, t: 1, b: "auto" },
+      margin: { l: 80, r: 80, t: 80, b: 80 },
       autosize: true,
       dragmode: "pan",
       grid: {
@@ -559,6 +562,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       ],
     }),
     [
+      geneName,
+      chromosome,
       cellTypes,
       initialXRange,
       nearbyGenesRange,
@@ -671,6 +676,7 @@ GeneViewPlotlyPlot.propTypes = {
       }),
     ),
   ).isRequired,
+  chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
 };

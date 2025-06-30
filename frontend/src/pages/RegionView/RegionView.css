@@ -123,3 +123,9 @@
     flex: 1;
     height: 100%;
 }
+
+/* Position the modebar inside the plot area */
+.modebar-container {
+    top: 80px !important;
+    right: 80px !important;
+}
