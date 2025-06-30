@@ -17,6 +17,7 @@ import {
   DialogContentText,
 } from "@mui/material";
 import { PropTypes } from "prop-types";
+import { debounce } from "@mui/material/utils";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import { useSearchParams } from "react-router-dom";
@@ -170,7 +171,7 @@ function RegionView() {
     setQueryParams(newParams);
   }, [datasetId, selectedGene, selectedSnp, setQueryParams]);
 
-  const listLength = 15000; // Limit the list length for performance
+  const listLength = 1000; // Limit the list length for performance
 
   const initialSlicedGeneList = useMemo(() => {
     return geneList.slice(0, listLength);
@@ -188,40 +189,74 @@ function RegionView() {
     setFilteredGeneList(initialSlicedGeneList);
   }, [initialSlicedGeneList]);
 
+  const indexedGeneList = useMemo(
+    () =>
+      geneList.map((gene) => ({
+        original: gene,
+        lowercaseId: gene.toLowerCase(),
+      })),
+    [geneList],
+  );
+
+  const indexedSnpList = useMemo(
+    () =>
+      snpList.map((snp) => ({
+        original: snp,
+        lowercaseId: snp.toLowerCase(),
+      })),
+    [snpList],
+  );
+
+  const debouncedGeneFilter = useMemo(
+    () =>
+      debounce((value, setFn) => {
+        const results = indexedGeneList
+          .filter((item) => item.lowercaseId.includes(value.toLowerCase()))
+          .map((item) => item.original);
+        setFn(results.slice(0, listLength));
+      }, 120),
+    [indexedGeneList],
+  );
+
   const handleGeneInputChange = (event, value) => {
     setGeneSearchText(value);
     if (!value || value === selectedGene) {
       setFilteredGeneList(initialSlicedGeneList);
     } else {
-      const results = geneList.filter((id) =>
-        id.toLowerCase().includes(value.toLowerCase()),
-      );
-      setFilteredGeneList(results.slice(0, listLength));
+      debouncedGeneFilter(value, setFilteredGeneList);
     }
   };
 
+  const debouncedSnpFilter = useMemo(
+    () =>
+      debounce((value, setFn) => {
+        const results = indexedSnpList
+          .filter((item) => item.lowercaseId.includes(value.toLowerCase()))
+          .map((item) => item.original);
+        setFn(results.slice(0, listLength));
+      }, 120),
+    [indexedSnpList],
+  );
+
   const handleSnpInputChange = (event, value) => {
     setSnpSearchText(value);
-    if (!value || value === "rs") {
+    if (!value) {
       // Ignore if only the prefix is provided. There are some SNPs that aren't
       // stored in rsID format, but those are rare.
       setFilteredSnpList(initialSlicedSnpList);
     } else {
-      const results = snpList.filter((id) =>
-        id.toLowerCase().includes(value.toLowerCase()),
-      );
-      setFilteredSnpList(results.slice(0, listLength));
+      debouncedSnpFilter(value, setFilteredSnpList);
     }
   };
 
   const handleGeneAutocompleteOpen = () => {
-    if (geneSearchText == selectedGene) {
+    if (geneSearchText === selectedGene) {
       setFilteredGeneList(initialSlicedGeneList);
     }
   };
 
   const handleSnpAutocompleteOpen = () => {
-    if (snpSearchText == selectedSnp) {
+    if (snpSearchText === selectedSnp) {
       setFilteredSnpList(initialSlicedSnpList);
     }
   };
