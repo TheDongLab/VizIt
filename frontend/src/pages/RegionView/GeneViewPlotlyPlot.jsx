@@ -157,7 +157,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
               `<b>SNP:</b> ${snp.id}<br>` +
               `<b>Position:</b> ${snp.x}<br>` +
               `<b>β:</b> ${formatNumber(snp.beta, 3)}<br>` +
-              `−<b>log10(p):</b> ${formatNumber(snp.y, 3)}`,
+              `<b>−log10(p):</b> ${formatNumber(snp.y, 3)}`,
           ),
           pointType: "snp",
         },
@@ -305,28 +305,54 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const point = data.points[0];
     const pointData = point.data;
     const pointType = pointData.pointType;
+    const name = point.customdata || pointData.name;
 
     if (pointType === "snp") {
-      const name = point.customdata || pointData.name;
-      const data = combinedSnpList.find((s) => s.id === name);
-      if (!data) return;
+      const data = combinedSnpList.filter((s) => s.id === name);
+      if (!data || data.length === 0) return;
 
       const formattedData = (
         <>
-          <strong>SNP:</strong> {data.id}
+          <strong>SNP:</strong> {data[0].id}
           <br />
-          <strong>Position:</strong> {data.x}
+          <strong>Position:</strong> {data[0].x}
           <br />
-          <strong>β:</strong> {formatNumber(data.beta, 6)}
-          <br />−<strong>log10(p):</strong>{" "}
-          {formatNumber(data.y * Math.sign(data.beta), 6)}
+          {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
+          {/* <br />−<strong>log10(p):</strong>{" "} */}
+          {/* {formatNumber(data.y * Math.sign(data.beta), 6)} */}
+          {/* Group each cell‑type’s stats on the same row */}
+          <table
+            style={{
+              marginTop: "0.75em",
+              borderCollapse: "collapse",
+              width: "100%",
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Cell Type</th>
+                <th style={{ textAlign: "right" }}>β</th>
+                <th style={{ textAlign: "right" }}>−log10(p)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((d, idx) => (
+                <tr key={idx}>
+                  <td>{d.celltype}</td>
+                  <td style={{ textAlign: "right" }}>
+                    {formatNumber(d.beta, 3)}
+                  </td>
+                  <td style={{ textAlign: "right" }}>{formatNumber(d.y, 3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       );
 
       handleSelect(name, formattedData);
       return;
     } else if (pointType === "gene") {
-      const name = point.customdata || pointData.name;
       console.log("Clicked gene:", name);
       const data = genes.find((g) => g.gene_id === name);
       if (!data) return;
