@@ -167,14 +167,11 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
 
   const jitterMap = useMemo(() => {
     const map = new Map();
-    const minDistanceFromZero = 0.25;
     const maxAmplitude = 1.75;
 
     genes.forEach((gene) => {
       const sign = Math.random() > 0.5 ? 1 : -1;
-      const amplitude =
-        minDistanceFromZero +
-        Math.random() * (maxAmplitude - minDistanceFromZero);
+      const amplitude = Math.random() * maxAmplitude;
       map.set(gene.gene_id, sign * amplitude);
     });
     return map;
@@ -195,12 +192,23 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   //   return () => resizeObserver.disconnect();
   // }, [updateScale]);
 
-  // maybe useMemo
-
   const geneTraces = useMemo(() => {
+    const getStart = (gene) =>
+      gene.strand === "-" ? gene.position_end : gene.position_start;
+    const getEnd = (gene) =>
+      gene.strand === "-" ? gene.position_start : gene.position_end;
+    const isTargetGene = (gene) => gene.gene_id === geneName;
+
+    const otherGenes = genes.filter((g) => !isTargetGene(g));
+    const targetGene = genes.find((g) => isTargetGene(g));
+
+    // We need null values to create breaks in the line
     const others = {
-      x: [],
-      y: [],
+      x: otherGenes.flatMap((gene) => [getStart(gene), getEnd(gene), null]),
+      y: otherGenes.flatMap((gene) => {
+        const jitter = jitterMap.get(gene.gene_id);
+        return [jitter, jitter, null];
+      }),
       xaxis: "x",
       yaxis: "y",
       type: "scatter",
@@ -210,91 +218,71 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         width: 2,
       },
       marker: {
-        symbol: [],
-        size: [],
-        color: [],
-        opacity: [],
+        symbol: otherGenes.flatMap((gene) => [
+          "circle",
+          gene.strand === "-" ? "triangle-left" : "triangle-right",
+          null,
+        ]),
+        size: otherGenes.flatMap(() => [0, 8, null]),
+        color: otherGenes.flatMap(() => [
+          "rgb(161,161,161)",
+          "rgb(161,161,161)",
+          null,
+        ]),
+        opacity: otherGenes.flatMap(() => [0, 1, null]),
       },
-      text: [],
-      customdata: [],
-      textposition: "none",
+      customdata: otherGenes.flatMap((gene) => [
+        gene.gene_id,
+        gene.gene_id,
+        null,
+      ]),
       hoverinfo: "text",
-      hovertext: [],
+      hovertext: otherGenes.flatMap((gene) => {
+        const text =
+          `<b>Gene:</b> ${gene.gene_id}<br>` +
+          `<b>Start:</b> ${gene.position_start}<br>` +
+          `<b>End:</b> ${gene.position_end}<br>` +
+          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`;
+        return [text, text, null];
+      }),
       name: "Nearby Genes",
       pointType: "gene",
       showlegend: false,
     };
 
-    let targetTrace = null;
-    let labelTrace = null;
+    const target = {
+      x: [getStart(targetGene), getEnd(targetGene)],
+      y: [0, 0],
+      xaxis: "x",
+      yaxis: "y",
+      type: "scatter",
+      mode: "lines+markers",
+      line: {
+        color: "black",
+        width: 3,
+      },
+      marker: {
+        symbol: [
+          "circle",
+          targetGene.strand === "-" ? "triangle-left" : "triangle-right",
+        ],
+        size: [0, 12],
+        color: ["black", "black"],
+        opacity: [0, 1],
+      },
+      customdata: [targetGene.gene_id],
+      hoverinfo: "text",
+      hovertext:
+        `<b>Gene:</b> ${targetGene.gene_id}<br>` +
+        `<b>Start:</b> ${targetGene.position_start}<br>` +
+        `<b>End:</b> ${targetGene.position_end}<br>` +
+        `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : "+"}`,
+      name: targetGene.gene_id,
+      pointType: "gene",
+      showlegend: false,
+    };
 
-    for (const gene of genes) {
-      const isTarget = gene.gene_id === geneName;
-      const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
-      const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
-      const y = isTarget ? 0 : jitterMap.get(gene.gene_id);
-      const arrowSymbol =
-        gene.strand === "-" ? "triangle-left" : "triangle-right";
-      const hover =
-        `<b>Gene:</b> ${gene.gene_id}<br>` +
-        `<b>Start:</b> ${gene.position_start}<br>` +
-        `<b>End:</b> ${gene.position_end}<br>` +
-        `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`;
-      const customData = `${gene.gene_id}`;
-
-      if (isTarget) {
-        targetTrace = {
-          x: [x0, x1],
-          y: [y, y],
-          xaxis: "x",
-          yaxis: "y",
-          type: "scatter",
-          mode: "lines+markers",
-          line: {
-            color: "black",
-            width: 3,
-          },
-          marker: {
-            symbol: ["circle", arrowSymbol],
-            size: [0, 12],
-            color: ["black", "black"],
-            opacity: [0, 1],
-          },
-          customdata: [customData],
-          hoverinfo: "text",
-          hovertext: hover,
-          name: gene.gene_id,
-          pointType: "gene",
-          showlegend: false,
-        };
-
-        labelTrace = {
-          x: [(x0 + x1) / 2],
-          y: [y - 0.2],
-          type: "scatter",
-          mode: "text",
-          text: [gene.gene_id],
-          textposition: "bottom center",
-          showlegend: false,
-          hoverinfo: "skip",
-          textfont: {
-            color: "black",
-          },
-        };
-      } else {
-        others.x.push(x0, x1, null);
-        others.y.push(y, y, null);
-        others.marker.symbol.push("circle", arrowSymbol, null);
-        others.marker.size.push(0, 8, null);
-        others.marker.color.push("rgb(161,161,161)", "rgb(161,161,161)", null);
-        others.marker.opacity.push(0, 1, null);
-        others.text.push("", "", null);
-        others.customdata.push(customData, customData, null);
-        others.hovertext.push(hover, hover, null);
-      }
-    }
-
-    return targetTrace ? [others, targetTrace, labelTrace] : [others];
+    return [others, target];
   }, [geneName, genes, jitterMap]);
 
   // Handle clicking points
@@ -406,8 +394,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       xaxis: {
         title: { text: `Genomic Position` },
         range: initialXRange,
-        minallowed: nearbyGenesRange[0],
-        maxallowed: nearbyGenesRange[1],
+        minallowed: Math.min(nearbyGenesRange[0], xMin),
+        maxallowed: Math.max(nearbyGenesRange[1], xMax),
         autorange: false,
         tickfont: { size: 10 },
         showgrid: true,
@@ -570,7 +558,15 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         }),
       ],
     }),
-    [geneName, cellTypes, initialXRange, nearbyGenesRange, initialYRange],
+    [
+      cellTypes,
+      initialXRange,
+      nearbyGenesRange,
+      xMin,
+      xMax,
+      heightPerTrack,
+      initialYRange,
+    ],
   );
 
   // TODO test this instead of my thing
@@ -619,7 +615,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${geneName}-${celltype}`, // TODO name
+            filename: `BDP_png-${geneName}`, // TODO name
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           modeBarButtonsToRemove: [
@@ -636,7 +632,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 click: function (gd) {
                   Plotly.downloadImage(gd, {
                     format: "svg",
-                    filename: `BDP_svg-${geneName}-${celltype}`, // TODO name
+                    filename: `BDP_svg-${geneName}`, // TODO name
                   });
                 },
               },
