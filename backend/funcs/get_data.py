@@ -75,10 +75,13 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
         chromosome_file = os.path.join(
             "backend", "datasets", dataset, "gene_locations", chromosome + ".parquet"
         )
+        significant_genes_list = get_qtl_gene_list(dataset)
 
         if os.path.exists(chromosome_file):
             df = pl.read_parquet(chromosome_file).filter(
-                (pl.col("position_start") >= start) & (pl.col("position_end") <= end)
+                (pl.col("position_start") >= start)
+                & (pl.col("position_end") <= end)
+                & pl.col("gene_id").is_in(significant_genes_list)
             )
 
             if not df.is_empty():
@@ -98,10 +101,13 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
         chromosome_file = os.path.join(
             "backend", "datasets", dataset, "snp_locations", chromosome + ".parquet"
         )
+        significant_snps_list = get_qtl_snp_list(dataset)
 
         if os.path.exists(chromosome_file):
             df = pl.read_parquet(chromosome_file).filter(
-                (pl.col("position") >= start) & (pl.col("position") <= end)
+                (pl.col("position") >= start)
+                & (pl.col("position") <= end)
+                & pl.col("snp_id").is_in(significant_snps_list)
             )
             if not df.is_empty():
                 df = df.drop_nulls()
