@@ -286,10 +286,7 @@ function RegionView() {
       setDataLoading(true);
       await fetchSnpCellTypes(datasetId);
       await fetchSnpChromosome(datasetId);
-      console.time("fetchSnpLocations");
       const locations = await fetchSnpLocations(datasetId, 1500000);
-      console.log("SNP locations fetched:", locations.length);
-      console.timeEnd("fetchSnpLocations");
       setSnps(locations);
 
       await fetchGeneData(datasetId);
@@ -342,44 +339,6 @@ function RegionView() {
   const handleConfirm = () => {
     setIsDialogOpen(false);
   };
-
-  const [renderedGraphs, setRenderedGraphs] = useState([]);
-  const [isRenderingGraphs, setIsRenderingGraphs] = useState(false);
-
-  useEffect(() => {
-    if (!selectedCellTypes.length || dataLoading || loading) {
-      setRenderedGraphs([]);
-      return;
-    }
-
-    const renderGraphsIncrementally = async () => {
-      setRenderedGraphs([]);
-      setIsRenderingGraphs(true);
-
-      const cellTypesToRender = selectedCellTypes.filter((cellType) =>
-        selectedGene ? snpData[cellType] : geneData[cellType],
-      );
-
-      for (let i = 0; i < cellTypesToRender.length; i++) {
-        const cellType = cellTypesToRender[i];
-        await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay
-
-        setRenderedGraphs((prev) => [...prev, cellType]);
-      }
-
-      setIsRenderingGraphs(false);
-    };
-
-    renderGraphsIncrementally();
-  }, [
-    selectedCellTypes,
-    selectedGene,
-    selectedSnp,
-    snpData,
-    geneData,
-    dataLoading,
-    loading,
-  ]);
 
   // Set the initial selected gene and SNP from URL parameters
   useEffect(() => {
@@ -537,7 +496,7 @@ function RegionView() {
 
         {/* Rirhg Plot Area (80%) */}
         <div className="plot-main">
-          {(dataLoading || isRenderingGraphs) && (
+          {dataLoading && (
             <>
               <Box sx={{ width: "100%" }}>
                 <LinearProgress />
