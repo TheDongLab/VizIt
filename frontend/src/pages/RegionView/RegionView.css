@@ -24,6 +24,33 @@
     height: 100%;
 }
 
+.selection-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    flex-wrap: wrap;
+}
+
+.control-group button {
+    align-self: start;
+    width: auto !important;
+}
+
+.gene-snp-row {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.gene-snp-row > * {
+    flex: 1;
+}
+
 .plot-main {
     display: flex;
     flex-direction: column;

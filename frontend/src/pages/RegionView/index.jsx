@@ -140,16 +140,6 @@ function RegionView() {
             setSelectedSnp("");
           }
         }
-
-        // if (selectedGene && selectedGene !== "") {
-        //   await fetchGeneCellTypes(datasetId);
-        //   await fetchSnpData(datasetId);
-        // }
-
-        // if (selectedSnp && selectedSnp !== "") {
-        //   await fetchSnpCellTypes(datasetId);
-        //   await fetchGeneData(datasetId);
-        // }
       } catch (error) {
         console.error("Error in data fetching:", error);
       }
@@ -160,8 +150,10 @@ function RegionView() {
 
   const [geneSearchText, setGeneSearchText] = useState("");
   const [snpSearchText, setSnpSearchText] = useState("");
+  const [combinedSearchText, setCombinedSearchText] = useState("");
   const [filteredGeneList, setFilteredGeneList] = useState([]);
   const [filteredSnpList, setFilteredSnpList] = useState([]);
+  const [filteredCombinedList, setFilteredCombinedList] = useState([]);
 
   useEffect(() => {
     const newParams = new URLSearchParams();
@@ -171,93 +163,62 @@ function RegionView() {
     setQueryParams(newParams);
   }, [datasetId, selectedGene, selectedSnp, setQueryParams]);
 
-  const listLength = 1000; // Limit the list length for performance
+  const combinedList = useMemo(() => {
+    return [
+      ...geneList.map((gene) => ({ type: "gene", id: gene })),
+      ...snpList.map((snp) => ({ type: "snp", id: snp })),
+    ];
+  }, [geneList, snpList]);
 
-  const initialSlicedGeneList = useMemo(() => {
-    return geneList.slice(0, listLength);
-  }, [geneList, listLength]);
+  const listLength = 500; // Limit the list length for performance
 
-  const initialSlicedSnpList = useMemo(() => {
-    return snpList.slice(0, listLength);
-  }, [snpList, listLength]);
+  const initialSlicedCombinedList = useMemo(() => {
+    return combinedList.slice(0, listLength);
+  }, [combinedList, listLength]);
 
   useEffect(() => {
-    setFilteredSnpList(initialSlicedSnpList);
-  }, [initialSlicedSnpList]);
+    setFilteredCombinedList(initialSlicedCombinedList);
+  }, [initialSlicedCombinedList]);
 
-  useEffect(() => {
-    setFilteredGeneList(initialSlicedGeneList);
-  }, [initialSlicedGeneList]);
-
-  const indexedGeneList = useMemo(
+  const indexedList = useMemo(
     () =>
-      geneList.map((gene) => ({
-        original: gene,
-        lowercaseId: gene.toLowerCase(),
+      combinedList.map((item) => ({
+        original: item,
+        lowercaseId: item.id.toLowerCase(),
       })),
-    [geneList],
+    [combinedList],
   );
 
-  const indexedSnpList = useMemo(
-    () =>
-      snpList.map((snp) => ({
-        original: snp,
-        lowercaseId: snp.toLowerCase(),
-      })),
-    [snpList],
-  );
-
-  const debouncedGeneFilter = useMemo(
+  const debouncedFilter = useMemo(
     () =>
       debounce((value, setFn) => {
-        const results = indexedGeneList
+        const results = indexedList
           .filter((item) => item.lowercaseId.includes(value.toLowerCase()))
           .map((item) => item.original);
         setFn(results.slice(0, listLength));
       }, 120),
-    [indexedGeneList],
+    [indexedList],
   );
 
-  const handleGeneInputChange = (event, value) => {
-    setGeneSearchText(value);
-    if (!value || value === selectedGene) {
-      setFilteredGeneList(initialSlicedGeneList);
-    } else {
-      debouncedGeneFilter(value, setFilteredGeneList);
-    }
-  };
-
-  const debouncedSnpFilter = useMemo(
-    () =>
-      debounce((value, setFn) => {
-        const results = indexedSnpList
-          .filter((item) => item.lowercaseId.includes(value.toLowerCase()))
-          .map((item) => item.original);
-        setFn(results.slice(0, listLength));
-      }, 120),
-    [indexedSnpList],
-  );
-
-  const handleSnpInputChange = (event, value) => {
-    setSnpSearchText(value);
+  const handleCombinedInputChange = (event, value) => {
+    setCombinedSearchText(value);
     if (!value) {
-      // Ignore if only the prefix is provided. There are some SNPs that aren't
-      // stored in rsID format, but those are rare.
-      setFilteredSnpList(initialSlicedSnpList);
+      setFilteredCombinedList(initialSlicedCombinedList);
     } else {
-      debouncedSnpFilter(value, setFilteredSnpList);
+      debouncedFilter(value, setFilteredCombinedList);
+      // const results = combinedList.filter((item) =>
+      //   item.id.toLowerCase().includes(value.toLowerCase()),
+      // );
+      // setFilteredCombinedList(results.slice(0, listLength));
     }
   };
 
-  const handleGeneAutocompleteOpen = () => {
-    if (geneSearchText === selectedGene) {
-      setFilteredGeneList(initialSlicedGeneList);
-    }
-  };
-
-  const handleSnpAutocompleteOpen = () => {
-    if (snpSearchText === selectedSnp) {
-      setFilteredSnpList(initialSlicedSnpList);
+  const handleCombinedAutocompleteOpen = () => {
+    if (
+      combinedSearchText === selectedGene ||
+      combinedSearchText === selectedSnp
+    ) {
+      setFilteredCombinedList(initialSlicedCombinedList);
     }
   };
 
@@ -304,14 +265,13 @@ function RegionView() {
     selectGeneOrSnp("reset", null);
   };
 
-  /** Handles gene selection change */
-  const handleGeneChange = async (event, newValue) => {
-    selectGeneOrSnp("gene", newValue);
-  };
-
-  /** Handles SNP selection change */
-  const handleSnpChange = async (event, newValue) => {
-    selectGeneOrSnp("snp", newValue);
+  const handleCombinedChange = async (event, newValue) => {
+    if (!newValue) return;
+    if (newValue.type === "gene") {
+      selectGeneOrSnp("gene", newValue.id);
+    } else if (newValue.type === "snp") {
+      selectGeneOrSnp("snp", newValue.id);
+    }
   };
 
   // click the button to fetch umap data
@@ -346,6 +306,24 @@ function RegionView() {
     if (urlSnp !== selectedSnp) setSelectedSnp(urlSnp || "");
   }, []);
 
+  const currentValue = useMemo(() => {
+    if (selectedGene) {
+      return (
+        combinedList.find(
+          (item) => item.type === "gene" && item.id === selectedGene,
+        ) ?? null
+      );
+    }
+    if (selectedSnp) {
+      return (
+        combinedList.find(
+          (item) => item.type === "snp" && item.id === selectedSnp,
+        ) ?? null
+      );
+    }
+    return null;
+  }, [combinedList, selectedGene, selectedSnp]);
+
   return (
     <div
       className="plot-page-container"
@@ -356,19 +334,12 @@ function RegionView() {
         <Typography variant="h6">xQTL View</Typography>
       </Box>
       <Divider />
-      <div className="plot-content">
-        {/* Left Panel for Gene and SNP Selection (20%) */}
-        <div className="plot-panel">
-          <ConfirmationDialog
-            isOpen={isDialogOpen}
-            handleClose={handleClose}
-            handleConfirm={handleConfirm}
-            title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
-            description={selectedPointData ?? "No additional data available."}
-          />
-          <Typography variant="subtitle1">Select a Dataset </Typography>
+      <div className="selection-row">
+        <div className="control-group">
+          {/* <Typography variant="subtitle1">Select a Dataset:</Typography> */}
           {/* Dataset Selection */}
           <Autocomplete
+            sx={{ width: "400px" }}
             size="small"
             disableListWrap
             options={datasetOptions}
@@ -402,26 +373,26 @@ function RegionView() {
                 {...params}
                 label="Dataset"
                 variant="standard"
-                style={{ marginBottom: "30px" }}
+                /* style={{ marginBottom: "30px" }} */
               />
             )}
           />
-
-          <Typography sx={{ marginTop: "10px" }} variant="subtitle1">
-            Search Gene or SNP
-          </Typography>
-
+        </div>
+        <div className="control-group">
+          {/* <label>Select Gene or SNP:</label> */}
           {/* Gene Selection */}
           <Autocomplete
             /* multiple */
+            sx={{ width: "400px" }}
             disableListWrap
             size="small"
-            options={filteredGeneList}
-            value={selectedGene}
-            onChange={handleGeneChange}
-            onOpen={handleGeneAutocompleteOpen}
-            inputValue={geneSearchText}
-            onInputChange={handleGeneInputChange}
+            options={filteredCombinedList}
+            value={currentValue}
+            onChange={handleCombinedChange}
+            onOpen={handleCombinedAutocompleteOpen}
+            inputValue={combinedSearchText}
+            onInputChange={handleCombinedInputChange}
+            /* isOptionEqualToValue={(option, value) => option.id === value.id} */
             slots={{
               popper: StyledPopper,
             }}
@@ -430,57 +401,59 @@ function RegionView() {
                 component: ListboxComponent,
               },
             }}
+            getOptionLabel={(option) => option.id || ""}
             renderOption={(props, option) => {
               const { key, ...rest } = props;
               return (
                 <li key={key} {...rest}>
-                  {option}
+                  {option.id}
                 </li>
               );
             }}
             renderInput={(params) => (
-              <TextField {...params} label="Search gene" variant="standard" />
+              <TextField {...params} label="Gene or SNP" variant="standard" />
             )}
           />
 
           {/* SNP Selection */}
-          <Autocomplete
-            disableListWrap
-            size="small"
-            options={filteredSnpList}
-            value={selectedSnp}
-            onChange={handleSnpChange}
-            onOpen={handleSnpAutocompleteOpen}
-            inputValue={snpSearchText}
-            onInputChange={handleSnpInputChange}
-            slots={{
-              popper: StyledPopper,
-            }}
-            slotProps={{
-              listbox: {
-                component: ListboxComponent,
-              },
-            }}
-            renderOption={(props, option) => {
-              const { key, ...rest } = props;
-              return (
-                <li key={key} {...rest}>
-                  {option}
-                </li>
-              );
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="Search SNP" variant="standard" />
-            )}
-          />
-
+          {/* <Autocomplete */}
+          {/*   disableListWrap */}
+          {/*   size="small" */}
+          {/*   options={filteredSnpList} */}
+          {/*   value={selectedSnp} */}
+          {/*   onChange={handleSnpChange} */}
+          {/*   onOpen={handleSnpAutocompleteOpen} */}
+          {/*   inputValue={snpSearchText} */}
+          {/*   onInputChange={handleSnpInputChange} */}
+          {/*   slots={{ */}
+          {/*     popper: StyledPopper, */}
+          {/*   }} */}
+          {/*   slotProps={{ */}
+          {/*     listbox: { */}
+          {/*       component: ListboxComponent, */}
+          {/*     }, */}
+          {/*   }} */}
+          {/*   renderOption={(props, option) => { */}
+          {/*     const { key, ...rest } = props; */}
+          {/*     return ( */}
+          {/*       <li key={key} {...rest}> */}
+          {/*         {option} */}
+          {/*       </li> */}
+          {/*     ); */}
+          {/*   }} */}
+          {/*   renderInput={(params) => ( */}
+          {/*     <TextField {...params} label="Search SNP" variant="standard" /> */}
+          {/*   )} */}
+          {/* /> */}
+        </div>
+        <div className="control-group">
           {/* Button to fetch data and a loading indicator*/}
           <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              margin: "20px 0px",
-            }}
+          /* sx={{ */
+          /*   display: "flex", */
+          /*   justifyContent: "center", */
+          /*   /\* margin: "20px 0px", *\/ */
+          /* }} */
           >
             <Button
               variant="outlined"
@@ -492,8 +465,17 @@ function RegionView() {
             </Button>
           </Box>
         </div>
+      </div>
+      <div className="plot-content">
+        <ConfirmationDialog
+          isOpen={isDialogOpen}
+          handleClose={handleClose}
+          handleConfirm={handleConfirm}
+          title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
+          description={selectedPointData ?? "No additional data available."}
+        />
 
-        {/* Rirhg Plot Area (80%) */}
+        {/* Plot Area */}
         <div className="plot-main">
           {dataLoading && (
             <>
