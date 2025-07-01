@@ -133,6 +133,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       : rounded.toString();
   };
 
+  // Primitive jitter due to large number of SNPs
   const jitterMap = useMemo(() => {
     const map = new Map();
     const maxAmplitude = 1.75;

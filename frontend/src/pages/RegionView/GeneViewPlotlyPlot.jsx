@@ -165,17 +165,59 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     });
   }, [cellTypes, snpData, minBetaMagnitude, maxBetaMagnitude]);
 
+  // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
     const map = new Map();
-    const maxAmplitude = 1.75;
+    const maxAmplitude = 1.55;
+    const maxXSpacing = combinedRange * 0.02;
+    const minYSpacing = 0.3;
+    const maxAttempts = 100;
 
-    genes.forEach((gene) => {
-      const sign = Math.random() > 0.5 ? 1 : -1;
-      const amplitude = Math.random() * maxAmplitude;
-      map.set(gene.gene_id, sign * amplitude);
-    });
+    const assigned = []; // array of { pos: number, jitter: number }
+
+    const sortedGenes = [...genes].sort(
+      (a, b) => a.position_start - b.position_start,
+    );
+
+    let numFallbacks = 0;
+
+    for (const gene of sortedGenes) {
+      let jitterValue;
+      let attempts = 0;
+
+      while (attempts < maxAttempts) {
+        const candidate = Math.random() * maxAmplitude;
+        const sign = Math.random() > 0.5 ? 1 : -1;
+        const jitter = sign * candidate;
+
+        const isTooClose = assigned.some(
+          ({ pos, jitter: prev }) =>
+            Math.abs(prev - jitter) < minYSpacing &&
+            Math.abs(pos - gene.position_start) < maxXSpacing,
+        );
+
+        if (!isTooClose) {
+          jitterValue = jitter;
+          break;
+        }
+
+        attempts++;
+      }
+
+      if (jitterValue === undefined) {
+        numFallbacks++;
+        jitterValue = (Math.random() - 0.5) * 2 * maxAmplitude;
+      }
+
+      assigned.push({ pos: gene.position_start, jitter: jitterValue });
+      map.set(gene.gene_id, jitterValue);
+    }
+
+    console.log(
+      `Assigned ${assigned.length} genes with ${numFallbacks} fallbacks`,
+    );
     return map;
-  }, [genes]);
+  }, [combinedRange, genes]);
 
   // Handle resize TODO
   // const updateScale = useCallback(() => {
@@ -286,7 +328,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       showlegend: false,
     };
 
-    const label = {
+    const targetLabel = {
       x: [(x0 + x1) / 2],
       y: [-0.2],
       type: "scatter",
@@ -300,7 +342,22 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       },
     };
 
-    return [others, target, label];
+    const otherLabels = {
+      x: otherGenes.flatMap((gene) => [(getStart(gene) + getEnd(gene)) / 2]),
+      y: otherGenes.flatMap((gene) => [jitterMap.get(gene.gene_id) - 0.2]),
+      type: "scatter",
+      mode: "text",
+      text: otherGenes.map((gene) => gene.gene_id),
+      textposition: "bottom center",
+      showlegend: false,
+      hoverinfo: "skip",
+      textfont: {
+        size: 10,
+        color: "rgb(161,161,161)",
+      },
+    };
+
+    return [others, otherLabels, target, targetLabel];
   }, [gene, geneName, genes, jitterMap]);
 
   // Handle clicking points
