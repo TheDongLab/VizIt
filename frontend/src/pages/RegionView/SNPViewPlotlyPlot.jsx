@@ -164,7 +164,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       },
       text: snps.map((s) => (s.snp_id === snpName ? s.snp_id : "")),
       customdata: snps.map((s) => s.snp_id),
-      textposition: "top center",
+      textposition: "bottom center",
       name: "SNPs",
       pointType: "snp",
       showlegend: false,
