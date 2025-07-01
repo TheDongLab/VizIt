@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -345,10 +345,34 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     }
   };
 
-  const subplotSpacing = 0.02;
-  const totalSubplots = cellTypes.length + 1; // +1 for the gene trace
-  const heightPerTrack =
-    (1 - subplotSpacing * (totalSubplots - 1)) / totalSubplots;
+  // Calculate layout dimensions
+  const pixelsPerTrack = 150;
+  const pixelsPerGap = 20;
+  const marginTop = 80;
+  const marginBottom = 80;
+  const marginLeft = 80;
+  const marginRight = 80;
+
+  const nTracks = cellTypes.length + 1; // +1 for the gene track
+  const totalHeight =
+    marginTop +
+    marginBottom +
+    nTracks * pixelsPerTrack +
+    (nTracks - 1) * pixelsPerGap;
+
+  // Normalized domain
+  const trackDomainHeight =
+    pixelsPerTrack / (totalHeight - marginTop - marginBottom);
+  const gapDomainHeight =
+    pixelsPerGap / (totalHeight - marginTop - marginBottom);
+
+  const calculateDomain = useCallback(
+    (trackIndex) => {
+      const start = trackIndex * (trackDomainHeight + gapDomainHeight);
+      return [start, start + trackDomainHeight];
+    },
+    [trackDomainHeight, gapDomainHeight],
+  );
 
   // Plotly layout
   const layout = useMemo(
@@ -359,7 +383,13 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
       showlegend: false,
-      margin: { l: 80, r: 80, t: 80, b: 80 },
+      margin: {
+        t: marginTop,
+        b: marginBottom,
+        l: marginLeft,
+        r: marginRight,
+      },
+      height: totalHeight,
       autosize: true,
       dragmode: "pan",
       grid: {
@@ -388,16 +418,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         anchor: "y",
       },
       ...cellTypes.reduce((acc, celltype, i) => {
-        const start = (heightPerTrack + subplotSpacing) * (i + 1);
-        const end = start + heightPerTrack;
-
         acc[`yaxis${i + 2}`] = {
           title: { text: `−log10(p)`, font: { size: 12 } },
-          // title: {
-          //   text: celltype,
-          //   standoff: i % 2 === 0 ? 35 : 5, // Add standoff for every second cell type
-          // },
-          domain: [start, end],
+          domain: calculateDomain(i + 1), // i+1 because first track is gene
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
@@ -417,7 +440,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       }, {}),
       yaxis: {
         autorange: false,
-        domain: [0, heightPerTrack],
+        domain: calculateDomain(0), // 0th track is for genes
         range: [-2, 2],
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,
@@ -460,27 +483,11 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             // layer: "below",
             line: { width: 0 },
           },
-          // {
-          //   type: "line",
-          //   xref: "paper",
-          //   yref: `y${i + 2}`,
-          //   x0: 0,
-          //   x1: 1,
-          //   y0: 0,
-          //   y1: 0,
-          //   line: {
-          //     color: "black",
-          //     width: 1,
-          //     dash: "dash",
-          //   },
-          //   layer: "below",
-          // },
         ]),
       ],
       annotations: [
         ...cellTypes.map((celltype, i) => {
-          const start = (heightPerTrack + subplotSpacing) * (i + 1);
-          const top = start + heightPerTrack;
+          const domain = calculateDomain(i + 1);
 
           return {
             text: celltype,
@@ -490,7 +497,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             xref: "paper",
             yref: "paper",
             x: 0.001,
-            y: top,
+            y: domain[1],
             showarrow: false,
             xanchor: "left",
             yanchor: "top",
@@ -506,7 +513,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       nearbySnpsRange,
       xMin,
       xMax,
-      heightPerTrack,
+      calculateDomain,
       initialYRange,
     ],
   );
