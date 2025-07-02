@@ -353,8 +353,7 @@ function RegionView() {
     >
       {/* Title Row */}
       <Box className="title-row">
-        {/* TODO */}
-        <Typography variant="h6">eQTL Region View</Typography>
+        <Typography variant="h6">xQTL View</Typography>
       </Box>
       <Divider />
       <div className="plot-content">

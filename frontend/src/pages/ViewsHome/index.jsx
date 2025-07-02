@@ -21,8 +21,8 @@ export default function HomePage() {
             href: "visiumview",
         },
         {
-            title: "Chr Region View",
-            description: "Investigate specific chromosomal regions and their associated genes and regulatory elements.",
+            title: "xQTL View",
+            description: "Investigate quantitative trait loci associated with gene expression and regulatory mechanisms.",
             icon: <ScanSearch size={48} style={{color: "#06b6d4"}}/>,
             href: "regionview",
         },
