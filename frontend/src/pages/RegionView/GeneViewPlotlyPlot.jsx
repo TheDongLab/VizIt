@@ -412,10 +412,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         </>
       );
 
-      handleSelect(name, formattedData);
+      handleSelect(name, formattedData, "snp");
       return;
     } else if (pointType === "gene") {
-      console.log("Clicked gene:", name);
       const data = genes.find((g) => g.gene_id === name);
       if (!data) return;
 
@@ -438,7 +437,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         </>
       );
 
-      handleSelect(name, formattedData);
+      handleSelect(name, formattedData, "gene");
       return;
     }
   };

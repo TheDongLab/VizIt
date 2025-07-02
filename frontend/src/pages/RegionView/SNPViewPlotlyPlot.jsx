@@ -314,7 +314,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           <strong>Position:</strong> {data.position}
         </>
       );
-      handleSelect(name, formattedData);
+      handleSelect(name, formattedData, "snp");
       return;
     } else if (pointType === "gene") {
       const data = combinedGeneList.filter((g) => g.id === name);
@@ -361,7 +361,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         </>
       );
 
-      handleSelect(name, formattedData);
+      handleSelect(name, formattedData, "gene");
       return;
     }
   };

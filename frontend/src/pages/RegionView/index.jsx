@@ -285,11 +285,13 @@ function RegionView() {
   // Handle clicking points
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [selectedPointData, setSelectedPointData] = useState(null);
+  const [type, setType] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleSelect = useCallback((name, data) => {
+  const handleSelect = useCallback((name, data, type) => {
     setSelectedPoint(name);
     setSelectedPointData(data);
+    setType(type);
     setIsDialogOpen(true);
   }, []);
 
@@ -301,6 +303,13 @@ function RegionView() {
 
   const handleConfirm = () => {
     setIsDialogOpen(false);
+    if (selectedPoint) {
+      if (type === "gene") {
+        selectGeneOrSnp("gene", selectedPoint);
+      } else if (type === "snp") {
+        selectGeneOrSnp("snp", selectedPoint);
+      }
+    }
   };
 
   // Set the initial selected gene and SNP from URL parameters
