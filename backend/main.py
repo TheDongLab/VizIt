@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db import create_db_and_tables
-from backend.routes import db_routes, api_routes, visium_routes, dm_routes
+from backend.routes import db_routes, api_routes, visium_routes, qtl_routes, dm_routes
 
 app = FastAPI()
 
@@ -25,6 +25,7 @@ async def root():
 app.include_router(db_routes.router, prefix="/db")
 app.include_router(api_routes.router, prefix="/api")
 app.include_router(visium_routes.router, prefix="/visium")
+app.include_router(qtl_routes.router, prefix="/qtl")
 app.include_router(dm_routes.router, prefix="/datasetmanage")
 
 if __name__ == "__main__":
