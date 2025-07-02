@@ -266,7 +266,10 @@ function RegionView() {
   };
 
   const handleCombinedChange = async (event, newValue) => {
-    if (!newValue) return;
+    if (!newValue) {
+      selectGeneOrSnp("reset", null);
+      return;
+    }
     if (newValue.type === "gene") {
       selectGeneOrSnp("gene", newValue.id);
     } else if (newValue.type === "snp") {
