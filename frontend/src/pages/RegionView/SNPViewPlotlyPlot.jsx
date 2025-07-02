@@ -159,10 +159,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       marker: {
         color: "rgb(161, 161, 161)",
         opacity: 1,
-        size: 8,
+        size: 6,
         line: {
-          width: 0.2,
-          opacity: 0.8,
+          width: 0,
         },
       },
       customdata: otherSnps.map((s) => s.snp_id),
@@ -181,10 +180,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       marker: {
         color: "black",
         opacity: 1,
-        size: 12,
+        size: 10,
         line: {
-          width: 0.2,
-          opacity: 0.8,
+          width: 0,
         },
       },
       text: [snp.snp_id],

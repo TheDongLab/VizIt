@@ -144,10 +144,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
               dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
             ),
             opacity: 1,
-            size: snpList.map((snp) => (Math.abs(snp.y) < 2 ? 8 : 10)),
+            size: snpList.map((snp) => (Math.abs(snp.y) < 2 ? 6 : 8)),
             line: {
-              width: 0.2,
-              opacity: 0.8,
+              width: 0,
             },
           },
           customdata: snpList.map((snp) => snp.id),
