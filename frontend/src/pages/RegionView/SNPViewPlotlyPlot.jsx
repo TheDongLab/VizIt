@@ -146,35 +146,58 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     return map;
   }, [snps]);
 
-  const snpTrace = useMemo(() => {
-    return {
-      x: snps.map((s) => s.position),
-      y: snps.map((s) => (s.snp_id === snpName ? 0 : jitterMap.get(s.snp_id))),
-      type: "scatter",
-      mode: "markers+text",
+  const snpTraces = useMemo(() => {
+    const otherSnps = snps.filter((s) => s.snp_id !== snpName);
+    const snp = snps.find((s) => s.snp_id === snpName);
+    if (!snp) return [];
+
+    const others = {
+      x: otherSnps.map((s) => s.position),
+      y: otherSnps.map((s) => jitterMap.get(s.snp_id)),
+      type: "scattergl",
+      mode: "markers",
       marker: {
-        color: snps.map((s) =>
-          s.snp_id === snpName ? "black" : "rgb(161, 161, 161)",
-        ),
+        color: "rgb(161, 161, 161)",
         opacity: 1,
-        size: snps.map((s) => (s.snp_id === snpName ? 12 : 8)),
+        size: 8,
         line: {
           width: 0.2,
           opacity: 0.8,
         },
       },
-      text: snps.map((s) => (s.snp_id === snpName ? s.snp_id : "")),
-      customdata: snps.map((s) => s.snp_id),
-      textposition: "bottom center",
-      name: "SNPs",
-      pointType: "snp",
-      showlegend: false,
+      customdata: otherSnps.map((s) => s.snp_id),
       hoverinfo: "text",
-      hovertext: snps.map(
+      hovertext: otherSnps.map(
         (s) =>
           `<b>SNP ID:</b> ${s.snp_id}<br><b>Position:</b> ${s.position}<br>`,
       ),
     };
+
+    const target = {
+      x: [snp.position],
+      y: [0],
+      type: "scatter",
+      mode: "markers+text",
+      marker: {
+        color: "black",
+        opacity: 1,
+        size: 12,
+        line: {
+          width: 0.2,
+          opacity: 0.8,
+        },
+      },
+      text: [snp.snp_id],
+      customdata: [snp.snp_id],
+      textposition: "bottom center",
+      name: "Target SNP",
+      pointType: "snp",
+      showlegend: false,
+      hoverinfo: "text",
+      hovertext: `<b>SNP ID:</b> ${snp.snp_id}<br><b>Position:</b> ${snp.position}<br>`,
+    };
+
+    return [others, target];
   }, [snps, snpName, jitterMap]);
 
   // Handle resize TODO
@@ -241,7 +264,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             y: [y0, y1],
             xaxis: "x",
             yaxis: `y${i + 2}`,
-            type: "scatter",
+            type: "scattergl",
             mode: "lines+markers",
             line: {
               color: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
@@ -552,7 +575,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     >
       <Plot
         onClick={onClick}
-        data={[...geneTraces, snpTrace]}
+        data={[...geneTraces, ...snpTraces]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
         useResizeHandler

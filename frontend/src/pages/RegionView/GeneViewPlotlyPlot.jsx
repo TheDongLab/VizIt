@@ -137,7 +137,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           y: snpList.map((snp) => snp.y),
           xaxis: "x",
           yaxis: `y${i + 2}`,
-          type: "scatter",
+          type: "scattergl",
           mode: "markers",
           marker: {
             color: snpList.map((snp) =>
