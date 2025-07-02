@@ -373,7 +373,7 @@ function RegionView() {
             size="small"
             disableListWrap
             options={datasetOptions}
-            value={datasetId}
+            value={datasetId ?? null}
             onChange={handleDatasetChange}
             inputValue={datasetSearchText}
             onInputChange={(event, newInputValue) =>
