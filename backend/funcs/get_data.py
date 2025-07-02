@@ -86,7 +86,8 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
 
             if not df.is_empty():
                 df = df.drop_nulls()
-                return df.to_dicts()
+
+                return {col: df.get_column(col).to_list() for col in df.columns}
             else:
                 return f"Error: No genes found in {chromosome} chromosome."
         else:
@@ -111,7 +112,7 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
             )
             if not df.is_empty():
                 df = df.drop_nulls()
-                return df.to_dicts()
+                return {col: df.get_column(col).to_list() for col in df.columns}
             else:
                 return f"Error: No SNPs found in {chromosome} chromosome."
         else:
@@ -294,7 +295,8 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
             ]
         ).drop_nulls()
 
-        return gene_df.to_dicts()
+        return gene_df.to_dict(as_series=False)
+        # return {col: gene_df.get_column(col).to_list() for col in gene_df.columns}
     else:
         print(data_file + " not found")
         return (
@@ -354,7 +356,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
             ]
         ).drop_nulls()
 
-        return snp_df.to_dicts()
+        return {col: snp_df.get_column(col).to_list() for col in snp_df.columns}
     else:
         print(data_file + " not found")
         return (

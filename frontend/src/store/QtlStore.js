@@ -14,6 +14,22 @@ import {
     getSnpLocationsInChromosome,
 } from "../api/qtl.js";
 
+function columnToRow(data) {
+    const keys = Object.keys(data);
+    const length = data[keys[0]].length;
+
+    const rows = [];
+    for (let i = 0; i < length; i++) {
+        const row = {};
+        for (const key of keys) {
+            row[key] = data[key][i];
+        }
+        rows.push(row);
+    }
+
+    return rows;
+}
+
 const useQtlStore = create((set, get) => ({
     dataset: null,
     selectedGene: null,
@@ -178,31 +194,22 @@ const useQtlStore = create((set, get) => ({
             return;
         }
         set({ loading: true, snpData: {} });
-        const cellTypes = get().selectedCellTypes;
+        const gene = get().selectedGene;
         // const loadingMap = new Map();
         // cellTypes.forEach((c) => loadingMap.set(c, true));
         // set({ loadingCellTypes: loadingMap, loading: false });
+        const promises = get().selectedCellTypes.map(async (c) => {
+            const response = await getSnpDataForGene(dataset, gene, c);
+            const snpData = response.data;
+            const snpDataRows = columnToRow(snpData);
+            return [c, snpDataRows];
+        });
 
         try {
-            for (const c of cellTypes) {
-                const response = await getSnpDataForGene(
-                    dataset,
-                    get().selectedGene,
-                    c,
-                );
-                const snpData = response.data;
+            const results = await Promise.all(promises);
 
-                // loadingMap.set(c, false);
-
-                set((state) => ({
-                    snpData: {
-                        ...state.snpData,
-                        [c]: snpData,
-                    },
-                    // loadingCellTypes: loadingMap,
-                }));
-            }
-            set({ loading: false });
+            const newSnpData = Object.fromEntries(results);
+            set({ snpData: newSnpData, loading: false });
         } catch (error) {
             console.error("Error fetching SNP data for gene:", error);
         }
@@ -218,31 +225,23 @@ const useQtlStore = create((set, get) => ({
             return;
         }
         set({ loading: true, geneData: {} });
-        const cellTypes = get().selectedCellTypes;
+        const snp = get().selectedSnp;
         // const loadingMap = new Map();
         // cellTypes.forEach((c) => loadingMap.set(c, true));
         // set({ loadingCellTypes: loadingMap, loading: false });
 
+        const promises = get().selectedCellTypes.map(async (c) => {
+            const response = await getGeneDataForSnp(dataset, snp, c);
+            const geneData = response.data;
+            const geneDataRows = columnToRow(geneData);
+            return [c, geneDataRows];
+        });
+
         try {
-            for (const c of cellTypes) {
-                const response = await getGeneDataForSnp(
-                    dataset,
-                    get().selectedSnp,
-                    c,
-                );
-                const geneData = response.data;
+            const results = await Promise.all(promises);
 
-                // loadingMap.set(c, false);
-
-                set((state) => ({
-                    geneData: {
-                        ...state.geneData,
-                        [c]: geneData,
-                    },
-                    // loadingCellTypes: loadingMap,
-                }));
-            }
-            set({ loading: false });
+            const newGeneData = Object.fromEntries(results);
+            set({ geneData: newGeneData, loading: false });
         } catch (error) {
             console.error("Error fetching gene data for SNP:", error);
         }
@@ -274,7 +273,8 @@ const useQtlStore = create((set, get) => ({
                 endPosition + radius,
             );
             const genes = response.data;
-            return genes;
+            const genesRows = columnToRow(genes);
+            return genesRows;
         } catch (error) {
             console.error("Error fetching gene locations:", error);
         }
@@ -305,7 +305,8 @@ const useQtlStore = create((set, get) => ({
                 position + radius,
             );
             const snps = response.data;
-            return snps;
+            const snpsRows = columnToRow(snps);
+            return snpsRows;
         } catch (error) {
             console.error("Error fetching SNP locations:", error);
         }
