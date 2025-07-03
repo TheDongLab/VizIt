@@ -22,9 +22,9 @@ export default function HomePage() {
         },
         {
             title: "xQTL View",
-            description: "Investigate specific chromosomal regions and their associated genes and regulatory elements.",
+            description: "Investigate quantitative trait loci associated with gene expression and regulatory mechanisms.",
             icon: <ScanSearch size={48} style={{color: "#06b6d4"}}/>,
-            href: "xqtlview",
+            href: "regionview",
         },
         {
             title: "Cell Type View",
