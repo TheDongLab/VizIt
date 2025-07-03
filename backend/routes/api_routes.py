@@ -7,13 +7,24 @@ from backend.funcs.get_data import *
 
 router = APIRouter()
 
+
 @router.get("/")
 async def read_root():
     return {"Message": "Hello API."}
 
 
+@router.get("/gethomedata")
+async def gethomedata(session: SessionDep):
+    print("gethomedata() called================")
+    response = get_home_data(session)
+    # print (response)
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting home data.")
+    return response
+
+
 @router.get("/getgenelist")
-async def getgenelist(request:Request):
+async def getgenelist(request: Request):
     print("getgenelist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -24,8 +35,9 @@ async def getgenelist(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting gene list.")
     return response
 
+
 @router.get("/getsamplelist")
-async def getsamplelist(request:Request):
+async def getsamplelist(request: Request):
     print("getsamplelist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -36,8 +48,9 @@ async def getsamplelist(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting sample list.")
     return response
 
+
 @router.get("/getmetalist")
-async def getmetalist(request:Request):
+async def getmetalist(request: Request):
     print("getmetalist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -48,8 +61,9 @@ async def getmetalist(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting Meta list.")
     return response
 
+
 @router.get("/getmainclusterinfo")
-async def getmainclusterinfo(request:Request):
+async def getmainclusterinfo(request: Request):
     print("getmainclusterinfo() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -64,8 +78,9 @@ async def getmainclusterinfo(request:Request):
 
     return main_cluster
 
+
 @router.get("/getcelltypelist")
-async def getcelltypelist(request:Request):
+async def getcelltypelist(request: Request):
     print("getcelltypelist() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -75,8 +90,9 @@ async def getcelltypelist(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting celltype list.")
     return response
 
+
 @router.get("/getcellcounts")
-async def getcellcounts(request:Request):
+async def getcellcounts(request: Request):
     print("getcellcounts() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -86,8 +102,9 @@ async def getcellcounts(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting celltype list.")
     return response
 
+
 @router.get("/getmarkergenes")
-async def getmarkergenes(request:Request):
+async def getmarkergenes(request: Request):
     print("getmarkergenes() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -97,8 +114,9 @@ async def getmarkergenes(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting gene markers.")
     return response
 
+
 @router.get("/getdegsofcelltype")
-async def getdegsofcelltype(request:Request):
+async def getdegsofcelltype(request: Request):
     dataset_id = request.query_params.get("dataset")
     celltype = request.query_params.get("celltype")
     print(f"getdegsofcelltype({dataset_id},{celltype}) called================")
@@ -110,8 +128,9 @@ async def getdegsofcelltype(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting gene markers.")
     return response
 
+
 @router.get("/getumapembedding")
-async def getumapembedding(request:Request):
+async def getumapembedding(request: Request):
     print("getumapembedding() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -121,8 +140,9 @@ async def getumapembedding(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting Meta list.")
     return response
 
+
 @router.get("/getexprdata")
-async def getexprdata(request:Request):
+async def getexprdata(request: Request):
     print("getgeneexprdata() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -133,8 +153,9 @@ async def getexprdata(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting expression data.")
     return response
 
+
 @router.get("/getpseudoexprdata")
-async def getpseudoexprdata(request:Request):
+async def getpseudoexprdata(request: Request):
     print("getpseudoexprdata() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -145,10 +166,11 @@ async def getpseudoexprdata(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting expression data.")
     return response
 
+
 @router.get("/getallmetadata")
-async def getallmetadata(request:Request):
+async def getallmetadata(request: Request):
     dataset = request.query_params.get("dataset_id")
-    cols = request.query_params.getlist ("cols[]")
+    cols = request.query_params.getlist("cols[]")
     rows = request.query_params.getlist("rows[]")
     print(f"getallmetadata({dataset},{cols},{rows}) called================")
 
@@ -159,8 +181,9 @@ async def getallmetadata(request:Request):
 
     return metadata
 
+
 @router.get("/getallsamplemetadata")
-async def getallsamplemetadata(request:Request):
+async def getallsamplemetadata(request: Request):
     print("getallsamplemetadata() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -170,8 +193,9 @@ async def getallsamplemetadata(request:Request):
         raise HTTPException(status_code=404, detail="Error in getting sample metadata.")
     return response
 
+
 @router.get("/getmetadataofsample")
-async def getmetadataofsample(request:Request):
+async def getmetadataofsample(request: Request):
     print("getmetadataofsample() called================")
     dataset_id = request.query_params.get("dataset")
     sample = request.query_params.get("sample")
@@ -181,6 +205,7 @@ async def getmetadataofsample(request:Request):
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting sample metadata.")
     return response
+
 
 @router.get("/getdatatable/{data_id}")
 async def getdatatable(data_id: str | uuid.UUID, session: SessionDep):
@@ -193,17 +218,19 @@ async def getdatatable(data_id: str | uuid.UUID, session: SessionDep):
             raise HTTPException(status_code=404, detail="Sample table is empty")
         return data
     else:
-        data = get_data_by_id(data_id,session)
+        data = get_data_by_id(data_id, session)
         if not data:
             raise HTTPException(status_code=404, detail="Sample not found")
         return data
 
 
 @router.get("/getsampletable")
-async def getsampletable(request:Request, session: SessionDep):
+async def getsampletable(request: Request, session: SessionDep):
     sample_ids = request.query_params.getlist("sample_id")
     dataset_ids = request.query_params.getlist("dataset_id")
     conditions = {k: request.query_params.getlist(k) for k, v in request.query_params.items()}
+
+    print(f"getsampletable({sample_ids},{dataset_ids},{conditions}) called================")
 
     if not sample_ids and not dataset_ids:
         raise HTTPException(status_code=400, detail="Dataset_id or sample_id is empty")
@@ -216,19 +243,19 @@ async def getsampletable(request:Request, session: SessionDep):
                 raise HTTPException(status_code=404, detail="Sample table is empty")
             return sample
         else:
-            sample = get_sample_by_conditions(conditions,session)
+            sample = get_sample_by_conditions(conditions, session)
             if not sample:
                 raise HTTPException(status_code=404, detail="Sample not found")
             return sample
     else:
         if sample_ids[0] == "all":
             conditions.pop("sample_id")
-            samples = get_sample_by_conditions(conditions,session)
+            samples = get_sample_by_conditions(conditions, session)
             if not samples:
                 raise HTTPException(status_code=404, detail="Sample table is empty")
             return samples
         else:
-            sample = get_sample_by_conditions(conditions,session)
+            sample = get_sample_by_conditions(conditions, session)
             if not sample:
                 raise HTTPException(status_code=404, detail="Sample not found")
             return sample
@@ -243,9 +270,29 @@ async def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
         datasets = get_all_datasets(session)
         if not datasets:
             raise HTTPException(status_code=404, detail="Dataset table is empty")
-        return datasets
+
+        brain_super_region_ls = []
+        brain_region_ls = []
+        assay_ls = []
+        organism_ls = []
+        disease_ls = []
+        for dataset in datasets:
+            brain_super_region_ls += [i.strip() for i in dataset.brain_super_region.split(",")]
+            brain_region_ls += [i.strip() for i in dataset.brain_region.split(",")]
+            assay_ls.append(dataset.assay)
+            organism_ls.append(dataset.organism)
+            disease_ls.append(dataset.disease)
+
+        dataset_fileters = [
+            {"title": "Assay Type", "key": "assayType", "options": set(assay_ls), },
+            {"title": "Brain Region", "key": "brainRegion", "options": set(brain_super_region_ls), },
+            {"title": "Brain Sub-Region", "key": "brainSubregion", "options": set(brain_region_ls), },
+            {"title": "Organism", "key": "organism", "options": set(organism_ls), },
+            {"title": "Disease", "key": "disease", "options": set(disease_ls), },
+        ]
+        return [datasets, dataset_fileters]  # datasets, dataset_fileters
     else:
-        dataset = get_dataset_by_id(dataset_id,session)
+        dataset = get_dataset_by_id(dataset_id, session)
         if not dataset:
             raise HTTPException(status_code=404, detail=f"dataset not found with id: {dataset_id}")
         return dataset

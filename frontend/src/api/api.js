@@ -5,6 +5,16 @@ const BASE_URL = "http://localhost:8000"; // Replace with your backend URL
 
 const API_URL = `${BASE_URL}/api`;
 
+export const getHomeData = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/gethomedata`);
+        return response;
+    } catch (error) {
+        console.error("Error getHomeData:", error);
+        throw error;
+    }
+}
+
 export const getGeneList = async (dataset,query_str) => {
     try {
         const response = await axios.get(`${API_URL}/getgenelist`,

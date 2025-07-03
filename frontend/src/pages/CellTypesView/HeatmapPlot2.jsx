@@ -154,8 +154,8 @@ const HeatmapPlot2 = ({diffExpGenes, selectedCellTypes}) => {
             type: "heatmap",
             colorscale: "RdBu", // Red for high values, blue for low values
             zmid:0,
-            zmin:-6,
-            zmax:6,
+            zmin:-4,
+            zmax:4,
             colorbar: {
                 orientation: 'h',
                 title: { text: "Z-score",side: 'right' },
@@ -163,7 +163,11 @@ const HeatmapPlot2 = ({diffExpGenes, selectedCellTypes}) => {
                 x:0.4,
                 thickness: 15,
                 xpad: 10,
-                ypad: 0
+                ypad: 0,
+            },
+            hovertemplate: "Gene: %{y}<br>Sample: %{x}<br>Score: %{z:.2f}",
+            hoverlabel: {
+                namelength: -1,
             },
         }
 
@@ -174,7 +178,7 @@ const HeatmapPlot2 = ({diffExpGenes, selectedCellTypes}) => {
             const pValue = gene.p_val_adj || 0.000001 // Default to a small value if missing
             const negLogP = -Math.log10(Math.max(pValue, 1e-10))
             // Scale the size for better visualization (adjust as needed)
-            return Math.min(Math.max(negLogP, 1), 10) * 0.5
+            return Math.min(Math.max(negLogP, 1), 10) * 0.25
         })
 
         const dotColors = genes.map((gene) => gene.avg_log2FC)

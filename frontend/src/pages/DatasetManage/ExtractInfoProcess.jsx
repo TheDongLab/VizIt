@@ -33,7 +33,7 @@ const ExtractInfoProcess = () => {
     useEffect(() => {
         resetProcessingState()
         const interval = setInterval(() => {
-            fetchProcessingStatus(datasetName, "extract_seurat");
+            fetchProcessingStatus(datasetName, "extract_data");
 
             const currentStatus = processingStatusRef.current;
 

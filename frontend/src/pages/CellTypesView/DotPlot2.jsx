@@ -91,10 +91,10 @@ const DotPlot2 = ({markerGenes, selectedCellTypes, isAllCellTypesSelected, mainC
             })
         })
 
+        const maxPercentage = Math.max(...sizeValues)
         // Make dots smaller by increasing the sizeref value
         // Higher sizeref = smaller dots
-        const sizeref = 1
-
+        const sizeref = maxPercentage / 100 * 0.6
 
         // Create the main dot plot trace
         const mainTrace = {
@@ -127,11 +127,11 @@ const DotPlot2 = ({markerGenes, selectedCellTypes, isAllCellTypesSelected, mainC
         }
 
         // Create legend traces with actual circles
-        const sizeLegendSizes = [20, 40, 60, 80, 100]
+        const sizeLegendSizes = [20]
         const legendTraces = []
 
         const bubbleSpacing = 0.12 / selectedCellTypes.length;
-        const firstDotY = 0.80;
+        const firstDotY = 0.7;
         const titleOffset = 0.12 / selectedCellTypes.length; // fixed distance above first dot
 
 

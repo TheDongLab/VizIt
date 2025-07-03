@@ -29,7 +29,7 @@ const SamplesPage = () => {
             {/* Main Content */}
             <Box className="main-content" style={{ flex: 2, display: 'flex', flexDirection: 'row' }}>
                 {/* Left Filter Panel */}
-                <FilterPanel />
+                {/*<FilterPanel />*/}
                 {/* Right Sample Display Area */}
                 <SamplesDisplay dataRecords={sampleRecords} />
             </Box>

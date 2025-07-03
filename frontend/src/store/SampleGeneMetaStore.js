@@ -238,7 +238,7 @@ const useSampleGeneMetaStore = create((set, get) => ({
             const response = await getAllMetaData(dataset_id, cols, rows)
 
             // Handle the response when it completes
-            console.log(response.data)
+            // console.log(response.data)
             set({
                 allCellMetaData: transformSplitFormat(response.data.cell_metadata),
                 allSampleMetaData: response.data.sample_metadata,
