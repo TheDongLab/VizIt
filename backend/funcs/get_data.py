@@ -173,7 +173,7 @@ def get_degs_pseudobulk(dataset, celltype):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
-        degs_file = os.path.join("backend", "datasets", dataset, 'clustermarkers', 'cluster_pseudobulk_DEGs_topN.csv')
+        degs_file = os.path.join("backend", "datasets", dataset, 'clustermarkers', 'cluster_pb_DEGs_topN.csv')
 
     data = {}
     if os.path.exists(degs_file):
@@ -195,7 +195,7 @@ def get_degs_pseudobulk(dataset, celltype):
 
         ## get gene expression data for each DE,format: [{sampleId: 'sample1', condition: 'PD', value: 8.1053},...]
         sample_calletype_df = pd.read_csv(os.path.join("backend", "datasets", dataset,'clustermarkers', 'metadata_sample_cluster_condition.csv'), index_col=0, header=0)
-        expr_df = pd.read_csv(os.path.join("backend", "datasets", dataset,'clustermarkers', 'pb_expr_matrix_topN_DEGs.csv'), index_col=0, header=0)
+        expr_df = pd.read_csv(os.path.join("backend", "datasets", dataset,'clustermarkers', 'pb_expr_matrix_DEGs_topN.csv'), index_col=0, header=0)
         escaped_celltype = re.escape(celltype)
         pattern = rf"{escaped_celltype}"
 

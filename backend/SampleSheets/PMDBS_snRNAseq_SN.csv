@@ -1,0 +1,26 @@
+sample_id,source_id,replicate,replicate_count,repeated_sample,batch,tissue,brain_region,hemisphere,region_level_1,region_level_2,region_level_3,RIN,source_RIN,molecular_source,input_cell_count,assay_kit,sequencing_end,sequencing_length,sequencing_instrument,organism_ontology_term_id,development_stage_ontology_term_id,sex_ontology_term_id,self_reported_ethnicity_ontology_term_id,disease_ontology_term_id,tissue_ontology_term_id,cell_type_ontology_term_id,assay_ontology_term_id,suspension_type,DV200,pm_PH,donor_id,dataset_id,assay,data_protocol
+SN_HC_1225,ASAP_PMBDS_000001_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_0602,ASAP_PMBDS_000002_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_0009,ASAP_PMBDS_000003_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1921,ASAP_PMBDS_000004_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_2058,ASAP_PMBDS_000005_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1441,ASAP_PMBDS_000006_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1344,ASAP_PMBDS_000007_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_1939,ASAP_PMBDS_000008_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_1308,ASAP_PMBDS_000009_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_1862,ASAP_PMBDS_000010_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_1864,ASAP_PMBDS_000011_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_2057,ASAP_PMBDS_000012_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_2061,ASAP_PMBDS_000013_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_2062,ASAP_PMBDS_000014_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_HC_2067,ASAP_PMBDS_000015_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_0348,ASAP_PMBDS_000016_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_0413,ASAP_PMBDS_000017_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1312,ASAP_PMBDS_000018_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1317,ASAP_PMBDS_000019_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1504,ASAP_PMBDS_000020_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1858,ASAP_PMBDS_000021_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1902,ASAP_PMBDS_000022_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_1973,ASAP_PMBDS_000023_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_2005,ASAP_PMBDS_000024_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001
+SN_PD_2038,ASAP_PMBDS_000025_s003,,,,,Brain,Midbrain,,Midbrain,Substantia nigra,,,,,,,,,,,,,,,,,,,,,,PMDBS_snRNAseq,snRNAseq,PMDBS_P001

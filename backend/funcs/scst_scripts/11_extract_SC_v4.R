@@ -41,8 +41,6 @@ if (!inherits(seurat_obj, "Seurat")) {
 }
 capture.output(str(seurat_obj), file = paste0(output_dir, "/seurat_obj_structure.txt"))
 
-# seurat_obj@meta.data$SubCellTypes <- seurat_obj@meta.data$Complex_Assignment
-
 # Check if the Seurat object has the necessary assay
 if (!"RNA" %in% names(seurat_obj@assays)) {
   stop("The Seurat object does not contain the 'RNA' assay.")
@@ -86,6 +84,7 @@ write_json(column_names, path = file.path(output_dir, "raw_metadata_columns.json
 # save the umap embedding
 cat("Save umap embedding...\n")
 umap_embeddings <- seurat_obj@reductions$umap@cell.embeddings
+colnames(umap_embeddings) <- toupper(colnames(umap_embeddings))
 write.csv(umap_embeddings, file = paste0(output_dir, "/raw_umap_embeddings.csv"), row.names = TRUE)
 
 
