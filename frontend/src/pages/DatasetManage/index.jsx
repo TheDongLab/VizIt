@@ -14,7 +14,7 @@ import MetaPrepareProcess from "./MetaPrepareProcess.jsx";
 const steps = ['Setup dataset', 'Extracting data', 'Prepare metadata', 'Running pipeline'];
 
 const DatasetManage = () => {
-    const {setDatasetName, extractSeuratData, isProcessing} = useDatasetManageStore();
+    const {setDatasetName, extractData, isProcessing} = useDatasetManageStore();
     const {prepareMetaData,refreshDatabase} = useDatasetManageStore();
 
     // Get all the pre-selected values
@@ -52,7 +52,7 @@ const DatasetManage = () => {
             if (extractInfoRef.current && extractInfoRef.current.validateFields()) {
                 const payload = extractInfoRef.current.collectData();
                 try {
-                    const response = extractSeuratData(payload);
+                    const response = extractData(payload);
                     setActiveStep((prev) => prev + 1);
                 } catch (error) {
                     console.error('Submission failed:', error);

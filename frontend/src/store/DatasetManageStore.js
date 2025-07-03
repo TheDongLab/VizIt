@@ -8,9 +8,13 @@ const BASE_URL = "http://localhost:8000"; // Replace with your backend URL
 const dmURL = `${BASE_URL}/datasetmanage`;
 
 const useDatasetManageStore = create((set, get) => ({
-    // Seurat objects
-    seuratObjects: [],
-    selectedSeurat: '',
+    // State
+    datasetFiles: [],
+    selectedDatasetFile: '',
+
+    sampleSheets: [],
+    selectedSampleSheet: '',
+
 
     // Dataset name
     datasetName: '',
@@ -32,7 +36,8 @@ const useDatasetManageStore = create((set, get) => ({
     success: null,
 
     // Setters
-    setSelectedSeurat: (seurat) => set({selectedSeurat: seurat}),
+    setSelectedDatasetFile: (file) => set({selectedDatasetFile: file}),
+    setSelectedSampleSheet: (file) => set({selectedSampleSheet: file}),
     setDatasetName: (name) => set({datasetName: name}),
 
     // Actions
@@ -51,16 +56,31 @@ const useDatasetManageStore = create((set, get) => ({
         }
     },
 
-    fetchSeuratObjects: async () => {
+    fetchDatasetFiles: async () => {
         set({isLoading: true, error: null});
         try {
-            const response = await axios.get(`${dmURL}/getseuratobjects`);
-            set({seuratObjects: response.data});
+            const response = await axios.get(`${dmURL}/getdatasetfiles`);
+            set({datasetFiles: response.data});
         } catch (error) {
             set({
-                error: error.response?.data?.error || 'Failed to load Seurat objects. Please try again later.'
+                error: error.response?.data?.error || 'Failed to load dataset files. Please try again or contact support.'
             });
-            console.error('Error fetching Seurat objects:', error);
+            console.error('Error fetching dataset files:', error);
+        } finally {
+            set({isLoading: false});
+        }
+    },
+
+    fetchSampleSheets: async () => {
+        set({isLoading: true, error: null});
+        try {
+            const response = await axios.get(`${dmURL}/getsamplesheets`);
+            set({sampleSheets: response.data});
+        } catch (error) {
+            set({
+                error: error.response?.data?.error || 'Failed to load sample sheets files. Please try again or contact support.'
+            });
+            console.error('Error fetching sample sheets files:', error);
         } finally {
             set({isLoading: false});
         }
@@ -83,11 +103,11 @@ const useDatasetManageStore = create((set, get) => ({
         }
     },
 
-    extractSeuratData: async (payload) => {
-        const {selectedSeurat, datasetName} = get();
+    extractData: async (payload) => {
+        const {selectedDatasetFile, datasetName} = get();
 
-        if (!selectedSeurat || !datasetName) {
-            set({error: 'Please select a Seurat object and provide a unique dataset name'});
+        if (!selectedDatasetFile || !datasetName) {
+            set({error: 'Please select a dataset file and provide a unique dataset name'});
             return;
         }
 
@@ -102,11 +122,11 @@ const useDatasetManageStore = create((set, get) => ({
         });
 
         try {
-            const response = await axios.post(`${dmURL}/extractseuratdata`, payload);
+            const response = await axios.post(`${dmURL}/extractdata`, payload);
             return response.data;
 
         } catch (error) {
-            const errorMessage = error.response?.data?.error || 'An error occurred while running extractseuratdata.';
+            const errorMessage = error.response?.data?.error || 'An error occurred while running extractdata.';
             set({
                 error: errorMessage,
                 isProcessing: false,
@@ -118,7 +138,7 @@ const useDatasetManageStore = create((set, get) => ({
         }
     },
 
-    fetchProcessingStatus: async (dataset,task="extract_seurat") => {
+    fetchProcessingStatus: async (dataset,task="extract_data") => {
         try {
             const response = await axios.get(`${dmURL}/getprocessingstatus?dataset=${dataset}&task=${task}`);
             const data = response.data;
@@ -190,7 +210,18 @@ const useDatasetManageStore = create((set, get) => ({
             toast.error('Error while refreshing database.');
             return null;
         }
-    }
+    },
+
+    deleteDataset: async (dataset) => {
+        try {
+            const response = await axios.delete(`${dmURL}/deletedataset?dataset=${dataset}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting dataset:', error);
+            return null;
+        }
+    },
+
 }));
 
 export default useDatasetManageStore;

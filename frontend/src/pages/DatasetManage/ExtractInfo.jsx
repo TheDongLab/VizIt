@@ -13,7 +13,7 @@ import useDatasetManageStore from "../../store/DatasetManageStore.js";
 import {CheckCircle as CheckCircleIcon, Error as ErrorIcon} from "@mui/icons-material";
 
 const requiredFields = {
-    dataset: ['dataset_name', 'PI_full_name', 'PI_email', 'first_contributor', 'first_contributor_email', 'brain_super_region', 'brain_region', 'n_samples', 'assay'],
+    dataset: ['dataset_name', 'PI_full_name', 'PI_email', 'first_contributor', 'first_contributor_email', 'brain_super_region', 'brain_region', "disease", "organism","sample_sheet", "n_samples"],
     study: ['study_name', 'team_name', 'lab_name'],
     protocol: ['protocol_id', 'protocol_name'],
 };
@@ -23,10 +23,14 @@ const numericFields = ['n_samples'];
 
 const ExtractInfo = forwardRef((props, ref) => {
     const {
-        seuratObjects,
-        selectedSeurat,
-        setSelectedSeurat,
-        fetchSeuratObjects,
+        datasetFiles,
+        selectedDatasetFile,
+        setSelectedDatasetFile,
+        fetchDatasetFiles,
+        fetchSampleSheets,
+        sampleSheets,
+        selectedSampleSheet,
+        setSelectedSampleSheet,
         setDatasetName
     } = useDatasetManageStore()
     const {checkDatasetName, isNameUnique, isCheckingName} = useDatasetManageStore();
@@ -34,20 +38,23 @@ const ExtractInfo = forwardRef((props, ref) => {
 
 
     useEffect(() => {
-        fetchSeuratObjects();
+        fetchDatasetFiles();
+        fetchSampleSheets();
     }, []);
 
     const [datasetInfo, setDatasetInfo] = useState({
         dataset_name: '',
-        assay: '',
         description: '',
+        n_samples: '',
+        sample_sheet: '',
         PI_full_name: '',
         PI_email: '',
         first_contributor: '',
         first_contributor_email: '',
+        disease: '',
+        organism: '',
         brain_super_region: '',
         brain_region: '',
-        n_samples: '',
         other_contributors: '',
         support_grants: '',
         other_funding_source: '',
@@ -104,12 +111,12 @@ const ExtractInfo = forwardRef((props, ref) => {
             validateSection('study', studyInfo, requiredFields.study);
             validateSection('protocol', protocolInfo, requiredFields.protocol);
 
-            // Validate seurat (selectedSeurat) and datatype
-            if (!selectedSeurat) {
-                newErrors['seurat.seurat'] = 'Required';
+            // Validate dataset file (selectedDatasetFile) and datatype
+            if (!selectedDatasetFile) {
+                newErrors['datasetfile.file'] = 'Required';
             }
             if (!dataType) {
-                newErrors['seurat.datatype'] = 'Required';
+                newErrors['datasetfile.datatype'] = 'Required';
             }
 
             // Email validation
@@ -138,7 +145,7 @@ const ExtractInfo = forwardRef((props, ref) => {
         },
 
         collectData: () => ({
-            seurat_info: {seurat: selectedSeurat, datatype: dataType},
+            datasetfile_info: {file: selectedDatasetFile, datatype: dataType},
             dataset_info: {
                 ...datasetInfo,
                 n_samples: datasetInfo.n_samples ? Number(datasetInfo.n_samples) : null,
@@ -168,7 +175,11 @@ const ExtractInfo = forwardRef((props, ref) => {
                                     onChange={handleChange(section, setter)(key)}
                                 >
                                     <MenuItem value="scRNAseq">scRNAseq</MenuItem>
+                                    <MenuItem value="snRNAseq">snRNAseq</MenuItem>
                                     <MenuItem value="VisiumST">VisiumST</MenuItem>
+                                    <MenuItem value="sc eQTL">sc eQTL</MenuItem>
+                                    <MenuItem value="sc mQTL">sc mQTL</MenuItem>
+                                    <MenuItem value="sc caQTL">sc caQTL</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -176,7 +187,7 @@ const ExtractInfo = forwardRef((props, ref) => {
                 }
                 if (key === 'dataset_name') {
                     return (
-                        <Grid item xs={12} md={6} key={key}>
+                        <Grid item xs={12} md={8} key={key}>
                             <FormControl fullWidth error={isNameUnique === false || !!errors[errorKey]}>
                                 <TextField
                                     id="dataset-name"
@@ -197,13 +208,13 @@ const ExtractInfo = forwardRef((props, ref) => {
                                         ) : isNameUnique === true ? (
                                             <CheckCircleIcon color="success"/>
                                         ) : isNameUnique === false ? (
-                                            <ErrorIcon color="error"/>
+                                            <ErrorIcon color="warning"/>
                                         ) : null,
                                     }}
                                 />
                                 <FormHelperText>
                                     {isNameUnique === false
-                                        ? "This name is already in use"
+                                        ? "This name is already in use. Existing content will be OVERWRITTEN !!!"
                                         : "The dataset name must be unique and will be used to identify this dataset in the system"}
                                 </FormHelperText>
                             </FormControl>
@@ -222,12 +233,78 @@ const ExtractInfo = forwardRef((props, ref) => {
                                     required={requiredFields[section].includes(key)}
                                     onChange={handleChange(section, setter)(key)}
                                 >
-                                    <MenuItem value="temporallobe">Temporal Lobe</MenuItem>
-                                    <MenuItem value="frontallobe">Frontal Lobe</MenuItem>
-                                    <MenuItem value="brainstem">Brainstem</MenuItem>
+                                    <MenuItem value="Temporal Lobe">Temporal Lobe</MenuItem>
+                                    <MenuItem value="Frontal Lobe">Frontal Lobe</MenuItem>
+                                    <MenuItem value="Brainstem">Brainstem</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
+                    );
+                }
+
+                if (key === 'organism') {
+                    return (
+                        <Grid item xs={12} md={6} key={key}>
+                            <FormControl fullWidth size="small" error={!!errors[errorKey]}>
+                                <InputLabel id={`${key}-label`}>Organism *</InputLabel>
+                                <Select
+                                    labelId={`${key}-label`}
+                                    value={value}
+                                    label="Organism"
+                                    required={requiredFields[section].includes(key)}
+                                    onChange={handleChange(section, setter)(key)}
+                                >
+                                    <MenuItem value="Homo Sapiens">Homo Sapiens</MenuItem>
+                                    <MenuItem value="Mus Musculus">Mus Musculus</MenuItem>
+                                    <MenuItem value="Rattus Norvegicus">Rattus Norvegicus</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    );
+                }
+                if (key === 'disease') {
+                    return (
+                        <Grid item xs={12} md={6} key={key}>
+                            <FormControl fullWidth size="small" error={!!errors[errorKey]}>
+                                <InputLabel id={`${key}-label`}>Disease *</InputLabel>
+                                <Select
+                                    labelId={`${key}-label`}
+                                    value={value}
+                                    label="Disease"
+                                    required={requiredFields[section].includes(key)}
+                                    onChange={handleChange(section, setter)(key)}
+                                >
+                                    <MenuItem value="PD">Parkinson&apos;s Disease</MenuItem>
+                                    <MenuItem value="AD">Alzheimer&apos;s Disease</MenuItem>
+                                    <MenuItem value="ALS">Amyotrophic Lateral Sclerosis</MenuItem>
+                                    <MenuItem value="MS">Multiple Sclerosis</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    );
+                }
+
+
+                if (key === 'sample_sheet') {
+                    return (
+                        <Grid item xs={12} md={6} key={key}>
+                            <FormControl fullWidth size="small" error={!!errors[errorKey]}>
+                                <InputLabel id={`${key}-label`}>Sample sheet *</InputLabel>
+                                <Select
+                                    labelId={`${key}-label`}
+                                    value={value}
+                                    label="Sample sheet"
+                                    required={requiredFields[section].includes(key)}
+                                    onChange={handleChange(section, setter)(key)}
+                                >
+                                    <MenuItem key="None" value="None">None</MenuItem>
+                                    {sampleSheets.map((obj) => (
+                                        <MenuItem key={obj} value={obj}>{obj}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
                     );
                 }
 
@@ -253,21 +330,24 @@ const ExtractInfo = forwardRef((props, ref) => {
 
     return (
         <>
-            {/* Seurat Object and Data Type */}
+            {/* Dataset File and Data Type */}
             <Typography variant="h6" fontWeight="bold" mb={2}>
-                Select Seurat Object
+                Select data file (Seurat object, CSV data sheet)
             </Typography>
             <Grid container spacing={3} sx={{mb: 4}}>
                 <Grid item xs={12} md={8}>
-                    <FormControl fullWidth size="small" error={!!errors['seurat.seurat']}>
-                        <InputLabel id="seurat-select-label">Seurat Object *</InputLabel>
+                    <FormControl fullWidth size="small" error={!!errors['datasetfile.file']}>
+                        <InputLabel id="datasetfile-select-label">Dataset file *</InputLabel>
                         <Select
-                            labelId="seurat-select-label"
-                            value={selectedSeurat}
-                            label="Seurat Object"
-                            onChange={(e) => setSelectedSeurat(e.target.value)}
+                            labelId="dtasetfile-select-label"
+                            value={selectedDatasetFile}
+                            label="Dataset file"
+                            onChange={(e) => setSelectedDatasetFile(e.target.value)}
                         >
-                            {seuratObjects.map((obj) => (
+                            <MenuItem key="manuallyupload" value="manuallyupload">
+                                Manually process and upload
+                            </MenuItem>
+                            {datasetFiles.map((obj) => (
                                 <MenuItem key={obj} value={obj}>
                                     {obj}
                                 </MenuItem>
@@ -277,7 +357,7 @@ const ExtractInfo = forwardRef((props, ref) => {
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                    <FormControl fullWidth size="small" error={!!errors['seurat.datatype']}>
+                    <FormControl fullWidth size="small" error={!!errors['datasetfile.datatype']}>
                         <InputLabel id="datatype-select-label">Data Type *</InputLabel>
                         <Select
                             labelId="datatype-select-label"
@@ -286,7 +366,11 @@ const ExtractInfo = forwardRef((props, ref) => {
                             onChange={(e) => setDataType(e.target.value)}
                         >
                             <MenuItem value="scRNAseq">scRNAseq</MenuItem>
+                            <MenuItem value="snRNAseq">snRNAseq</MenuItem>
                             <MenuItem value="VisiumST">VisiumST</MenuItem>
+                            <MenuItem value="sceQTL">sc eQTL</MenuItem>
+                            <MenuItem value="scmQTL">sc mQTL</MenuItem>
+                            <MenuItem value="sccaQTL">sc caQTL</MenuItem>
                         </Select>
                     </FormControl>
                 </Grid>

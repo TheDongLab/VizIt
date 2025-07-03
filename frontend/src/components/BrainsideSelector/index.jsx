@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Box, Button, ButtonGroup } from "@mui/material";
 import "./BrainsideSelector.css";
-import RegionStore from "../../store/RegionStore.js";
+import useHomeStore from "../../store/HomeStore.js";
 
 const BrainsideSelector = () => {
     const [selectedSide, setSelectedSide] = useState("outer");
 
-    const {region, assays, setSide, setRegion } = RegionStore();
+    const {region, assays, setSide, setRegion } = useHomeStore();
 
     const handleSideChange = (newSide) => {
         setSelectedSide(newSide);

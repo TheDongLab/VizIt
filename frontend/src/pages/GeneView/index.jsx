@@ -32,7 +32,7 @@ function GeneView() {
     const initialGenes = queryParams.getAll("gene")
     const initialSamples = queryParams.getAll("sample") ?? ["all"]
     const initialColoring = queryParams.get("color") ?? ""
-    const initialGrouping = queryParams.get("group") ?? "MajorCellTypes"
+    const initialGrouping = queryParams.get("group") ?? ""
     const initialDataset = queryParams.get("dataset") ?? ""
 
     const {datasetRecords, fetchDatasetList} = useDataStore()

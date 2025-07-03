@@ -1,14 +1,15 @@
-.DS_Store
-.idea
-*.log
-tmp/
+docs
 
-*.py[cod]
-*.egg
-build
-htmlcov
+/frontend/node_modules
+/frontend/.vite
 
-frontend/node_modules/
-backend/database/
-backend/datasets/
-backend/bdp_db.db
+/backend/database
+/backend/venv
+/backend/.env
+/backend/.idea
+
+.Rproj.user
+/backend/datasets/
+/backend/dataset_bkp/
+
+/backend/DatasetFiles/

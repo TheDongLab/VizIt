@@ -2,7 +2,7 @@ import {create} from "zustand";
 import { toast } from "react-toastify";
 import {getDatatable_get, getDatasetList, getSampletable_get} from "../api/api.js";
 
-const useDataStore = create((set) => ({
+const useDatatableStore = create((set) => ({
     dataRecords: [],
     datafetchStatus: null,
 
@@ -11,6 +11,8 @@ const useDataStore = create((set) => ({
 
     datasetRecords: [],
     datasetfetchStatus: null,
+
+    datasetFilters: [],
 
     fetchDataTable: async (dataset_id="all") => {
         try {
@@ -61,7 +63,7 @@ const useDataStore = create((set) => ({
             // console.log(response);
             if(response.status === 200){
                 const data = await response.data;
-                await set({ datasetRecords: data, datasetfetchStatus: "success" });
+                await set({ datasetRecords: data[0], datasetFilters: data[1], datasetfetchStatus: "success" });
                 // toast.success("Sample loaded successfully!");
             }else{
                 console.error("Error fetching data:", response.data);
@@ -78,4 +80,4 @@ const useDataStore = create((set) => ({
 
 }));
 
-export default useDataStore;
+export default useDatatableStore;

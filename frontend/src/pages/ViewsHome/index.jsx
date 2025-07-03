@@ -21,10 +21,10 @@ export default function HomePage() {
             href: "visiumview",
         },
         {
-            title: "Chr Region View",
+            title: "xQTL View",
             description: "Investigate specific chromosomal regions and their associated genes and regulatory elements.",
             icon: <ScanSearch size={48} style={{color: "#06b6d4"}}/>,
-            href: "regionsview",
+            href: "xqtlview",
         },
         {
             title: "Cell Type View",

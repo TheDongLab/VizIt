@@ -16,7 +16,7 @@ function filterBySampleId(obj, sampleList) {
     const sampleSet = new Set(sampleList);
     return Object.fromEntries(
         Object.entries(obj).filter(([key, entry]) => {
-            const sample_id = key.split("_")[0];
+            const sample_id = key.split(/_[cs]\d+$/)[0];
             return sampleSet.has(sample_id)
         })
     );
@@ -27,7 +27,7 @@ function filterExprBySampleId(exprObj, sampleList) {
     for (const [gene, values] of Object.entries(exprObj)) {
         const filteredValues = Object.fromEntries(
             Object.entries(values).filter(([sc, val]) => {
-                const sample = sc.split('_')[0];
+                const sample = sc.split(/_[cs]\d+$/)[0];
                 return sampleList.includes(sample);
             })
         );
@@ -60,7 +60,7 @@ const GeneMetaPlots = ({
         } else {
             newMetaData = Object.fromEntries(
                 Object.entries(cellMetaData).map(([cs_id, csObj]) => {
-                    const sample_id = cs_id.split("_")[0];
+                    const sample_id = cs_id.split(/_[cs]\d+$/)[0];;
                     const newSubObj = {...csObj};
                     newSubObj[group] = sampleMetaData[sample_id][group];
                     return [cs_id, newSubObj];

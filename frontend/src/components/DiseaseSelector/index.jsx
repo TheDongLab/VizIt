@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { Box, Typography, Button, ButtonGroup } from "@mui/material";
 import "./DiseaseSelector.css";
+import PropTypes from "prop-types";
 
-const DiseaseSelector = () => {
-  const [selectedDisease, setSelectedDisease] = useState("Healthy");
-
-  const handleDiseaseChange = (disease) => {
-    setSelectedDisease(disease);
-  };
+const DiseaseSelector = ({ homeData,selectedDisease, onDiseaseChange }) => {
 
   const diseaseTypes = {
     // "Healthy": "Healthy",
     "PD": "Parkinson's Disease",
-    // "AD": "Alzheimer's Disease"
+    "AD": "Alzheimer's Disease"
   };
 
   return (
@@ -21,10 +17,10 @@ const DiseaseSelector = () => {
         Select a disease type below to see the available data.
       </Typography>
       <ButtonGroup variant="outlined" className="disease-buttons">
-        {Object.keys(diseaseTypes).map((disease) => (
+        {Object.keys(homeData).map((disease) => (
           <Button
             key={disease}
-            onClick={() => handleDiseaseChange(disease)}
+            onClick={() => onDiseaseChange(disease)}
             className={selectedDisease === disease ? "selected" : ""}
           >
             {diseaseTypes[disease]}
@@ -36,4 +32,8 @@ const DiseaseSelector = () => {
 };
 
 export default DiseaseSelector;
-
+DiseaseSelector.propTypes = {
+    homeData: PropTypes.object.isRequired,
+    selectedDisease: PropTypes.string.isRequired,
+    onDiseaseChange: PropTypes.func.isRequired,
+};

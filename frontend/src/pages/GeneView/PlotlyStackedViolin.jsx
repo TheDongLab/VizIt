@@ -30,7 +30,7 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
             for (const id of cellIds) {
                 if (exprData[gene]?.[id] !== undefined) {
                     expressionValues.push(exprData[gene][id]);
-                } else{
+                } else {
                     includeZeros && expressionValues.push(0);
                 }
             }
@@ -55,15 +55,29 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
     ]; // Up to 20 unique colors
     // Create Plotly traces for each gene
     const createTraces = () => {
-        return genes.map((gene, geneIndex) => {
-            const traces = xCategories.map((x_i, xIndex) => {
-                return {
-                    x: Array(expressionData[gene][x_i].length).fill(x_i),
-                    y: expressionData[gene][x_i],
+        const traces = [];
+
+        genes.forEach((gene, geneIndex) => {
+            xCategories.forEach((x_i, xIndex) => {
+                let data = expressionData[gene][x_i];
+                if (data.length === 0) {
+                    data = [0]; // Dummy value
+                }
+
+                const sorted = data.sort((a, b) => a - b);
+                const minVal = sorted[0];
+                const maxVal = sorted[sorted.length - 1];
+                const medianVal = sorted[Math.floor(sorted.length / 2)];
+                const count = data.length;
+
+                // Violin trace (no hover)
+                traces.push({
+                    x: Array(data.length).fill(x_i),
+                    y: data,
                     type: 'violin',
                     name: `${gene} - ${x_i}`,
                     box: {visible: type === "boxplot"},
-                    points: type === "boxplot", // Show all data points
+                    points: type === "boxplot",
                     meanline: {visible: true},
                     showlegend: false,
                     xaxis: `x${geneIndex + 1}`,
@@ -72,11 +86,31 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
                     line: {width: 1, color: "black"},
                     jitter: 0.3,
                     fillcolor: colorPalette[xIndex % colorPalette.length],
-                };
+                    hoverinfo: 'skip' // 🚫 disable default hover
+                });
+
+                // Overlay scatter trace to show stats
+                traces.push({
+                    type: 'scatter',
+                    mode: 'markers',
+                    x: [x_i, x_i, x_i],
+                    y: [minVal, medianVal, maxVal],
+                    marker: {color: 'black', size: 2, symbol: 'circle'},
+                    hovertemplate:
+                        `Min: ${minVal}<br>` +
+                        `Median: ${medianVal}<br>` +
+                        `Max: ${maxVal}<br>` +
+                        `Total: ${count}<extra></extra>`,
+                    showlegend: false,
+                    xaxis: `x${geneIndex + 1}`,
+                    yaxis: `y${geneIndex + 1}`
+                });
             });
-            return traces;
-        }).flat();
+        });
+
+        return traces;
     };
+
     // Create subplot layout
     const createLayout = () => {
         const rows = genes.length;
@@ -152,7 +186,9 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
                         {
                             name: "Save as SVG",
                             icon: Plotly.Icons.disk,
-                            click: function (gd) {Plotly.downloadImage(gd, {format: "svg", filename: `stacked_violin`});},
+                            click: function (gd) {
+                                Plotly.downloadImage(gd, {format: "svg", filename: `stacked_violin`});
+                            },
                         },
                     ],
                 ],

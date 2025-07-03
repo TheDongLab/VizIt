@@ -1,11 +1,11 @@
-import {useEffect, useRef, useState, useCallback, useMemo} from "react";
+import React, {useEffect, useRef, useState, useCallback, useMemo} from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
 import {calculateMinMax, isCategorical, sortObjectByKey} from "../../utils/funcs.js";
 
-const PlotlyFeaturePlot = ({visiumData, geneData, metaData, feature}) => {
-    console.log("Rendering PlotlyFeaturePlot:", metaData);
+const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, geneData, metaData, feature}) {
+
     const containerRef = useRef(null);
     const [imageUrl, setImageUrl] = useState("");
     const [naturalDimensions, setNaturalDimensions] = useState({width: 0, height: 0});
@@ -234,7 +234,7 @@ const PlotlyFeaturePlot = ({visiumData, geneData, metaData, feature}) => {
             />
         </div>
     );
-};
+});
 
 PlotlyFeaturePlot.propTypes = {
     visiumData: PropTypes.shape({
