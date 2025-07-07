@@ -226,8 +226,7 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                         </TableCell>
                                         {deleteMode && (
                                             <TableCell>
-                                                <Button variant="outlined" color="error" size="small"
-                                                        onClick={() => handleDeleteDataset(record.dataset_id)}>
+                                                <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteDataset(record.dataset_id)}>
                                                     Delete
                                                 </Button>
                                             </TableCell>
