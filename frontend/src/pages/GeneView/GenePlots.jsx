@@ -1,6 +1,6 @@
 import PlotlyStackedViolin from "./PlotlyStackedViolin.jsx";
 import EChartMetaScatter from "./EChartMetaScatter.jsx";
-import React, {useEffect, useMemo, useState, useRef} from "react";
+import {useEffect, useMemo, useState} from "react";
 import "./GeneView.css";
 import {isCategorical} from "../../utils/funcs.js";
 import PropTypes from "prop-types";
@@ -96,15 +96,6 @@ const GeneMetaPlots = ({
         fetchPseudoExprData();
     }, []);
 
-    const chartRefs = useRef({});
-    const processedgeneList = Object.keys(processedExprData); // already used in map
-
-    processedgeneList.forEach(gene => {
-        if (!chartRefs.current[gene]) {
-            chartRefs.current[gene] = React.createRef();
-        }
-    });
-
     const metaValues = Object.values(processedMetaData).map((meta) => meta[group]);
     const isCat = isCategorical(metaValues);
     const isUsingPseudobulk = exprValueType === "pseudobulk" && processedExprData === pseudoExprDict;
@@ -162,7 +153,7 @@ const GeneMetaPlots = ({
                 format: 'svg',
                 filename: 'geneview_plot',
             });
-        } else {
+        }else {
             const plotId = 'stacked_violin_div'; // this should match the id of your plot container
         }
     };
@@ -183,19 +174,7 @@ const GeneMetaPlots = ({
                         Download CSV
                     </button>
                     <div>&nbsp;&nbsp;</div>
-                    {isCat ? (
-                        <button onClick={() => handleDownloadPDF(isCat)} className="download-button">Export image</button>) :
-                        <button
-                            onClick={() => {
-                                processedgeneList.forEach(gene => {
-                                    chartRefs.current[gene]?.current?.exportSVG?.();
-                                });
-                            }}
-                            className="download-button"
-                        >
-                            Export SVG
-                        </button>
-                    }
+                    { isCat && (<button onClick={() => handleDownloadPDF(isCat)} className="download-button">Export image</button>)}
 
                 </Stack>
             </div>
@@ -243,7 +222,6 @@ const GeneMetaPlots = ({
                             <div className="umap-wrapper">
                                 {processedMetaData && (
                                     <EChartMetaScatter
-                                        ref={chartRefs.current[gene]}
                                         gene={gene}
                                         exprData={expr_data}
                                         metaData={processedMetaData}

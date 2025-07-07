@@ -1,34 +1,30 @@
 import ReactECharts from "echarts-for-react";
 import PropTypes from "prop-types";
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import {useRef} from "react";
 
-// const EChartMetaScatter = ({gene, exprData, metaData, group}) => {
-const EChartMetaScatter = forwardRef(({ gene, exprData, metaData, group }, ref) => {
+const EChartMetaScatter = ({gene, exprData, metaData, group}) => {
+
     if (Object.keys(metaData).length === 0) return "Sample not found in the MetaData";
-
-    const chartRef = useRef(null);
-
-    // Expose chart instance to parent
-    useImperativeHandle(ref, () => ({
-        exportSVG: () => {
-            const chartInstance = chartRef.current?.getEchartsInstance?.();
-            if (!chartInstance) return;
-
-            const svgData = chartInstance.getDataURL({
-                type: 'svg',
-                backgroundColor: '#ffffff',
-            });
-
-            const link = document.createElement('a');
-            link.href = svgData;
-            link.download = `scatter-${gene}-${group}.svg`;
-            link.click();
-        }
-    }));
 
     const scatterData = Object.entries(metaData).map(([key, meta]) => {
         return [meta[group], exprData?.[key] ?? 0];
     })
+
+    const chartRef = useRef(null);
+    const exportSVG = () => {
+        const chartInstance = chartRef.current?.getEchartsInstance?.();
+        if (!chartInstance) return;
+
+        const svgData = chartInstance.getDataURL({
+            type: 'svg',
+            backgroundColor: '#ffffff',
+        });
+
+        const link = document.createElement('a');
+        link.href = svgData;
+        link.download = `scatterplot-${gene}-${group}.svg`;
+        link.click();
+    };
 
     // console.log("scatterData: ", scatterData);
 
@@ -71,6 +67,9 @@ const EChartMetaScatter = forwardRef(({ gene, exprData, metaData, group }, ref) 
 
     return (
         <div>
+            <div style={{display: "flex", justifyContent: "flex-end", marginBottom: "8px"}}>
+                <button onClick={exportSVG}>Export as SVG</button>
+            </div>
             <ReactECharts
                 ref={chartRef}
                 key={`${gene}-${group}`}
@@ -82,8 +81,15 @@ const EChartMetaScatter = forwardRef(({ gene, exprData, metaData, group }, ref) 
                 opts={{renderer: 'svg'}}
             />
         </div>
-    );
-});
+    )
+}
+
+EChartMetaScatter.propTypes = {
+    gene: PropTypes.string.isRequired,
+    exprData: PropTypes.object.isRequired,
+    metaData: PropTypes.object.isRequired,
+    group: PropTypes.string.isRequired,
+};
 
 export default EChartMetaScatter
 
