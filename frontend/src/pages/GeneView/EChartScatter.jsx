@@ -1,13 +1,29 @@
 import ReactECharts from "echarts-for-react"
 import PropTypes from "prop-types"
 import {isCategorical} from "../../utils/funcs.js"
+import {useRef} from "react";
 
 const EChartScatterPlot = ({
                                gene, sampleList, umapData, exprData,
                                cellMetaData, CellMetaMap, sampleMetaData,
                                group, isMetaDataLoading
                            }) => {
-    console.log("EChartScatterPlot: ",gene, cellMetaData, CellMetaMap, sampleMetaData,group);
+    // console.log("EChartScatterPlot: ", gene, cellMetaData, CellMetaMap, sampleMetaData, group);
+    const chartRef = useRef(null);
+    const exportSVG = () => {
+        const chartInstance = chartRef.current?.getEchartsInstance?.();
+        if (!chartInstance) return;
+
+        const svgData = chartInstance.getDataURL({
+            type: 'svg',
+            backgroundColor: '#ffffff',
+        });
+
+        const link = document.createElement('a');
+        link.href = svgData;
+        link.download = `scatterplot-${gene}-${group}.svg`;
+        link.click();
+    };
 
     if (umapData.length === 0) return "UMAP data is loading..."
 
@@ -248,17 +264,25 @@ const EChartScatterPlot = ({
         options = createContinuousOptions(plotData, gene)
     }
     options.backgroundColor = "#f9f9f9"
+
     return (
-        <ReactECharts
-            key={`${gene}-${group}`}
-            option={options}
-            notMerge={true}
-            lazyUpdate={true}
-            theme="light"
-            // showLoading={true}
-            style={{width: "100%", height: "100%"}}
-            autoResize={true}
-        />
+        <div>
+            <div style={{display: "flex", justifyContent: "flex-end", marginBottom: "8px"}}>
+                <button onClick={exportSVG}>Export as SVG</button>
+            </div>
+            <ReactECharts
+                ref={chartRef}
+                key={`${gene}-${group}`}
+                option={options}
+                notMerge={true}
+                lazyUpdate={true}
+                opts={{renderer: 'svg'}} // IMPORTANT: ensures SVG rendering
+                theme="light"
+                // showLoading={true}
+                style={{width: "100%", height: "100%"}}
+                autoResize={true}
+            />
+        </div>
     )
 }
 

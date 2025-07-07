@@ -171,7 +171,6 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
             layout={createLayout()}
             style={{width: '100%', height: '100%'}}
             config={{
-                displayModeBar: true,
                 displaylogo: false,
                 responsive: true,
                 doubleClick: false,

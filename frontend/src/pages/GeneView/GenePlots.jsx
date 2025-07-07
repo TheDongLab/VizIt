@@ -1,6 +1,6 @@
 import PlotlyStackedViolin from "./PlotlyStackedViolin.jsx";
 import EChartMetaScatter from "./EChartMetaScatter.jsx";
-import {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useState, useRef} from "react";
 import "./GeneView.css";
 import {isCategorical} from "../../utils/funcs.js";
 import PropTypes from "prop-types";
@@ -60,7 +60,8 @@ const GeneMetaPlots = ({
         } else {
             newMetaData = Object.fromEntries(
                 Object.entries(cellMetaData).map(([cs_id, csObj]) => {
-                    const sample_id = cs_id.split(/_[cs]\d+$/)[0];;
+                    const sample_id = cs_id.split(/_[cs]\d+$/)[0];
+                    ;
                     const newSubObj = {...csObj};
                     newSubObj[group] = sampleMetaData[sample_id][group];
                     return [cs_id, newSubObj];
@@ -94,6 +95,15 @@ const GeneMetaPlots = ({
     useEffect(() => {
         fetchPseudoExprData();
     }, []);
+
+    const chartRefs = useRef({});
+    const processedgeneList = Object.keys(processedExprData); // already used in map
+
+    processedgeneList.forEach(gene => {
+        if (!chartRefs.current[gene]) {
+            chartRefs.current[gene] = React.createRef();
+        }
+    });
 
     const metaValues = Object.values(processedMetaData).map((meta) => meta[group]);
     const isCat = isCategorical(metaValues);
@@ -138,19 +148,23 @@ const GeneMetaPlots = ({
         saveAs(blob, "gene_meta_export.csv");
     };
 
-    const handleDownloadPDF = () => {
-        const plotId = 'geneview-gene-plot'; // this should match the id of your plot container
-        const plotElement = document.getElementById(plotId);
+    const handleDownloadPDF = (isViolins) => {
+        if (isViolins) {
+            const plotId = 'geneview-gene-plot'; // this should match the id of your plot container
+            const plotElement = document.getElementById(plotId);
 
-        if (!plotElement) {
-            toast.error("Plot element not found");
-            return;
+            if (!plotElement) {
+                toast.error("Plot element not found");
+                return;
+            }
+
+            Plotly.downloadImage(plotElement, {
+                format: 'svg',
+                filename: 'geneview_plot',
+            });
+        } else {
+            const plotId = 'stacked_violin_div'; // this should match the id of your plot container
         }
-
-        Plotly.downloadImage(plotElement, {
-            format: 'svg',
-            filename: 'geneview_plot',
-        });
     };
 
     return (
@@ -169,9 +183,19 @@ const GeneMetaPlots = ({
                         Download CSV
                     </button>
                     <div>&nbsp;&nbsp;</div>
-                    <button onClick={handleDownloadPDF} className="download-button">
-                        Export image
-                    </button>
+                    {isCat ? (
+                        <button onClick={() => handleDownloadPDF(isCat)} className="download-button">Export image</button>) :
+                        <button
+                            onClick={() => {
+                                processedgeneList.forEach(gene => {
+                                    chartRefs.current[gene]?.current?.exportSVG?.();
+                                });
+                            }}
+                            className="download-button"
+                        >
+                            Export SVG
+                        </button>
+                    }
 
                 </Stack>
             </div>
@@ -219,6 +243,7 @@ const GeneMetaPlots = ({
                             <div className="umap-wrapper">
                                 {processedMetaData && (
                                     <EChartMetaScatter
+                                        ref={chartRefs.current[gene]}
                                         gene={gene}
                                         exprData={expr_data}
                                         metaData={processedMetaData}
