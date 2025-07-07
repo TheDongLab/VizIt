@@ -16,7 +16,7 @@ import UnauthorizedPage from "./pages/Unauthorized/index.jsx";
 import {Bounce, ToastContainer} from "react-toastify";
 import GeneView from "./pages/GeneView/index.jsx";
 import VisiumView from "./pages/VisiumView";
-import RegionView from "./pages/RegionView";
+import XQTLView from "./pages/xQTLView";
 import XDatasetsView from "./pages/XDatasets";
 import CellTypesView from "./pages/CellTypesView";
 import ViewsHome from "./pages/ViewsHome";
@@ -61,7 +61,7 @@ function App() {
                       <Route path="/views" element={<ViewsHome />} />
                       <Route path="/views/geneview" element={<GeneView />} />
                       <Route path="/views/visiumview" element={<VisiumView />} />
-                      <Route path="/views/regionview" element={<RegionView />} />
+                      <Route path="/views/xqtlview" element={<XQTLView />} />
                       <Route path="/views/celltypes" element={<CellTypesView />} />
                       <Route path="/views/layersview" element={<LayerView />} />
                       <Route path="/views/xcheck" element={<XDatasetsView />} />

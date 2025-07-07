@@ -24,7 +24,7 @@ export default function HomePage() {
             title: "xQTL View",
             description: "Investigate quantitative trait loci associated with gene expression and regulatory mechanisms.",
             icon: <ScanSearch size={48} style={{color: "#06b6d4"}}/>,
-            href: "regionview",
+            href: "xqtlview",
         },
         {
             title: "Cell Type View",

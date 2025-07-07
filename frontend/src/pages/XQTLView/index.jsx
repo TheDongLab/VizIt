@@ -22,7 +22,7 @@ import { debounce } from "@mui/material/utils";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import { useSearchParams } from "react-router-dom";
 
-import "./RegionView.css";
+import "./XQTLView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
@@ -57,7 +57,7 @@ function ConfirmationDialog({
   );
 }
 
-function RegionView() {
+function XQTLView() {
   // Get all the pre-selected values
   const [queryParams, setQueryParams] = useSearchParams();
   const urlGene = queryParams.get("gene") ?? "";
@@ -579,4 +579,4 @@ ConfirmationDialog.propTypes = {
     .isRequired,
 };
 
-export default RegionView;
+export default XQTLView;
