@@ -12,7 +12,7 @@ server {
 
     # API 请求代理给 FastAPI
     location /api/ {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -20,7 +20,7 @@ server {
 
     # QTL 请求 - 同样转发到 FastAPI
     location /qtl/ {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -28,7 +28,7 @@ server {
     }
 
     location /visium/ {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -36,7 +36,7 @@ server {
     }
     
     location /datasetmanage/ {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

@@ -23,6 +23,8 @@ import ViewsHome from "./pages/ViewsHome";
 import DatasetManagePage from "./pages/DatasetManage";
 import LayerView from "./pages/LayerView/index.jsx";
 import HowToUse from "./pages/Help/HowToUse.jsx";
+import FAQPage from "./pages/Help/FAQ.jsx";
+import RESTAPIPage from "./pages/Help/RESTAPI.jsx";
 
 
 
@@ -67,6 +69,8 @@ function App() {
                       <Route path="/views/xcheck" element={<XDatasetsView />} />
 
                       <Route path="/help/howtouse" element={<HowToUse />} />
+                      <Route path="/help/faq" element={<FAQPage />} />
+                      <Route path="/help/restapi" element={<RESTAPIPage />} />
 
 
                       <Route path="/datasetmanager" element={<DatasetManagePage />} />

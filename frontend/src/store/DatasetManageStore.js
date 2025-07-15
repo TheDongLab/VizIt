@@ -2,9 +2,7 @@ import {create} from 'zustand'
 import axios from 'axios'
 import {toast} from "react-toastify";
 
-const BASE_URL = "http://localhost:8000"; // Replace with your backend URL
-// const BASE_URL = "http://10.168.236.29:8000"; // Replace with your backend URL
-
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const dmURL = `${BASE_URL}/datasetmanage`;
 
 const useDatasetManageStore = create((set, get) => ({

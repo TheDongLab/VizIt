@@ -52,7 +52,7 @@ export default function HomePage() {
             <Container maxWidth="lg">
                 <Box sx={{textAlign: "center", mb: 6}}>
                     <Typography variant="h3">
-                        BrainDataPortal Views
+                        {import.meta.env.VITE_APP_TITLE} Views
                     </Typography>
                     <Typography variant="h6" color="text.secondary" sx={{maxWidth: 700, mx: "auto"}}>
                         Explore and analyze single-cell, spatial transcriptomics, and other omics data through

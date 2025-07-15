@@ -27,7 +27,7 @@ const Home = () => {
     return (
         <div className="landing-page">
             <Typography variant="h3" align="center" className="title">
-                BrainDataPortal
+                {import.meta.env.VITE_APP_TITLE}
             </Typography>
             <Typography variant="h5" align="center" className="subtitle">
                 Explore and analyze brain-related omics data with ease.

@@ -5,7 +5,7 @@ const About = () => {
   return (
     <div className="about-page">
       <header className="about-header">
-        <h1>About BrainDataPortal</h1>
+        <h1>About {import.meta.env.VITE_APP_TITLE}</h1>
         <p className="subtitle">Advancing Neuroscience Research</p>
       </header>
 
