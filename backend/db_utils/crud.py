@@ -72,6 +72,7 @@ def insert_sample(sample: Sample, session: Session):
 
 
 def import_sample_sheet(sample_sheet: str, session: Session):
+    print(f"=======import_sample_sheet:{sample_sheet}==========")
     ## read the csv file
     empty_data_lst = [None, "none", "Null", "null", "na", np.nan, "Unknown", "unknown", "NaN", "nan", "N/A"]
     df = pd.read_csv(sample_sheet, thousands=',')

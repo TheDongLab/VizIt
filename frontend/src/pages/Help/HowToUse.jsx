@@ -170,7 +170,7 @@ export default function HelpPage() {
                 <Container maxWidth="lg" className="hero-section__container">
                     <Box className="hero-section__content">
                         <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-                            BrainDataPortal Help Center
+                            {import.meta.env.VITE_APP_TITLE} Help Center
                         </Typography>
                         <Typography variant="h5" className="hero-section__subtitle">
                             Complete guide for single-cell, spatial transcriptomics and omics data analysis platform
@@ -208,7 +208,7 @@ export default function HelpPage() {
                                             Technology Stack
                                         </Typography>
                                         <Typography variant="body1" color="text.secondary" className="section-description">
-                                            BrainDataPortal is built with modern technologies to provide a powerful and flexible platform
+                                            {import.meta.env.VITE_APP_TITLE} is built with modern technologies to provide a powerful and flexible platform
                                             for single-cell and spatial transcriptomics data analysis.
                                         </Typography>
                                     </Box>
@@ -317,7 +317,7 @@ export default function HelpPage() {
                                         </Typography>
                                         <Typography variant="body1" color="text.secondary" className="section-description">
                                             Follow these steps to set up your development environment and get
-                                            BrainDataPortal running locally.
+                                            {import.meta.env.VITE_APP_TITLE} running locally.
                                         </Typography>
                                     </Box>
 
@@ -371,7 +371,7 @@ export default function HelpPage() {
                                                             git clone
                                                             https://github.com/your-org/braindataportal.git
                                                             <br/>
-                                                            cd braindataportal/frontend
+                                                            cd {import.meta.env.VITE_APP_TITLE}/frontend
                                                             <br/>
                                                             <br/>
                                                             <span className="comment"># Install dependencies</span>
@@ -522,7 +522,7 @@ export default function HelpPage() {
                                         </Typography>
                                         <Typography variant="body1" color="text.secondary" className="section-description">
                                             Learn about supported data formats and how to prepare your datasets for
-                                            analysis in BrainDataPortal.
+                                            analysis in {import.meta.env.VITE_APP_TITLE}.
                                         </Typography>
                                     </Box>
 
@@ -711,7 +711,7 @@ export default function HelpPage() {
                                         </Typography>
                                         <Typography variant="body1" color="text.secondary"
                                                     className="section-description">
-                                            Complete guide to using BrainDataPortal for data analysis and
+                                            Complete guide to using {import.meta.env.VITE_APP_TITLE} for data analysis and
                                             visualization of single-cell and
                                             spatial transcriptomics data.
                                         </Typography>

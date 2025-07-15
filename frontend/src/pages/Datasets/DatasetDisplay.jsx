@@ -209,7 +209,8 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                 {displayedData.map((record) => (
                                     <TableRow key={record.dataset_id}>
                                         <TableCell>
-                                            {record.sample_sheet === "None" ? record.dataset_id :
+                                            {record.sample_sheet === "None" || record.sample_sheet === null || record.sample_sheet.trim() === "" ?
+                                                record.dataset_id :
                                                 <Link to={`/samples/${record.dataset_id}`}>{record.dataset_id}</Link>}
                                         </TableCell>
                                         <TableCell>{record.PI_full_name}</TableCell>
@@ -226,8 +227,7 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                         </TableCell>
                                         {deleteMode && (
                                             <TableCell>
-                                                <Button variant="outlined" color="error" size="small"
-                                                        onClick={() => handleDeleteDataset(record.dataset_id)}>
+                                                <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteDataset(record.dataset_id)}>
                                                     Delete
                                                 </Button>
                                             </TableCell>

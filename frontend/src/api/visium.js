@@ -1,8 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:8000";
-// const BASE_URL = "http://10.168.236.29:8000"; // Replace with your backend URL
-
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const VISIUM_URL = `${BASE_URL}/visium`;
 
 

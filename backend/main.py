@@ -4,7 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.db import create_db_and_tables
 from backend.routes import db_routes, api_routes, visium_routes, qtl_routes, dm_routes
 
-app = FastAPI()
+from backend.settings import settings
+
+app = FastAPI(debug=settings.debug)
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +32,8 @@ app.include_router(dm_routes.router, prefix="/datasetmanage")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("Starting FastAPI server on port", settings.uvicorn_port)
+    uvicorn.run(app, host=settings.uvicorn_host, port=settings.uvicorn_port)
 
 
 # Run FastAPI with uvicorn and --reload: When you run the application using uvicorn, include the --reload flag:
@@ -50,3 +53,6 @@ if __name__ == "__main__":
 
 # This starts 4 workers, each capable of handling 2 threads, increasing capacity for concurrent requests.
 # gunicorn -w 4 --threads 2 -k uvicorn.workers.UvicornWorker main:app
+
+# nohup python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers >> backend.log 2>&1 &
+# nohup python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers >> backend.log 2>&1 &

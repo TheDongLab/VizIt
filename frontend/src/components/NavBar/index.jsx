@@ -19,7 +19,7 @@ const NavBar = () => {
             <Toolbar>
                 <Typography variant="h6" sx={{ flexGrow: 1 }} className="navbar-title">
                     <Link to="/" style={{ textDecoration: "none", color: "white", letterSpacing: "0rem" }}>
-                        BrainDataPortal
+                        {import.meta.env.VITE_APP_TITLE}
                     </Link>
                 </Typography>
                 <Button color="inherit" component={Link} to="/about">About</Button>
