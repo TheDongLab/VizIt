@@ -2,16 +2,14 @@
 
 /frontend/node_modules
 /frontend/.vite
-/frontend/dist/
 
-/backend/database
-/backend/venv
-/backend/.env
-/backend/.idea
+/backend/.idea/
 
-.Rproj.user
-/backend/datasets/
-/backend/dataset_bkp/
+/backend/datasets/**
+!/backend/datasets/.gitkeep
+
+/backend/SampleSheets/**
+!/backend/SampleSheets/.gitkeep
+
 
 /backend/DatasetFiles/
-
