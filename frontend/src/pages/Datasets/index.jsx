@@ -17,6 +17,7 @@ const DatasetsPage = () => {
         brainRegion: searchParams.getAll("brainRegion") || [],
         brainSubregion: searchParams.getAll("brainSubregion") || [],
         organism: searchParams.getAll("organism") || [],
+        tissue: searchParams.getAll("tissue") || [],
         disease: searchParams.getAll("disease") || [],
     })
 
@@ -52,6 +53,7 @@ const DatasetsPage = () => {
             brainRegion: [],
             brainSubregion: [],
             organism: [],
+            tissue: [],
             disease: [],
         })
     }
@@ -88,6 +90,11 @@ const DatasetsPage = () => {
 
             // Check organism filter (assuming you have organism field in your data)
             if (selectedFilters.organism.length > 0 && record.organism && !selectedFilters.organism.includes(record.organism)) {
+                return false
+            }
+
+            // Check tissue filter (assuming you have tissue field in your data)
+            if (selectedFilters.tissue.length > 0 && record.tissue && !selectedFilters.tissue.includes(record.tissue)) {
                 return false
             }
 

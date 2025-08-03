@@ -1,4 +1,11 @@
-/docs
+
+.DS_Store
+*.pyc
+
+*.rds
+*.RData
+
+/data
 
 /frontend/node_modules
 /frontend/.vite
@@ -13,3 +20,10 @@
 
 
 /backend/DatasetFiles/
+/backend/datasets/
+
+/frontend/public/Demos/notebooks/sc/example_data/**
+!/frontend/public/Demos/notebooks/sc/example_data/dataset_info.toml
+
+/frontend/public/Demos/notebooks/visiumst/example_data/**
+!/frontend/public/Demos/notebooks/visiumst/example_data/dataset_info.toml

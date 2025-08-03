@@ -9,6 +9,7 @@ import useDatatableStore from "../../store/DatatableStore.js";
 const FilterPanel = ({selectedFilters, onFilterChange, onClearAll, hasActiveFilters}) => {
     const [expandedFilters, setExpandedFilters] = useState({
         assayType: true,
+        tissue: true,
         brainRegion: true,
         brainSubregion: false,
         organism: false,

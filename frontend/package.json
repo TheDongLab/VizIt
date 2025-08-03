@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "buildn:ginx": "vite build --mode nginx",
+    "build:nginx": "vite build --mode nginx",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -36,6 +36,7 @@
     "react-dom": "^18.3.1",
     "react-plotly.js": "^2.6.0",
     "react-router-dom": "^7.1.2",
+    "react-syntax-highlighter": "^15.6.1",
     "react-toastify": "^11.0.3",
     "react-window": "^1.8.11",
     "tailwindcss": "^4.1.8",

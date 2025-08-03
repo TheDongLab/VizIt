@@ -1,0 +1,145 @@
+---
+title: "Extract Data from Seurat Object"
+author: "Ruifeng Hu"
+date: "`r Sys.Date()`"
+description: "This notebook extracts data from a Seurat object and saves it in formats suitable for downstream analysis."
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: cosmo
+---
+
+## Overview
+
+This notebook extracts data from a Seurat object and saves it in formats suitable for downstream analysis.
+
+## Usage
+
+Run as an R script:
+
+```
+Rscript extract_SC_v5.R seurat_obj.rds output_directory cluster_column
+```
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Libraries
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(jsonlite)
+library(Matrix)
+library(data.table)
+library(Seurat)
+library(tidyverse)
+library(jsonlite)
+library(presto)
+```
+
+## Set Arguments
+
+You can set these manually for interactive use:
+
+```{r input-args}
+# Set these manually for notebook use
+seurat_obj_file <- "example_data/snRNAseq_MTG_10samples.rds"  # Path to your Seurat object fil
+output_dir <- "example_data/snRNAseq_MTG_10samples"  # Directory to save output files, usually the dataset name
+cluster_col <- "MajorCellTypes"  # Column name in metadata for clustering information
+```
+
+## Create Output Directory
+
+```{r create-output_dir}
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+```
+
+## Load Seurat Object
+
+```{r load-seurat-object}
+cat("Loading RDS data...\n")
+seurat_obj <- readRDS(seurat_obj_file)
+if (!inherits(seurat_obj, "Seurat")) {
+  stop("The provided file is not a valid Seurat object.")
+}
+capture.output(str(seurat_obj), file = paste0(output_dir, "/seurat_obj_structure.txt"))
+```
+
+## Check Seurat Object Structure
+v5 Seurat objects have a different structure compared to v4, so we need to ensure the object contains the expected slots and layers.
+```{r check-seurat-structure}
+if (!"RNA" %in% names(seurat_obj@assays)) {
+  stop("The Seurat object does not contain the 'RNA' assay.")
+}
+if (!"data" %in% slotNames(seurat_obj@assays$RNA)) {
+  stop("The Seurat object does not contain the 'data' slot in the 'RNA' assay.")
+}
+if (!"meta.data" %in% slotNames(seurat_obj)) {
+  stop("The Seurat object does not contain the 'meta.data' slot.")
+}
+if (!"umap" %in% names(seurat_obj@reductions)) {
+  stop("The Seurat object does not contain the 'umap' reduction.")
+}
+if (!cluster_col %in% colnames(seurat_obj@meta.data)) {
+  stop(paste("The cluster column", cluster_col, "does not exist in the metadata."))
+}
+```
+
+## Extract and Save Metadata
+
+```{r save-metadata}
+cat("Saving metadata...\n")
+metadata <- seurat_obj@meta.data
+write.csv(metadata, file = paste0(output_dir, "/raw_metadata.csv"), row.names = TRUE)
+
+cat("Saving metadata feature names...\n")
+column_names <- colnames(metadata)
+write_json(column_names, path = file.path(output_dir, "raw_metadata_columns.json"), pretty = TRUE)
+```
+
+## Save UMAP Embedding
+
+```{r save-umap}
+cat("Saving UMAP embedding...\n")
+umap_embeddings <- seurat_obj@reductions$umap@cell.embeddings
+colnames(umap_embeddings) <- toupper(colnames(umap_embeddings))
+write.csv(umap_embeddings, file = paste0(output_dir, "/raw_umap_embeddings.csv"), row.names = TRUE)
+```
+
+## Extract and Save Normalized Counts
+
+```{r save-normalized-counts}
+cat("Saving normalized counts...\n")
+normalized_counts <- seurat_obj@assays$RNA@data # Sparse matrix
+
+# Convert sparse matrix to triplet format (long format)
+long_data <- summary(normalized_counts)
+
+# Get row (gene) and column (cell) names
+long_data$Gene <- rownames(normalized_counts)[long_data$i]
+long_data$Cell <- colnames(normalized_counts)[long_data$j]
+long_data$Expression <- long_data$x
+
+# Keep only necessary columns
+long_data <- long_data[, c("Gene", "Cell", "Expression")]
+
+# Filter out zero values
+nonzero_data <- long_data[long_data$Expression > 0, ]
+
+# Convert to data.table for efficiency
+nonzero_data <- as.data.table(nonzero_data)
+# Save to CSV with index as the first column in a fast way
+fwrite(nonzero_data, file = paste0(output_dir, "/raw_normalized_counts.csv"), row.names = FALSE)
+```
+
+---
+
+```{r Done, echo=TRUE}
+cat("Done! Data extraction is complete!
+You can find the output files in the directory:", output_dir, "\n")
+```

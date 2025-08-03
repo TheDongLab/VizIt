@@ -7,7 +7,6 @@ import * as brainRegions_outer from "../../assets/images/brain_outer";
 import "./BrainRegions.css";
 import {useNavigate} from "react-router-dom";
 import PropTypes from "prop-types";
-import StatBar from "../StatBar/index.jsx";
 
 const brainRegions = {
     // Outermost regions

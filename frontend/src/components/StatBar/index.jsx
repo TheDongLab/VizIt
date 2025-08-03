@@ -1,8 +1,9 @@
-import {Box, Typography, Link} from "@mui/material";
+import {Box, Typography, Link, Paper, Card, CardContent} from "@mui/material";
 import {Description} from "@mui/icons-material";
 import "./StatBar.css";
-import {Dna, DnaOff, Images, Folders,LandPlot} from "lucide-react";
+import {Dna, DnaOff, Images, Folders, LandPlot} from "lucide-react";
 import PropTypes from "prop-types";
+import Grid2 from "@mui/material/Grid2";
 
 const StatBar = ({disease, homeData}) => {
 
@@ -17,17 +18,21 @@ const StatBar = ({disease, homeData}) => {
     ];
 
     return (
-        <Box className="stat-bar-container">
-            {stats.map((stat, index) => (
-                <Box key={index} className="stat-item">
-                    <Link href={stat.link} underline="hover">
-                        <Box className="stat-icon">{stat.icon}</Box>
-                        <Typography variant="h5" className="stat-number">{stat.value}</Typography>
-                        <Typography variant="body1" className="stat-label">{stat.label}</Typography>
-                    </Link>
-                </Box>
-            ))}
-        </Box>
+        <Grid2 item xs={12}>
+            <Paper elevation={3} sx={{p: 3}} className="stat-bar-container">
+                <Grid2 container spacing={3}>
+                    {stats.map((stat, index) => (
+                        <Grid2 item xs={12} sm={6} md={3} key={index} className="stat-item">
+                            <Box elevation={2} sx={{textAlign: "center", px: 2, py: 0}}>
+                                <Box className="stat-icon">{stat.icon}</Box>
+                                <Typography variant="h5" component="div" gutterBottom color="primary"><Link href={stat.link} underline="none">{stat.value}</Link></Typography>
+                                <Typography variant="body2" color="text.secondary">{stat.label}</Typography>
+                            </Box>
+                        </Grid2>
+                    ))}
+                </Grid2>
+            </Paper>
+        </Grid2>
     );
 };
 

@@ -271,11 +271,11 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .tech-stack__description {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.0rem !important;
     opacity: 0.9;
 }
 
@@ -349,8 +349,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 60px;
-    height: 60px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     margin-bottom: 1rem;
 }
@@ -381,7 +381,7 @@
 }
 
 .feature-icon {
-    font-size: 28px;
+    font-size: 18px;
 }
 
 /* Code Blocks */
@@ -497,7 +497,7 @@
 }
 
 .env-vars-grid {
-    margin-bottom: 3rem;
+    margin-bottom: 1rem;
 }
 
 .env-card {
@@ -543,7 +543,7 @@
     color: var(--secondary-dark);
 }
 
-.docker-card {
+.docker-card{
     background-color: rgba(59, 130, 246, 0.05);
     border: 1px solid rgba(59, 130, 246, 0.2);
     border-radius: 0.75rem;
@@ -566,14 +566,14 @@
 
 /* Data Preparation Section */
 .data-formats-grid {
-    margin-bottom: 3rem;
+    margin-bottom: 0rem;
 }
 
 .data-format__header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.0rem;
 }
 
 .data-format__description {
@@ -598,7 +598,7 @@
 }
 
 .file-structure-card {
-    margin-bottom: 3rem;
+    margin-bottom: 1rem;
     background-color: rgba(245, 158, 11, 0.05);
     border: 1px solid rgba(245, 158, 11, 0.2);
     border-radius: 0.75rem;
@@ -691,6 +691,7 @@
     background-color: rgba(59, 130, 246, 0.05);
     border: 1px solid rgba(59, 130, 246, 0.2);
     border-radius: 0.75rem;
+    margin-bottom: 2rem;
 }
 
 .config-title {
@@ -699,7 +700,7 @@
 }
 
 .config-content {
-    padding: 1.5rem;
+    padding: 1rem;
     background-color: rgba(59, 130, 246, 0.05);
     font-family: "Fira Code", monospace;
     font-size: 0.875rem;
