@@ -78,8 +78,8 @@ function VisiumView() {
         const initialSelectedGenes = urlGenes.length ? urlGenes : defaultGenes;
 
         useSampleGeneMetaStore.setState({
-            selectedSamples: initialSelectedSamples,
-            selectedGenes: initialSelectedGenes
+            selectedSamples: initialSelectedSamples.length ? initialSelectedSamples : "",
+            selectedGenes: initialSelectedGenes.length ? initialSelectedGenes : "",
         });
         setSelectedMetaFeatures(defaultFeatures);
 

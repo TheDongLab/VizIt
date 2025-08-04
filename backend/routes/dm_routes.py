@@ -40,6 +40,7 @@ class DatasetInfo(BaseModel):
     sample_sheet: Optional[str] = None
     n_samples: Optional[int] = None
     organism: Optional[str] = None
+    tissue: Optional[str] = None
     disease: Optional[str] = None
 
 class StudyInfo(BaseModel):
@@ -285,7 +286,7 @@ def check_toml_file(toml_data):
     if "dataset" not in toml_data:
         return {"message": "Error: Missing [dataset] config.", "success": False}
     else:
-        required_keys = ["dataset_name", "n_samples", "brain_super_region", "brain_region", "organism", "disease"]
+        required_keys = ["dataset_name", "n_samples", "brain_super_region", "brain_region", "organism","tissue", "disease"]
         for key in required_keys:
             if key not in toml_data["dataset"] or str(toml_data["dataset"][key]).strip() == "":
                 return {"message": f"Error: Missing [dataset - {key}] config.", "success": False}

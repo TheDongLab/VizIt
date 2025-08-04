@@ -25,6 +25,11 @@ import LayerView from "./pages/LayerView/index.jsx";
 import HowToUse from "./pages/Help/HowToUse.jsx";
 import FAQPage from "./pages/Help/FAQ.jsx";
 import RESTAPIPage from "./pages/Help/RESTAPI.jsx";
+import Home_HM from "./pages/Home_HM/index.jsx";
+import DatasetDemosPage from "./pages/DatasetDemos/index.jsx";
+import XQTLDemo from "./pages/DatasetDemos/XQTLDemo.jsx";
+import SingleCellDemo from "./pages/DatasetDemos/SingleCellDemo.jsx";
+import VisiumSTDemo from "./pages/DatasetDemos/VisiumSTDemo.jsx";
 
 
 
@@ -54,6 +59,7 @@ function App() {
                       <Route path="/test" element={<Test />} />
 
                       <Route path="/" element={<Home />} />
+                      <Route path="/home_hm" element={<Home_HM />} />
                       <Route path="/about" element={<About />} />
                       <Route path="/datasets" element={<DatasetsPage />} />
 
@@ -69,8 +75,13 @@ function App() {
                       <Route path="/views/xcheck" element={<XDatasetsView />} />
 
                       <Route path="/help/howtouse" element={<HowToUse />} />
+                      <Route path="/help/howtouse/demos" element={<DatasetDemosPage />} />
                       <Route path="/help/faq" element={<FAQPage />} />
                       <Route path="/help/restapi" element={<RESTAPIPage />} />
+
+                      <Route path="/dataset-demos/single-cell" element={<SingleCellDemo />} />
+                      <Route path="/dataset-demos/visium-st" element={<VisiumSTDemo />} />
+                      <Route path="/dataset-demos/xqtl" element={<XQTLDemo />} />
 
 
                       <Route path="/datasetmanager" element={<DatasetManagePage />} />

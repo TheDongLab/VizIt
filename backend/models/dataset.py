@@ -23,6 +23,7 @@ class DatasetBase(SQLModel):
 
     disease: str = Field(default="NA")
     organism: str = Field(default="NA")
+    tissue: str = Field(default="NA")
     n_samples: int|None = Field(default=np.nan)
     brain_super_region: str = Field(default="NA")
     brain_region: str = Field(default="NA")

@@ -275,12 +275,14 @@ async def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
         brain_region_ls = []
         assay_ls = []
         organism_ls = []
+        tissue_ls = []
         disease_ls = []
         for dataset in datasets:
             brain_super_region_ls += [i.strip() for i in dataset.brain_super_region.split(",")]
             brain_region_ls += [i.strip() for i in dataset.brain_region.split(",")]
             assay_ls.append(dataset.assay)
             organism_ls.append(dataset.organism)
+            tissue_ls.append(dataset.tissue)
             disease_ls.append(dataset.disease)
 
         dataset_fileters = [
@@ -288,6 +290,7 @@ async def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
             {"title": "Brain Region", "key": "brainRegion", "options": set(brain_super_region_ls), },
             {"title": "Brain Sub-Region", "key": "brainSubregion", "options": set(brain_region_ls), },
             {"title": "Organism", "key": "organism", "options": set(organism_ls), },
+            {"title": "Tissue", "key": "tissue", "options": set(tissue_ls), },
             {"title": "Disease", "key": "disease", "options": set(disease_ls), },
         ]
         return [datasets, dataset_fileters]  # datasets, dataset_fileters

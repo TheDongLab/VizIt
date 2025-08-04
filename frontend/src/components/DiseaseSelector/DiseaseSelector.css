@@ -13,7 +13,7 @@
 
 .disease-buttons {
   border: 1px solid #cbd5e1; /* Light border around button group */
-  border-radius: 25px; !important; /* Rounded edges for button group */
+  border-radius: 25px !important; /* Rounded edges for button group */
   overflow: hidden; /* Ensures rounded corners work on all buttons */
 }
 
