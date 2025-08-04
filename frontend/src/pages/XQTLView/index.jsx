@@ -423,7 +423,11 @@ function XQTLView() {
               );
             }}
             renderInput={(params) => (
-              <TextField {...params} label="Gene or SNP" variant="standard" />
+              <TextField
+                {...params}
+                label="Search by gene symbol, gene ID, SNP rsID"
+                variant="standard"
+              />
             )}
           />
 
