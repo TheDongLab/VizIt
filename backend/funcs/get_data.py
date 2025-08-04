@@ -300,7 +300,7 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
     else:
         print(data_file + " not found")
         return (
-            "Error: eQTL data file not found for the specified dataset and cell type."
+            "Error: QTL data file not found for the specified dataset and cell type."
         )
 
 
@@ -360,7 +360,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
     else:
         print(data_file + " not found")
         return (
-            "Error: eQTL data file not found for the specified dataset and cell type."
+            "Error: QTL data file not found for the specified dataset and cell type."
         )
 
 
