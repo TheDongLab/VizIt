@@ -33,6 +33,7 @@ function round(num, precision = 6) {
 }
 
 const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
+  dataset,
   snpName,
   snps,
   geneData,
@@ -399,7 +400,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const layout = useMemo(
     () => ({
       title: {
-        text: `<b>${snpName}</b><br>${chromosome}`,
+        text: `<b>${snpName}</b>`,
         font: { size: 20 },
       },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -419,7 +420,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         roworder: "top to bottom",
       },
       xaxis: {
-        title: { text: `Genomic Position` },
+        title: { text: `Genomic Position (${chromosome})` },
         range: initialXRange,
         minallowed: Math.min(nearbySnpsRange[0], xMin),
         maxallowed: Math.max(nearbySnpsRange[1], xMax),
@@ -529,6 +530,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     [
       snpName,
       chromosome,
+      totalHeight,
       cellTypes,
       initialXRange,
       nearbySnpsRange,
@@ -585,7 +587,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${snpName}`, // TODO name
+            filename: `${dataset}.${snpName}`,
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           modeBarButtonsToRemove: [
@@ -602,7 +604,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                 click: function (gd) {
                   Plotly.downloadImage(gd, {
                     format: "svg",
-                    filename: `BDP_svg-${snpName}`, // TODO name
+                    filename: `${dataset}.${snpName}`,
                   });
                 },
               },
@@ -622,6 +624,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 });
 
 SNPViewPlotlyPlot.propTypes = {
+  dataset: PropTypes.string.isRequired,
   snpName: PropTypes.string.isRequired,
   snps: PropTypes.arrayOf(
     PropTypes.shape({

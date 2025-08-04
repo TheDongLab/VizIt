@@ -33,6 +33,7 @@ function round(num, precision = 6) {
 }
 
 const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
+  dataset,
   geneName,
   genes,
   snpData,
@@ -475,7 +476,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const layout = useMemo(
     () => ({
       title: {
-        text: `<b>${geneName}</b><br>${chromosome}`,
+        text: `<b>${geneName}</b>`,
         font: { size: 20 },
       },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -495,7 +496,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         roworder: "top to bottom",
       },
       xaxis: {
-        title: { text: `Genomic Position` },
+        title: { text: `Genomic Position (${chromosome})` },
         range: initialXRange,
         minallowed: Math.min(nearbyGenesRange[0], xMin),
         maxallowed: Math.max(nearbyGenesRange[1], xMax),
@@ -662,7 +663,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${geneName}`, // TODO name
+            filename: `${dataset}.${geneName}`,
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           modeBarButtonsToRemove: [
@@ -679,7 +680,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 click: function (gd) {
                   Plotly.downloadImage(gd, {
                     format: "svg",
-                    filename: `BDP_svg-${geneName}`, // TODO name
+                    filename: `${dataset}.${geneName}`,
                   });
                 },
               },
@@ -699,6 +700,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
 });
 
 GeneViewPlotlyPlot.propTypes = {
+  dataset: PropTypes.string.isRequired,
   geneName: PropTypes.string.isRequired,
   genes: PropTypes.arrayOf(
     PropTypes.shape({
