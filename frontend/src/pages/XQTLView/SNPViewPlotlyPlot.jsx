@@ -166,6 +166,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         },
       },
       customdata: otherSnps.map((s) => s.snp_id),
+      pointType: "snp",
       hoverinfo: "text",
       hovertext: otherSnps.map(
         (s) =>
