@@ -32,6 +32,11 @@ import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
 
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
+import { supportsWebGL } from "../../utils/webgl.js";
+
+const webGLSupported = supportsWebGL();
+console.log("WebGL supported:", webGLSupported);
+
 function ConfirmationDialog({
   isOpen,
   handleClose,
@@ -544,6 +549,7 @@ function XQTLView() {
                         chromosome={selectedChromosome}
                         cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
+                        useWebGL={webGLSupported}
                       />
                     </div>
                   )
@@ -561,6 +567,7 @@ function XQTLView() {
                         chromosome={selectedChromosome}
                         cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
+                        useWebGL={webGLSupported}
                       />
                     </div>
                   )

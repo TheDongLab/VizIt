@@ -40,14 +40,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   chromosome,
   cellTypes,
   handleSelect,
+  useWebGL,
 }) {
-  // TODO
-  // const [naturalDimensions, setNaturalDimensions] = useState({
-  //   width: 0,
-  //   height: 0,
-  // });
-  // const [displayScale, setDisplayScale] = useState(1);
-
   const combinedGeneList = Object.entries(geneData).flatMap(
     ([celltype, genes]) =>
       genes.map(
@@ -155,7 +149,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     const others = {
       x: otherSnps.map((s) => s.position),
       y: otherSnps.map((s) => jitterMap.get(s.snp_id)),
-      type: "scattergl",
+      type: useWebGL ? "scattergl" : "scatter",
       mode: "markers",
       marker: {
         color: "rgb(161, 161, 161)",
@@ -198,7 +192,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     };
 
     return [others, target];
-  }, [snps, snpName, jitterMap]);
+  }, [snps, useWebGL, snpName, jitterMap]);
 
   // Handle resize TODO
   // const updateScale = useCallback(() => {
@@ -264,7 +258,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             y: [y0, y1],
             xaxis: "x",
             yaxis: `y${i + 2}`,
-            type: "scattergl",
+            type: useWebGL ? "scattergl" : "scatter",
             mode: "lines+markers",
             line: {
               color: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
@@ -292,7 +286,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           };
         });
       }),
-    [cellTypes, geneData, minBetaMagnitude, maxBetaMagnitude],
+    [cellTypes, geneData, useWebGL, minBetaMagnitude, maxBetaMagnitude],
   );
 
   // Handle clicking points
@@ -648,6 +642,7 @@ SNPViewPlotlyPlot.propTypes = {
   chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
+  useWebGL: PropTypes.bool,
 };
 
 export default SNPViewPlotlyPlot;

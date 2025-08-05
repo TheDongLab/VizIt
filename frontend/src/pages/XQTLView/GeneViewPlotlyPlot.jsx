@@ -40,14 +40,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   chromosome,
   cellTypes,
   handleSelect,
+  useWebGL,
 }) {
-  // TODO
-  // const [naturalDimensions, setNaturalDimensions] = useState({
-  //   width: 0,
-  //   height: 0,
-  // });
-  // const [displayScale, setDisplayScale] = useState(1);
-
   const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
     snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
@@ -138,7 +132,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           y: snpList.map((snp) => snp.y),
           xaxis: "x",
           yaxis: `y${i + 2}`,
-          type: "scattergl",
+          type: useWebGL ? "scattergl" : "scatter",
           mode: "markers",
           marker: {
             color: snpList.map((snp) =>
@@ -163,7 +157,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         },
       ];
     });
-  }, [cellTypes, snpData, minBetaMagnitude, maxBetaMagnitude]);
+  }, [cellTypes, snpData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
 
   // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
@@ -723,6 +717,7 @@ GeneViewPlotlyPlot.propTypes = {
   chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
+  useWebGL: PropTypes.bool,
 };
 
 export default GeneViewPlotlyPlot;
