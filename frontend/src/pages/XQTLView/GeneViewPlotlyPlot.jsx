@@ -672,9 +672,48 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 name: "Save as SVG",
                 icon: Plotly.Icons.disk,
                 click: function (gd) {
-                  Plotly.downloadImage(gd, {
-                    format: "svg",
-                    filename: `${dataset}.${geneName}`,
+                  if (!useWebGL) {
+                    Plotly.downloadImage(gd, {
+                      format: "svg",
+                      filename: `${dataset}.${geneName}`,
+                    });
+                    return;
+                  }
+
+                  // Create offscreen and hidden container with same dimensions
+                  const exportDiv = document.createElement("div");
+                  exportDiv.style.position = "fixed";
+                  exportDiv.hidden = true;
+                  exportDiv.style.left = "-1000px";
+                  exportDiv.style.width = gd.offsetWidth + "px";
+                  exportDiv.style.height = gd.offsetHeight + "px";
+                  document.body.appendChild(exportDiv);
+
+                  // Convert scattergl to scatter
+                  const exportData = gd.data.map((trace) =>
+                    trace.type === "scattergl"
+                      ? { ...trace, type: "scatter" }
+                      : trace,
+                  );
+
+                  // Clone layout and disable responsiveness
+                  const exportLayout = {
+                    ...gd.layout,
+                    width: gd.offsetWidth,
+                    height: gd.offsetHeight,
+                    autosize: false,
+                  };
+
+                  Plotly.newPlot(exportDiv, exportData, exportLayout, {
+                    responsive: false,
+                  }).then(() => {
+                    Plotly.downloadImage(exportDiv, {
+                      format: "svg",
+                      filename: `${dataset}.${geneName}`,
+                    }).then(() => {
+                      document.body.removeChild(exportDiv);
+                      Plotly.purge(exportDiv);
+                    });
                   });
                 },
               },
