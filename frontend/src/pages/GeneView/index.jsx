@@ -21,10 +21,12 @@ import {useSearchParams} from "react-router-dom"
 import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js"
 
 import EChartScatterPlot from "./EChartScatter.jsx"
+import PlotlyScatterPlot from "./PlotlyScatter.jsx";
 import GeneMetaPlots from "./GenePlots.jsx"
 
 import "./GeneView.css"
 import useDataStore from "../../store/DatatableStore.js"
+import useClusterStore from "../../store/ClusterStore.js";
 
 function GeneView() {
     // Get all the pre-selected values
@@ -35,12 +37,16 @@ function GeneView() {
     const initialGrouping = queryParams.get("group") ?? ""
     const initialDataset = queryParams.get("dataset") ?? ""
 
+    const {mainCluster, fetchMainClusterInfo} = useClusterStore()
+
     const {datasetRecords, fetchDatasetList} = useDataStore()
     useEffect(() => {
         fetchDatasetList()
     }, [])
 
-    const datasetOptions = datasetRecords.map((d) => d.dataset_id)
+    const datasetOptions = datasetRecords
+    .filter((d) => !d.assay.toLowerCase().endsWith("qtl"))
+    .map((d) => d.dataset_id)
 
     const [datasetId, setDatasetId] = useState(initialDataset)
     const [datasetSearchText, setDatasetSearchText] = useState("")
@@ -62,23 +68,39 @@ function GeneView() {
     const {allCellMetaData, fetchAllMetaData, exprDataDict, fetchExprData} = useSampleGeneMetaStore()
     const {allSampleMetaData, CellMetaMap} = useSampleGeneMetaStore()
     const {metadataLoading, loading, error} = useSampleGeneMetaStore()
-    const [coloring, setColoring] = useState(initialColoring)
-    const [grouping, setGrouping] = useState(initialGrouping)
+    const [coloring, setColoring] = useState(initialColoring || mainCluster)
+    const [grouping, setGrouping] = useState(initialGrouping || mainCluster)
 
     const [exprValueType, setExprValueType] = useState("celllevel")
 
+    // Load these in parallel immediately
+    const fetchPrimaryData = async () => {
+        setDataset(datasetId);
+        await fetchUMAPData(datasetId);
+        await fetchGeneList(datasetId)
+        await fetchSampleList(datasetId)
+        await fetchMetaList(datasetId)
+
+        // 清空旧数据，并重新获取 exprData
+        useSampleGeneMetaStore.setState({exprDataDict: {}}); // 先清空
+        await fetchExprData(datasetId);
+
+        // 清空旧数据，并重新获取 metaData
+        useSampleGeneMetaStore.setState({allCellMetaData: {}, allSampleMetaData: {}, CellMetaMap: {}});
+        await fetchAllMetaData(datasetId);
+        await fetchMainClusterInfo(datasetId);
+    }
     useEffect(() => {
-        // Load these in parallel immediately
-        const fetchPrimaryData = async () => {
-            await fetchUMAPData(datasetId);
-            await fetchGeneList(datasetId)
-            await fetchSampleList(datasetId)
-            await fetchMetaList(datasetId)
-            await fetchExprData(datasetId);
-            await fetchAllMetaData(datasetId);
-        }
         fetchPrimaryData()
     }, [datasetId])
+
+    useEffect(() => {
+        if (datasetId && mainCluster) {
+            setColoring(mainCluster); // 强制更新 coloring
+            setGrouping(mainCluster);
+            updateQueryParams(datasetId, selectedGenes, selectedSamples, mainCluster, mainCluster);
+        }
+    }, [datasetId, mainCluster]);
 
     const sampleOptions = sampleList.map((sample) => sample)
     sampleOptions.unshift("all")
@@ -87,13 +109,15 @@ function GeneView() {
     const [sampleSearchText, setSampleSearchText] = useState("")
 
     useEffect(() => {
-        const initialSelectedSamples = initialSamples.length ? initialSamples : []
+        const initialSelectedSamples = initialSamples.length ? initialSamples : ["all"]
         const initialSelectedGenes = initialGenes.length ? initialGenes : []
 
         setDataset(datasetId)
 
         useSampleGeneMetaStore.setState({
-            selectedSamples: initialSelectedSamples,
+            selectedSamples: initialSelectedSamples.length > 1 && initialSelectedSamples.includes("all")
+                ? initialSelectedSamples.filter(item => item !== "all")
+                : initialSelectedSamples,
             selectedGenes: initialSelectedGenes,
         })
     }, [])
@@ -132,6 +156,12 @@ function GeneView() {
 
     /** Handles sample selection change */
     const handleSampleChange = (event, newValue) => {
+        if (newValue.length > 1 && newValue.includes("all")) {
+            newValue = newValue.filter(item => item !== "all");
+        }
+        if (newValue.length === 0) {
+            newValue = ["all"]
+        }
         setSelectedSamples(newValue)
         updateQueryParams(datasetId, selectedGenes, newValue) // Pass the new value instead of old state
     }
@@ -152,9 +182,7 @@ function GeneView() {
 
     // click the button to fetch umap data
     const handleLoadPlot = () => {
-        setDataset(datasetId)
-        fetchAllMetaData(datasetId)
-        fetchExprData(datasetId)
+        fetchPrimaryData()
     }
 
     const handleGroupingChange = (event) => {
@@ -368,8 +396,21 @@ function GeneView() {
                                 {Object.entries(exprDataDict).map(([gene, expr_data]) => (
                                     <div key={gene} className="umap-item">
                                         <div className="umap-wrapper">
-                                            {(umapData && allCellMetaData) && (
-                                                <EChartScatterPlot
+                                            {/*{(umapData && allCellMetaData) && (*/}
+                                            {/*    <EChartScatterPlot*/}
+                                            {/*        gene={gene}*/}
+                                            {/*        sampleList={selectedSamples}*/}
+                                            {/*        umapData={umapData}*/}
+                                            {/*        exprData={expr_data}*/}
+                                            {/*        cellMetaData={allCellMetaData ?? {}}*/}
+                                            {/*        CellMetaMap={CellMetaMap ?? {}}*/}
+                                            {/*        sampleMetaData={allSampleMetaData ?? {}}*/}
+                                            {/*        group={coloring}*/}
+                                            {/*        isMetaDataLoading={metadataLoading}*/}
+                                            {/*    />*/}
+                                            {/*)}*/}
+                                            {umapData &&
+                                                <PlotlyScatterPlot
                                                     gene={gene}
                                                     sampleList={selectedSamples}
                                                     umapData={umapData}
@@ -379,9 +420,7 @@ function GeneView() {
                                                     sampleMetaData={allSampleMetaData ?? {}}
                                                     group={coloring}
                                                     isMetaDataLoading={metadataLoading}
-                                                />
-                                            )}
-                                            {/*{umapData && <PlotlyScatterPlot gene={gene} sampleList={selectedSamples} umapData={umapData} exprData={expr_data} cellMetaData={allCellMetaData} group={coloring}/>}*/}
+                                                />}
                                         </div>
                                     </div>
                                 ))}
@@ -409,25 +448,33 @@ function GeneView() {
                         <div className={`umap-container single-plot`}>
                             <div key={"all_gene"} className="umap-item">
                                 <div className="umap-wrapper">
-                                    {umapData && (
-                                        <EChartScatterPlot
+                                    {/*{umapData && (*/}
+                                    {/*    <EChartScatterPlot*/}
+                                    {/*        gene={"all"}*/}
+                                    {/*        sampleList={selectedSamples}*/}
+                                    {/*        umapData={umapData}*/}
+                                    {/*        exprData={{all: "all"}}*/}
+                                    {/*        cellMetaData={allCellMetaData ?? {}}*/}
+                                    {/*        CellMetaMap={CellMetaMap ?? {}}*/}
+                                    {/*        sampleMetaData={allSampleMetaData ?? {}}*/}
+                                    {/*        group={coloring}*/}
+                                    {/*        isMetaDataLoading={metadataLoading}*/}
+                                    {/*    />*/}
+                                    {/*)}*/}
+
+                                    {umapData &&
+                                        <PlotlyScatterPlot
                                             gene={"all"}
                                             sampleList={selectedSamples}
                                             umapData={umapData}
-                                            exprData={{all: "all"}}
+                                            exprData={{"all": "all"}}
                                             cellMetaData={allCellMetaData ?? {}}
                                             CellMetaMap={CellMetaMap ?? {}}
                                             sampleMetaData={allSampleMetaData ?? {}}
                                             group={coloring}
                                             isMetaDataLoading={metadataLoading}
                                         />
-                                    )}
-
-                                    {/*{umapData && <PlotlyScatterPlot gene={"all"}*/}
-                                    {/*                                sampleList={selectedSamples}*/}
-                                    {/*                                umapData={umapData} exprData={{"all": "all"}}*/}
-                                    {/*                                cellMetaData={allCellMetaData ?? {}}*/}
-                                    {/*                                group={coloring}/>}*/}
+                                    }
                                 </div>
                             </div>
                         </div>

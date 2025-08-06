@@ -398,12 +398,12 @@ def get_sample_list(dataset, query_str="all"):
             ]
     else:
         print(sample_file + " not found")
-        return "Error: Gene list file not found"
+        return "Error: Sample list file not found"
 
 
 def get_meta_list(dataset, query_str="all"):
     if dataset == "all":
-        return "Error: Sample dataset not specified."
+        return "Error: Dataset not specified."
     else:
         meta_file = os.path.join("backend", "datasets", dataset, "meta_list.json")
 
@@ -412,11 +412,20 @@ def get_meta_list(dataset, query_str="all"):
             data = json.load(f)
         if query_str == "all" or query_str == "":
             return data
+        elif query_str == "cell_level":
+            cellspot_meta_file = os.path.join("backend", "datasets", dataset, "cellspot_meta_mapping.json")
+            if os.path.exists(cellspot_meta_file):
+                with open(cellspot_meta_file, "r") as f:
+                    cellspot_meta = json.load(f)
+                return list(cellspot_meta.keys())
+            else:
+                print(cellspot_meta_file + " not found")
+                return "Error: cellspot_meta_mapping file not found"
         else:
             return [meta for meta in data if meta.lower().startswith(query_str.lower())]
     else:
         print(meta_file + " not found")
-        return "Error: Gene list file not found"
+        return "Error: Meta list file not found"
 
 
 def get_config_info(dataset):
@@ -434,7 +443,7 @@ def get_config_info(dataset):
         return "Error: Config info file not found"
 
 
-def get_celltype_list(dataset):
+def get_cluster_list(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -553,7 +562,7 @@ def get_degs_celllevel(dataset, celltype):
         return "Error: DEGs file not found"
 
 
-def get_degs_pseudobulk(dataset, celltype):
+def get_degs_pseudobulk(dataset, cluster):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
@@ -562,14 +571,14 @@ def get_degs_pseudobulk(dataset, celltype):
             "datasets",
             dataset,
             "clustermarkers",
-            "cluster_pseudobulk_DEGs_topN.csv",
+            "cluster_pb_DEGs_topN.csv",
         )
 
     data = {}
     if os.path.exists(degs_file):
         degs_df = pd.read_csv(degs_file, index_col=None, header=0)
         degs_df = degs_df.loc[
-            degs_df["cluster_DE"].str.startswith(celltype),
+            degs_df["cluster_DE"].str.startswith(cluster),
             ["cluster_DE", "gene", "avg_log2FC", "p_val_adj"],
         ]
 
@@ -577,7 +586,7 @@ def get_degs_pseudobulk(dataset, celltype):
         degs_df["avg_log2FC"] = degs_df["avg_log2FC"].round(4)
         degs_df["p_val_adj"] = degs_df["p_val_adj"].round(4)
 
-        ## split cluster_DE into CellType and DE
+        ## split cluster_DE into cluster and DE
         # degs_df["cluster_DE"] = degs_df["cluster_DE"].astype(str)
         # degs_df["cluster"] = [i.split(".")[0] for i in degs_df["cluster_DE"].tolist()]
         degs_df["DE"] = [i.split(".")[1] for i in degs_df["cluster_DE"].tolist()]
@@ -608,13 +617,13 @@ def get_degs_pseudobulk(dataset, celltype):
                 "datasets",
                 dataset,
                 "clustermarkers",
-                "pb_expr_matrix_topN_DEGs.csv",
+                "pb_expr_matrix_DEGs_topN.csv",
             ),
             index_col=0,
             header=0,
         )
-        escaped_celltype = re.escape(celltype)
-        pattern = rf"{escaped_celltype}"
+        escaped_cluster = re.escape(cluster)
+        pattern = rf"{escaped_cluster}"
 
         for DE, degs in degs_groups.items():
             for deg in degs:
@@ -696,7 +705,7 @@ def get_metadata_of_sample(dataset, sample="all", features="all"):
         cell_metadata = data_df.to_dict(orient="split")
 
         # get sample metadata
-        sample_metadata = get_sample_metadata(dataset)
+        sample_metadata = get_sample_metadata(dataset, samples=[sample])
 
         ## get cell_metadata_mapping
         cell_metadata_mapping = get_metadata_mapping(dataset)

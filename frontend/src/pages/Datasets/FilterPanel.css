@@ -1,5 +1,5 @@
 /* Filter panel container */
-.filter-panel {
+.dataset-filter-panel {
     width: 250px;
     background-color: #f9f9f9;
     /*padding: 16px;*/
@@ -7,6 +7,7 @@
     border-radius: 8px;
     overflow: hidden;
     height: fit-content;
+    margin-bottom: 50px;
 }
 
 .panel-title {

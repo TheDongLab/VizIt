@@ -39,14 +39,14 @@ def delete_dataset(dataset_id: str, session: Session):
     result = session.exec(statement).first()
     if result:
         ## delete samples in this dataset
-        statement = select(Sample).where(Sample.dataset_id == dataset_id)  # Create a SELECT query
+        statement = select(Sample).where(Sample.dataset_id == dataset_id) # delete samples
         samples = session.exec(statement).all()
         for sample in samples:
             session.delete(sample)
             session.commit()
 
         ## delete dataset
-        session.delete(result)
+        session.delete(result) # delete dataset
         session.commit()
         return True
     else:

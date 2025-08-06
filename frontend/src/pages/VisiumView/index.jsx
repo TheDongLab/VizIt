@@ -62,31 +62,44 @@ function VisiumView() {
         imageDataDict, fetchImageData
     } = useSampleGeneMetaStore();
     const {loading, error} = useSampleGeneMetaStore();
-    const {defaultSamples, defaultFeatures, defaultGenes, fetchVisiumDefaults}  = useVisiumStore()
+    const {fetchVisiumDefaults}  = useVisiumStore()
 
     const [selectedMetaFeatures, setSelectedMetaFeatures] = useState(urlMetas);
 
-    useEffect(() => {
-        setDataset(datasetId);
-        fetchSampleList(datasetId);
-        fetchGeneList(datasetId);
-        fetchMetaList(datasetId);
 
-        fetchVisiumDefaults(datasetId);
+     const fetchPrimaryData = async () => {
+        setDataset(datasetId);
+        await fetchSampleList(datasetId);
+        await fetchGeneList(datasetId);
+        await fetchMetaList(datasetId, "cell_level");
+        await fetchVisiumDefaults(datasetId);
+
+        // Get the current state after fetching defaults
+        const { defaultSamples, defaultGenes, defaultFeatures } = useVisiumStore.getState();
 
         const initialSelectedSamples = urlSamples.length ? urlSamples : defaultSamples;
         const initialSelectedGenes = urlGenes.length ? urlGenes : defaultGenes;
+        const initialMetas = urlMetas.length ? urlMetas : defaultFeatures;
 
         useSampleGeneMetaStore.setState({
-            selectedSamples: initialSelectedSamples.length ? initialSelectedSamples : "",
-            selectedGenes: initialSelectedGenes.length ? initialSelectedGenes : "",
+            selectedSamples: initialSelectedSamples,
+            selectedGenes: initialSelectedGenes,
         });
-        setSelectedMetaFeatures(defaultFeatures);
+        setSelectedMetaFeatures(initialMetas);
 
-        fetchExprData(); // Fetch data once after both are set
-        fetchImageData();
-        fetchMetaDataOfSample();
+        // 清空旧数据，并重新获取 exprData
+        useSampleGeneMetaStore.setState({exprDataDict: {}}); // 先清空
+        await fetchExprData(datasetId);
 
+        await fetchImageData();
+        await fetchMetaDataOfSample();
+
+        // Update URL params with the initial values
+        updateQueryParams(datasetId, initialSelectedGenes, initialSelectedSamples, initialMetas);
+    }
+
+    useEffect(() => {
+        fetchPrimaryData();
     }, [datasetId]);
 
     const excludedKeys = new Set(["cs_id", "sample_id", "Cell", "Spot", "UMAP_1", "UMAP_2"]);
@@ -160,7 +173,7 @@ function VisiumView() {
             ? "two-plots" : Object.keys(selectedFeatures).length === 3
                 ? "three-plots" : "four-plots";
 
-
+    // console.log("sampleMetaDict:", sampleMetaDict);
     return (
         <div className="plot-page-container" style={{display: 'flex', flexDirection: 'column', flex: 1}}>
             {/* Title Row */}

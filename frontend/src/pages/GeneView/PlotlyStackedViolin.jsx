@@ -1,9 +1,10 @@
 import Plot from 'react-plotly.js';
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
+import React from "react";
 
 
-const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, type = "violin"}) => {
+const PlotlyStackedViolin = React.memo(function PlotlyStackedViolin({gene, exprData, metaData, group, includeZeros, type = "violin"}) {
     if (metaData.length === 0) return "Sample not found in the MetaData";
     if (gene !== "stackedviolin") return null;
 
@@ -119,8 +120,8 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
             grid: {rows, columns: 1, pattern: 'independent',},
             height: totalHeight, // Adjust height based on number of genes
             title: 'Stacked Plot',
-            paper_bgcolor: '#F9F9F9',
-            plot_bgcolor: '#F9F9F9',
+            paper_bgcolor: '#F5F5F5',
+            plot_bgcolor: '#F5F5F5',
             margin: {t: 5, b: 50, l: 50, r: 50}, // Reduce white space
             annotations: [],
             yaxis: {
@@ -174,10 +175,17 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
                 displaylogo: false,
                 responsive: true,
                 doubleClick: false,
+                scrollZoom: false,
+                zoom2d: false,
+                pan2d: false,
+                select2d: false,
+                lasso2d: false,
+                staticPlot: true,
+                modeBarButtonsToRemove: ["zoom2d", "pan2d", "select2d","lasso2d","pan2d"],
                 toImageButtonOptions: {
                     name: "Save as SVG",
                     format: 'svg', // one of png, svg, jpeg, webp
-                    filename: `stacked_violin`,
+                    filename: `StackedViolin.${group}.${genes.join('_')}`,
                     scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
                 },
                 modeBarButtonsToAdd: [
@@ -186,7 +194,7 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
                             name: "Save as SVG",
                             icon: Plotly.Icons.disk,
                             click: function (gd) {
-                                Plotly.downloadImage(gd, {format: "svg", filename: `stacked_violin`});
+                                Plotly.downloadImage(gd, {format: "svg", filename: `StackedViolin.${group}.${genes.join('_')}.Zeros_${includeZeros}`});
                             },
                         },
                     ],
@@ -194,7 +202,7 @@ const PlotlyStackedViolin = ({gene, exprData, metaData, group, includeZeros, typ
             }}
         />
     );
-};
+});
 PlotlyStackedViolin.propTypes = {
     gene: PropTypes.string.isRequired,
     exprData: PropTypes.object.isRequired,

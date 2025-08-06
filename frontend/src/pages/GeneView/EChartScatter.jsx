@@ -16,7 +16,7 @@ const EChartScatterPlot = ({
 
         const svgData = chartInstance.getDataURL({
             type: 'svg',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#f5f5f5',
         });
 
         const link = document.createElement('a');
@@ -47,17 +47,17 @@ const EChartScatterPlot = ({
             },
             xAxis: {
                 type: "value",
-                axisLine: {show: true},
-                axisTick: {show: true},
+                axisLine: {show: false},
+                axisTick: {show: false},
                 splitLine: {show: false},
-                axisLabel: {show: true},
+                axisLabel: {show: false},
             },
             yAxis: {
                 type: "value",
-                axisLine: {show: true},
-                axisTick: {show: true},
+                axisLine: {show: false},
+                axisTick: {show: false},
                 splitLine: {show: false},
-                axisLabel: {show: true},
+                axisLabel: {show: false},
             },
             series: [
                 {
@@ -67,7 +67,7 @@ const EChartScatterPlot = ({
                     itemStyle: {color: "#CCCCCC"},
                 },
             ],
-            backgroundColor: "#ffffff",
+            backgroundColor: "#f5f5f5",
         }
 
         return (
@@ -151,17 +151,17 @@ const EChartScatterPlot = ({
             },
             xAxis: {
                 type: "value",
-                axisLine: {show: true}, // Hide axis line
-                axisTick: {show: true}, // Hide ticks
+                axisLine: {show: false}, // Hide axis line
+                axisTick: {show: false}, // Hide ticks
                 splitLine: {show: false}, // Hide grid lines
-                axisLabel: {show: true}, // Hide labels
+                axisLabel: {show: false}, // Hide labels
             },
             yAxis: {
                 type: "value",
-                axisLine: {show: true},
-                axisTick: {show: true},
+                axisLine: {show: false},
+                axisTick: {show: false},
                 splitLine: {show: false},
-                axisLabel: {show: true},
+                axisLabel: {show: false},
             },
             series: series,
         }
@@ -178,17 +178,17 @@ const EChartScatterPlot = ({
             title: {text: colorGroup, left: "center", top: 0},
             xAxis: {
                 type: "value",
-                axisLine: {show: true}, // Hide axis line
-                axisTick: {show: true}, // Hide ticks
+                axisLine: {show: false}, // Hide axis line
+                axisTick: {show: false}, // Hide ticks
                 splitLine: {show: false}, // Hide grid lines
-                axisLabel: {show: true}, // Hide labels
+                axisLabel: {show: false}, // Hide labels
             },
             yAxis: {
                 type: "value",
-                axisLine: {show: true},
-                axisTick: {show: true},
+                axisLine: {show: false},
+                axisTick: {show: false},
                 splitLine: {show: false},
-                axisLabel: {show: true},
+                axisLabel: {show: false},
             },
             visualMap: {
                 min: minValue,
@@ -263,11 +263,11 @@ const EChartScatterPlot = ({
             })) || []
         options = createContinuousOptions(plotData, gene)
     }
-    options.backgroundColor = "#f9f9f9"
+    options.backgroundColor = "#f5f5f5";
 
     return (
         <div>
-            <div style={{display: "flex", justifyContent: "flex-end", marginBottom: "8px"}}>
+            <div style={{display: "flex", justifyContent: "flex-end", marginBottom: "0px" ,backgroundColor: "#f5f5f5" }}>
                 <button onClick={exportSVG}>Export as SVG</button>
             </div>
             <ReactECharts

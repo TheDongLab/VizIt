@@ -5,7 +5,6 @@ import {
     Typography,
     Box,
     Divider,
-    CircularProgress,
     Autocomplete,
     Chip,
     TextField,
@@ -16,7 +15,7 @@ import {
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot"
 import {useSearchParams} from "react-router-dom"
 
-import useCellTypeStore from "../../store/ClusterStore.js"
+import useClusterStore from "../../store/ClusterStore.js"
 import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js"
 import useDataStore from "../../store/DatatableStore.js"
 
@@ -25,12 +24,12 @@ import DotPlot2 from "./DotPlot2.jsx"
 import BarPlot from "./BarPlot.jsx"
 import HeatmapPlot2 from "./HeatmapPlot2.jsx"
 
-import "./CellTypesView.css"
+import "./ClustersView.css"
 
-function CellTypesView() {
+function ClustersView() {
     // Get all the pre-selected values
     const [queryParams, setQueryParams] = useSearchParams()
-    const initialCellTypes = queryParams.getAll("celltype")
+    const initialClusters = queryParams.getAll("cluster") || []
     const initialDataset = queryParams.get("dataset") ?? ""
 
     const [selectedDataset, setSelectedDataset] = useState(initialDataset)
@@ -40,13 +39,13 @@ function CellTypesView() {
     // Prepare all the data
     const {setDataset, umapData, fetchUMAPData, selectedMetaData, fetchSelectedMetaData} = useSampleGeneMetaStore()
 
-    const {selectedCellTypes, setSelectedCellTypes} = useCellTypeStore()
-    const {cellTypeList, fetchCellTypeList, markerGenes, fetchMarkerGenes} = useCellTypeStore()
-    const {cellCounts, fetchCellCounts, diffExpGenes, fetchDiffExpGenes} = useCellTypeStore()
-    const {fetchMainClusterInfo,mainCluster, getMainCluster } = useCellTypeStore()
-    const {loading, error,metadataLoading } = useCellTypeStore()
+    const {selectedClusters, setSelectedClusters} = useClusterStore()
+    const {clusterList, fetchClusterList, markerGenes, fetchMarkerGenes} = useClusterStore()
+    const {cellCounts, fetchCellCounts, diffExpGenes, fetchDiffExpGenes} = useClusterStore()
+    const {fetchMainClusterInfo,mainCluster, getMainCluster } = useClusterStore()
+    const {loading, error,metadataLoading } = useClusterStore()
 
-    const [cellTypeSearchText, setCellTypeSearchText] = useState("")
+    const [clusterSearchText, setClusterSearchText] = useState("")
     const [datasetSearchText, setDatasetSearchText] = useState("")
 
     useEffect(() => {
@@ -54,29 +53,34 @@ function CellTypesView() {
         fetchMainClusterInfo(selectedDataset);
     }, [])
 
-    useEffect(() => {
-        // Main data fetches (control loading state)
-        const fetchPrimaryData = async () => {
-            await fetchMainClusterInfo(selectedDataset)
-            // update the mainCluster
-            const mainCluster = await getMainCluster()
-            await fetchUMAPData(selectedDataset)
-            await fetchSelectedMetaData(selectedDataset, [mainCluster])
-            await fetchCellTypeList(selectedDataset)
-        }
+     // Main data fetches (control loading state)
+    const fetchPrimaryData = async () => {
+        await fetchMainClusterInfo(selectedDataset)
+        const mainCluster = await getMainCluster() // update the mainCluster
 
+        setSelectedClusters([]) // clear the selectedClusters
+        useClusterStore.setState({clusterList: []}) // clear the clusterList
+
+        await fetchUMAPData(selectedDataset)
+        await fetchSelectedMetaData(selectedDataset, [mainCluster])
+        await fetchClusterList(selectedDataset)
+    }
+    useEffect(() => {
         fetchPrimaryData()
     }, [selectedDataset])
 
-    const datasetOptions = datasetRecords.map((d) => d.dataset_id)
+    // Filter qtl datasets
+    const datasetOptions = datasetRecords
+        .filter((d) => !d.assay.toLowerCase().endsWith("qtl"))
+        .map((d) => d.dataset_id);
 
     useEffect(() => {
-        const initialSelectedCellTypes = initialCellTypes.length ? initialCellTypes : []
+        const initialSelectedClusters = initialClusters.length ? initialClusters : []
 
         setDataset(selectedDataset)
 
-        useCellTypeStore.setState({
-            selectedCellTypes: initialSelectedCellTypes,
+        useClusterStore.setState({
+            selectedClusters: initialSelectedClusters,
         })
 
         fetchMarkerGenes(selectedDataset) // Fetch marker genes for selected cell types
@@ -85,32 +89,34 @@ function CellTypesView() {
     }, [selectedDataset])
 
     /** Updates the query parameters in the URL */
-    const updateQueryParams = (cellTypes, dataset) => {
+    const updateQueryParams = (clusters, dataset) => {
         const newParams = new URLSearchParams()
         dataset && newParams.set("dataset", dataset)
-        cellTypes.forEach((cellType) => newParams.append("celltype", cellType))
+        clusters.forEach((cluster) => newParams.append("cluster", cluster))
         setQueryParams(newParams)
     }
 
     /** Handles dataset selection change */
     const handleDatasetChange = (event, newValue) => {
+        // Clear selected cell types
+        setSelectedClusters([])
         setDataset(newValue)
         setSelectedDataset(newValue)
-        updateQueryParams(selectedCellTypes, newValue)
+        updateQueryParams(selectedClusters, newValue)
     }
 
     /** Handles cell type selection change */
-    const handleCellTypeChange = (event, newValue) => {
-        setSelectedCellTypes(newValue)
+    const handleClusterChange = (event, newValue) => {
+        setSelectedClusters(newValue)
         updateQueryParams(newValue, selectedDataset)
         fetchMarkerGenes(selectedDataset)
         fetchDiffExpGenes(selectedDataset)
     }
 
-    const handleCellTypeDelete = (delCellType) => {
-        const newCellTypes = selectedCellTypes.filter((ct) => ct !== delCellType)
-        setSelectedCellTypes(newCellTypes)
-        updateQueryParams(newCellTypes, selectedDataset)
+    const handleClusterDelete = (delCluster) => {
+        const newClusters = selectedClusters.filter((ct) => ct !== delCluster)
+        setSelectedClusters(newClusters)
+        updateQueryParams(newClusters, selectedDataset)
         fetchMarkerGenes(selectedDataset)
         fetchDiffExpGenes(selectedDataset)
     }
@@ -123,19 +129,19 @@ function CellTypesView() {
         fetchDiffExpGenes(selectedDataset)
     }
 
-    const isAllCellTypesSelected = selectedCellTypes.includes("all")
+    const isAllClustersSelected = selectedClusters.includes("all")
 
     return (
         <div className="plot-page-container">
             {/* Title Row */}
             <Box className="title-row">
-                <Typography variant="h6">Cell Type Analysis</Typography>
+                <Typography variant="h6">Cluster Analysis</Typography>
             </Box>
             <Divider/>
             <div className="plot-content">
                 {/* Left Panel for Dataset & Cell Type Selection (25%) */}
                 <div className="plot-panel">
-                    <Typography variant="subtitle1">Select Datasets & Cell Types</Typography>
+                    <Typography variant="subtitle1">Select Datasets & Clusters</Typography>
 
                     {/* Dataset Selection */}
                     <Autocomplete
@@ -146,8 +152,7 @@ function CellTypesView() {
                         inputValue={datasetSearchText}
                         onInputChange={(event, newInputValue) => setDatasetSearchText(newInputValue)}
                         renderInput={(params) => (
-                            <TextField {...params} label="Select Dataset" variant="standard"
-                                       style={{margin: "10px 0px"}}/>
+                            <TextField {...params} label="Select Dataset" variant="standard" style={{margin: "10px 0px"}}/>
                         )}
                     />
 
@@ -155,12 +160,12 @@ function CellTypesView() {
                     <Autocomplete
                         multiple
                         size="small"
-                        options={cellTypeList}
-                        value={selectedCellTypes}
-                        onChange={handleCellTypeChange}
-                        inputValue={cellTypeSearchText}
+                        options={clusterList}
+                        value={selectedClusters}
+                        onChange={handleClusterChange}
+                        inputValue={clusterSearchText}
                         onInputChange={(event, newInputValue) => {
-                            setCellTypeSearchText(newInputValue)
+                            setClusterSearchText(newInputValue)
                         }}
                         renderTags={(value, getTagProps) =>
                             value.map((option, index) => {
@@ -171,7 +176,7 @@ function CellTypesView() {
                                         label={option}
                                         {...tagProps}
                                         color="primary"
-                                        onDelete={() => handleCellTypeDelete(option)}
+                                        onDelete={() => handleClusterDelete(option)}
                                     />
                                 )
                             })
@@ -203,7 +208,7 @@ function CellTypesView() {
                         </>
                     ) }
 
-                    {selectedDataset === "" ? (
+                    {selectedDataset === "" || selectedDataset === null ? (
                         <Typography sx={{color: "text.secondary", paddingTop: "100px"}} variant="h5">
                             No dataset selected for exploration
                         </Typography>
@@ -220,8 +225,8 @@ function CellTypesView() {
                                                 <UMAPPlot
                                                     umapData={umapData}
                                                     metaData={selectedMetaData}
-                                                    selectedCellTypes={selectedCellTypes}
-                                                    isAllCellTypesSelected={isAllCellTypesSelected}
+                                                    selectedClusters={selectedClusters}
+                                                    isAllClustersSelected={isAllClustersSelected}
                                                     mainCluster={mainCluster}
                                                 />
                                             )}
@@ -230,35 +235,35 @@ function CellTypesView() {
                                 </div>
                             </div>
 
-                            <div className="plot-section" id="marker-genes-section">
+                            {selectedClusters.length > 0 && <div className="plot-section" id="marker-genes-section">
                                 <Divider sx={{marginTop: "10px"}} flexItem>Marker Genes</Divider>
                                 <div className="dot-container">
                                     {markerGenes && (
                                         <DotPlot2
                                             markerGenes={markerGenes}
-                                            selectedCellTypes={selectedCellTypes}
-                                            isAllCellTypesSelected={isAllCellTypesSelected}
+                                            selectedClusters={selectedClusters}
+                                            isAllClustersSelected={isAllClustersSelected}
                                             mainCluster={mainCluster}
                                         />
                                     )}
                                 </div>
-                            </div>
+                            </div>}
 
-                            <div className="plot-section" id="cell-counts-deg-section">
+                            {selectedClusters.length > 0 && <div className="plot-section" id="cell-counts-deg-section">
                                 <Divider sx={{marginTop: "10px"}} flexItem>Cell Counts & Differential Expression</Divider>
                                 <Grid container spacing={2} className="bottom-plots-container">
                                     <Grid item xs={12} md={6}>
-                                        {cellCounts && selectedCellTypes.length > 0 && (
-                                            <BarPlot cellCounts={cellCounts} selectedCellTypes={selectedCellTypes}/>)
+                                        {cellCounts && selectedClusters.length > 0 && (
+                                            <BarPlot cellCounts={cellCounts} selectedClusters={selectedClusters}/>)
                                         }
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        {diffExpGenes && selectedCellTypes.length > 0 && (
-                                            <HeatmapPlot2 diffExpGenes={diffExpGenes} selectedCellTypes={selectedCellTypes}/>
+                                        {diffExpGenes && selectedClusters.length > 0 && (
+                                            <HeatmapPlot2 diffExpGenes={diffExpGenes} selectedClusters={selectedClusters}/>
                                         )}
                                     </Grid>
                                 </Grid>
-                            </div>
+                            </div>}
                         </>
                     )}
                 </div>
@@ -267,5 +272,5 @@ function CellTypesView() {
     )
 }
 
-export default CellTypesView
+export default ClustersView
 

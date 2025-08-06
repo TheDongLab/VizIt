@@ -57,13 +57,13 @@ export const getMainClusterInfo = async (dataset) => {
     }
 }
 
-export const getCellTypeList = async (dataset) => {
+export const getClusterList = async (dataset) => {
     try {
-        const response = await axios.get(`${API_URL}/getcelltypelist`,
+        const response = await axios.get(`${API_URL}/getclusterlist`,
             {params: {dataset:dataset}});
         return response;
     } catch (error) {
-        console.error("Error getCellTypeList:", error);
+        console.error("Error getClusterList:", error);
         throw error;
     }
 }
@@ -158,13 +158,13 @@ export const getMarkerGenes = async (dataset) => {
     }
 }
 
-export const getDEGsOfCellType = async (dataset,cell_type) => {
+export const getDEGsOfCluster = async (dataset,cluster) => {
     try {
-        const response = await axios.get(`${API_URL}/getdegsofcelltype`,
-            {params: {dataset:dataset,celltype:cell_type}});
+        const response = await axios.get(`${API_URL}/getdegsofcluster`,
+            {params: {dataset:dataset,cluster:cluster}});
         return response;
     } catch (error) {
-        console.error("Error getDEGsOfCellType:", error);
+        console.error("Error getDEGsOfCluster:", error);
         throw error;
     }
 }

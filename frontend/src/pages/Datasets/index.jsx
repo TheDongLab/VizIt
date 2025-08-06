@@ -117,7 +117,7 @@ const DatasetsPage = () => {
     }
 
     return (
-        <div className="data-page-container" style={{display: 'flex', flexDirection: 'column', flex: 1}}>
+        <div className="data-page-container" style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
             {/* Title Row */}
             <Box className="title-row" sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                 <Typography variant="h4">

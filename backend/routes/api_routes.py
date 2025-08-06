@@ -45,8 +45,8 @@ async def getsamplelist(request: Request):
     response = get_sample_list(dataset_id, query_str)
     # print (response)
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting sample list.")
-    return response
+        return {"success": False, "message": "Error in getting sample list."}
+    return {"success": True, "data": response}
 
 
 @router.get("/getmetalist")
@@ -79,15 +79,15 @@ async def getmainclusterinfo(request: Request):
     return main_cluster
 
 
-@router.get("/getcelltypelist")
-async def getcelltypelist(request: Request):
-    print("getcelltypelist() called================")
+@router.get("/getclusterlist")
+async def getclusterlist(request: Request):
+    print("getclusterlist() called================")
     dataset_id = request.query_params.get("dataset")
 
-    response = get_celltype_list(dataset_id)
+    response = get_cluster_list(dataset_id)
     # print (response)
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting celltype list.")
+        raise HTTPException(status_code=404, detail="Error in getting cluster list.")
     return response
 
 
@@ -115,13 +115,13 @@ async def getmarkergenes(request: Request):
     return response
 
 
-@router.get("/getdegsofcelltype")
-async def getdegsofcelltype(request: Request):
+@router.get("/getdegsofcluster")
+async def getdegsofcluster(request: Request):
     dataset_id = request.query_params.get("dataset")
-    celltype = request.query_params.get("celltype")
-    print(f"getdegsofcelltype({dataset_id},{celltype}) called================")
+    cluster = request.query_params.get("cluster")
+    print(f"getdegsofcluster({dataset_id},{cluster}) called================")
 
-    response = get_degs_pseudobulk(dataset_id, celltype)
+    response = get_degs_pseudobulk(dataset_id, cluster)
     # response = get_degs_celllevel(dataset_id, celltype)
     # print (response)
     if "Error" in response:

@@ -213,7 +213,9 @@ const useDatasetManageStore = create((set, get) => ({
     deleteDataset: async (dataset) => {
         try {
             const response = await axios.delete(`${dmURL}/deletedataset?dataset=${dataset}`);
-            return response.data;
+            // console.log(response.data);
+            const data = response.data;
+             return data;
         } catch (error) {
             console.error('Error deleting dataset:', error);
             return null;

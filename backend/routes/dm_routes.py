@@ -354,13 +354,15 @@ async def refreshdatabase(session: Session = Depends(get_session)):
         return {"message": "Error: " + str(e), "success": False}
 
 
-@router.get("/deletedataset")
+@router.delete("/deletedataset")
 async def deletedataset(dataset: str = Query(...),session: Session = Depends(get_session)):
     try:
         ## remove records from database
+        print(f"=======deleting dataset: {dataset}==========")
         if delete_dataset(dataset, session):
-            dataset_path = f"backend/datasets/{dataset}"
-            shutil.rmtree(dataset_path)
+            print(f"======= remoing data folder==========")
+            # dataset_path = f"backend/datasets/{dataset}"
+            # shutil.rmtree(dataset_path)
             return {"message": "Dataset deleted successfully", "success": True}
         else:
             return {"message": "Error: Failed to delete database record", "success": False}
