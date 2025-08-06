@@ -34,7 +34,7 @@ const FilterPanel = ({selectedFilters, onFilterChange, onClearAll, hasActiveFilt
     }
 
     return (
-        <div className="filter-panel">
+        <div className="dataset-filter-panel">
             <div className="panel-title">
                 <Typography variant="h6">Dataset filters</Typography>
                 {hasActiveFilters && (

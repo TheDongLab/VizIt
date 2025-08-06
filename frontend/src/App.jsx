@@ -30,6 +30,7 @@ import DatasetDemosPage from "./pages/DatasetDemos/index.jsx";
 import XQTLDemo from "./pages/DatasetDemos/XQTLDemo.jsx";
 import SingleCellDemo from "./pages/DatasetDemos/SingleCellDemo.jsx";
 import VisiumSTDemo from "./pages/DatasetDemos/VisiumSTDemo.jsx";
+import ClustersView from "./pages/ClustersView/index.jsx";
 
 
 
@@ -70,6 +71,7 @@ function App() {
                       <Route path="/views/geneview" element={<GeneView />} />
                       <Route path="/views/visiumview" element={<VisiumView />} />
                       <Route path="/views/xqtlview" element={<XQTLView />} />
+                      <Route path="/views/clusters" element={<ClustersView />} />
                       <Route path="/views/celltypes" element={<CellTypesView />} />
                       <Route path="/views/layersview" element={<LayerView />} />
                       <Route path="/views/xcheck" element={<XDatasetsView />} />

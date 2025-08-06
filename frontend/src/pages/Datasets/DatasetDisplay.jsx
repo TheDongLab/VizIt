@@ -89,12 +89,13 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
         }
     }, [totalPages, page])
 
-    const handleDeleteDataset = (datasetId) => {
+    const handleDeleteDataset = async (datasetId) => {
         // Confirm deletion
         if (window.confirm(`Are you sure you want to delete dataset ${datasetId}?`)) {
             // Call your API or store method to delete the dataset
             console.log(`Deleting dataset: ${datasetId}`);
-            const response = deleteDataset(datasetId);
+            const response = await deleteDataset(datasetId);
+            console.log(response);
             if (response.success) {
                 toast.success(`Dataset ${datasetId} deleted successfully!`, {
                     position: "top-right",
@@ -106,6 +107,8 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                     progress: undefined,
                     theme: "colored",
                 });
+                // reload the dataset list
+                window.location.reload();
             } else {
                 toast.error(`Failed to delete dataset ${datasetId}: ${response.message}`, {
                     position: "top-right",
@@ -118,10 +121,6 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                     theme: "colored",
                 });
             }
-
-            // You might want to refresh the dataset list after deletion
-            // refresh the page
-            // window.location.reload();
         } else {
             console.log("Deletion canceled");
         }

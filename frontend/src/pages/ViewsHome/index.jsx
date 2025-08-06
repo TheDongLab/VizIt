@@ -27,18 +27,18 @@ export default function HomePage() {
             href: "xqtlview",
         },
         {
-            title: "Cell Type View",
-            description: "Visualize and compare different cell types, their markers, and distribution across samples.",
+            title: "Cluster View",
+            description: "Visualize and compare different clusters (cell types, layers, etc.), their markers, and distribution across samples.",
             icon: <FontAwesomeIcon icon={faHexagonNodes} style={{color: "#3b82f6"}} size={"3x"} />,
-            href: "celltypes",
+            href: "clusters",
         },
-        {
-            title: "Layer View",
-            description:
-                "Examine tissue layers and their composition with detailed visualization of layer-specific features.",
-            icon: <Layers size={48} style={{color: "#f59e0b"}}/>,
-            href: "layersview",
-        },
+        // {
+        //     title: "Layer View",
+        //     description:
+        //         "Examine tissue layers and their composition with detailed visualization of layer-specific features.",
+        //     icon: <Layers size={48} style={{color: "#f59e0b"}}/>,
+        //     href: "layersview",
+        // },
         {
             title: "XCheck View",
             description: "Cross-check and compare data across different modalities, samples, or experimental conditions.",

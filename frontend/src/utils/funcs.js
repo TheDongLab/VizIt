@@ -13,6 +13,12 @@ export function isCategorical(arr, uniqueThreshold = 30) {
     // Edge case: Empty array
     if (arr.length === 0) return true;
 
+    // Edge case: Single value
+    if (arr.length === 1) return true;
+
+    // Edge case: All values are the same
+    if (arr.every(x => x === arr[0])) return true;
+
     // Check if all values are non-numeric
     const allNonNumeric = arr.every(x => typeof x !== 'number');
     if (allNonNumeric) return true; // Definitely categorical

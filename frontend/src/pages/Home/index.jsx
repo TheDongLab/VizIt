@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Typography, Paper, Box, Link, Container, useTheme} from "@mui/material";
+import {Typography, Paper, Box, Link, Container, Button} from "@mui/material";
 import Grid2 from "@mui/material/Grid2"; // Correct Grid2 import
 import "./Home.css"; // Import the CSS file
 
@@ -9,13 +9,14 @@ import BrainRegions from "../../components/BrainRegions";
 import StatBar from "../../components/StatBar";
 
 import useHomeStore from "../../store/HomeStore.js";
+import {useNavigate} from "react-router-dom";
 
 const Home = () => {
+    const navigate= useNavigate();
     const {homeData, fetchHomeData} = useHomeStore();
 
     useEffect(() => {
-        const res = fetchHomeData();
-        console.log(res);
+        fetchHomeData();
     }, []);
 
     const [selectedDisease, setSelectedDisease] = useState("PD");
@@ -105,8 +106,17 @@ const Home = () => {
                         </Paper>
                     </Grid2>
                 </Grid2>
-                {homeData && homeData[selectedDisease] ? <StatBar disease={selectedDisease} homeData={homeData}/> :
-                    <Box className="stat-bar-container"> <Typography variant="subtitle1">Loading stats data...</Typography> </Box>}
+                <Grid2 item xs={12} justifyContent="center">
+                    {homeData && homeData[selectedDisease] ? <StatBar disease={selectedDisease} homeData={homeData}/> :
+                        <Box className="stat-bar-container"> <Typography variant="subtitle1">Loading stats data...</Typography> </Box>}
+                         {/* Add Button here */}
+                        <Box sx={{mt: 4, textAlign: 'center'}}>
+                            <Button variant="outlined" color="success" onClick={() => navigate("/datasetmanager")}>
+                                Upload your own dataset to visualize
+                            </Button>
+                        </Box>
+
+                </Grid2>
             </Grid2>
         </Container>
     );
