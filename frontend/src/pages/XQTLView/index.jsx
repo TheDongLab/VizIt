@@ -341,6 +341,13 @@ function XQTLView() {
     return null;
   }, [combinedList, selectedGene, selectedSnp]);
 
+  useEffect(() => {
+    return () => {
+      setSelectedGene("");
+      setSelectedSnp("");
+    };
+  }, []);
+
   return (
     <div
       className="plot-page-container"
