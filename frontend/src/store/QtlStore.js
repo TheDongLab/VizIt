@@ -311,6 +311,22 @@ const useQtlStore = create((set, get) => ({
             console.error("Error fetching SNP locations:", error);
         }
     },
+
+    resetQtlState: () => {
+        set({
+            dataset: null,
+            selectedGene: null,
+            selectedSnp: null,
+            geneList: [],
+            snpList: [],
+            selectedChromosome: null,
+            selectedCellTypes: [],
+            snpData: {},
+            geneData: {},
+            loading: false,
+            error: null,
+        });
+    },
 }));
 
 export default useQtlStore;

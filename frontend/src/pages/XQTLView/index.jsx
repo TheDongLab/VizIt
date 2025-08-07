@@ -103,6 +103,7 @@ function XQTLView() {
     fetchSnpChromosome,
     fetchGeneLocations,
     fetchSnpLocations,
+    resetQtlState,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
 
@@ -341,10 +342,10 @@ function XQTLView() {
     return null;
   }, [combinedList, selectedGene, selectedSnp]);
 
+  // Clear zustand state on unmount
   useEffect(() => {
     return () => {
-      setSelectedGene("");
-      setSelectedSnp("");
+      resetQtlState();
     };
   }, []);
 
