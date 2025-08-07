@@ -17,7 +17,7 @@ export default defineConfig(({mode}) => {
             //   },
             // },
             host: '0.0.0.0',
-            port: parseInt(env.VITE_PORT) || 5172,
+            port: parseInt(env.VITE_PORT) || 5173,
         },
     };
 })

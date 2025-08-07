@@ -64,7 +64,7 @@ const PlotlyScatterPlot = React.memo(function PlotlyScatterPlot({
     const createCategoryTraces = (plotData, colorGroup) => {
         // Generate distinct colors for each group and create a series for each group
         const colorPalette = [
-            "#A7D16B", "#ADD9E9", "#A84D9D", "#F68D40", "#0A71B1", "#016B62", "#BFAFD4", "#6BAED6", "#7BCCC4",
+            "#CCCCCC","#A7D16B", "#ADD9E9", "#A84D9D", "#F68D40", "#0A71B1", "#016B62", "#BFAFD4", "#6BAED6", "#7BCCC4",
             "#ff7f0e", "#1f77b4", "#2ca02c", "#da6f70", "#9467bd", "#8c564b", "#e377c2",
             "#0d1dd1", "#bcbd22", "#17becf", "#ff0000", "#00ff00", "#0000ff", "#ff00ff",
             "#00ffff", "#ffff00", "#9bed56", "#8000ff", "#0080ff", "#80ff00"
