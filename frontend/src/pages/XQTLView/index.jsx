@@ -32,6 +32,11 @@ import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
 
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
+import { supportsWebGL } from "../../utils/webgl.js";
+
+const webGLSupported = supportsWebGL();
+console.log("WebGL supported:", webGLSupported);
+
 function ConfirmationDialog({
   isOpen,
   handleClose,
@@ -336,6 +341,13 @@ function XQTLView() {
     return null;
   }, [combinedList, selectedGene, selectedSnp]);
 
+  useEffect(() => {
+    return () => {
+      setSelectedGene("");
+      setSelectedSnp("");
+    };
+  }, []);
+
   return (
     <div
       className="plot-page-container"
@@ -423,7 +435,11 @@ function XQTLView() {
               );
             }}
             renderInput={(params) => (
-              <TextField {...params} label="Gene or SNP" variant="standard" />
+              <TextField
+                {...params}
+                label="Search by gene symbol, gene ID, SNP rsID"
+                variant="standard"
+              />
             )}
           />
 
@@ -513,53 +529,55 @@ function XQTLView() {
                 key={`${selectedGene || selectedSnp || "plot"}-view`}
                 className={`view-container`}
               >
-                {selectedCellTypes.length > 0 &&
-                (selectedGene || selectedSnp) ? (
-                  selectedGene ? (
-                    !dataLoading &&
-                    !loading &&
-                    selectedChromosome && (
-                      <div key={`${selectedGene}-plot`} className="gene-plot">
-                        <GeneViewPlotlyPlot
-                          geneName={selectedGene}
-                          genes={genes}
-                          snpData={snpData}
-                          chromosome={selectedChromosome}
-                          cellTypes={selectedCellTypes}
-                          handleSelect={handleSelect}
-                        />
-                      </div>
-                    )
-                  ) : selectedSnp ? (
-                    !dataLoading &&
-                    !loading &&
-                    selectedChromosome && (
-                      <div key={`${selectedSnp}-plot`} className="snp-plot">
-                        <SNPViewPlotlyPlot
-                          snpName={selectedSnp}
-                          snps={snps}
-                          geneData={geneData}
-                          chromosome={selectedChromosome}
-                          cellTypes={selectedCellTypes}
-                          handleSelect={handleSelect}
-                        />
-                      </div>
-                    )
-                  ) : (
-                    <Typography
-                      sx={{ color: "text.secondary", paddingTop: "100px" }}
-                      variant="h5"
-                    >
-                      No gene or SNP selected for exploration
-                    </Typography>
-                  )
-                ) : (
+                {!selectedGene && !selectedSnp ? (
+                  <Typography
+                    sx={{ color: "text.secondary", paddingTop: "100px" }}
+                    variant="h5"
+                  >
+                    No gene or SNP selected for exploration
+                  </Typography>
+                ) : selectedCellTypes.length === 0 ? (
                   <Typography
                     sx={{ color: "text.secondary", paddingTop: "100px" }}
                     variant="h5"
                   >
                     No cell types available
                   </Typography>
+                ) : selectedGene ? (
+                  !dataLoading &&
+                  !loading &&
+                  selectedChromosome && (
+                    <div key={`${selectedGene}-plot`} className="gene-plot">
+                      <GeneViewPlotlyPlot
+                        dataset={datasetId}
+                        geneName={selectedGene}
+                        genes={genes}
+                        snpData={snpData}
+                        chromosome={selectedChromosome}
+                        cellTypes={selectedCellTypes}
+                        handleSelect={handleSelect}
+                        useWebGL={webGLSupported}
+                      />
+                    </div>
+                  )
+                ) : (
+                  selectedSnp &&
+                  !dataLoading &&
+                  !loading &&
+                  selectedChromosome && (
+                    <div key={`${selectedSnp}-plot`} className="snp-plot">
+                      <SNPViewPlotlyPlot
+                        dataset={datasetId}
+                        snpName={selectedSnp}
+                        snps={snps}
+                        geneData={geneData}
+                        chromosome={selectedChromosome}
+                        cellTypes={selectedCellTypes}
+                        handleSelect={handleSelect}
+                        useWebGL={webGLSupported}
+                      />
+                    </div>
+                  )
                 )}
               </div>
             </div>

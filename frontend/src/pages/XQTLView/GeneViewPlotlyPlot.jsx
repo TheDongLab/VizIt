@@ -33,20 +33,15 @@ function round(num, precision = 6) {
 }
 
 const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
+  dataset,
   geneName,
   genes,
   snpData,
   chromosome,
   cellTypes,
   handleSelect,
+  useWebGL,
 }) {
-  // TODO
-  // const [naturalDimensions, setNaturalDimensions] = useState({
-  //   width: 0,
-  //   height: 0,
-  // });
-  // const [displayScale, setDisplayScale] = useState(1);
-
   const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
     snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
@@ -137,7 +132,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           y: snpList.map((snp) => snp.y),
           xaxis: "x",
           yaxis: `y${i + 2}`,
-          type: "scattergl",
+          type: useWebGL ? "scattergl" : "scatter",
           mode: "markers",
           marker: {
             color: snpList.map((snp) =>
@@ -162,7 +157,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         },
       ];
     });
-  }, [cellTypes, snpData, minBetaMagnitude, maxBetaMagnitude]);
+  }, [cellTypes, snpData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
 
   // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
@@ -475,7 +470,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const layout = useMemo(
     () => ({
       title: {
-        text: `<b>${geneName}</b><br>${chromosome}`,
+        text: `<b>${geneName}</b>`,
         font: { size: 20 },
       },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -495,7 +490,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         roworder: "top to bottom",
       },
       xaxis: {
-        title: { text: `Genomic Position` },
+        title: { text: `Genomic Position (${chromosome})` },
         range: initialXRange,
         minallowed: Math.min(nearbyGenesRange[0], xMin),
         maxallowed: Math.max(nearbyGenesRange[1], xMax),
@@ -662,7 +657,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${geneName}`, // TODO name
+            filename: `${dataset}.${geneName}`,
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           modeBarButtonsToRemove: [
@@ -677,9 +672,48 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 name: "Save as SVG",
                 icon: Plotly.Icons.disk,
                 click: function (gd) {
-                  Plotly.downloadImage(gd, {
-                    format: "svg",
-                    filename: `BDP_svg-${geneName}`, // TODO name
+                  if (!useWebGL) {
+                    Plotly.downloadImage(gd, {
+                      format: "svg",
+                      filename: `${dataset}.${geneName}`,
+                    });
+                    return;
+                  }
+
+                  // Create offscreen and hidden container with same dimensions
+                  const exportDiv = document.createElement("div");
+                  exportDiv.style.position = "fixed";
+                  exportDiv.hidden = true;
+                  exportDiv.style.left = "-1000px";
+                  exportDiv.style.width = gd.offsetWidth + "px";
+                  exportDiv.style.height = gd.offsetHeight + "px";
+                  document.body.appendChild(exportDiv);
+
+                  // Convert scattergl to scatter
+                  const exportData = gd.data.map((trace) =>
+                    trace.type === "scattergl"
+                      ? { ...trace, type: "scatter" }
+                      : trace,
+                  );
+
+                  // Clone layout and disable responsiveness
+                  const exportLayout = {
+                    ...gd.layout,
+                    width: gd.offsetWidth,
+                    height: gd.offsetHeight,
+                    autosize: false,
+                  };
+
+                  Plotly.newPlot(exportDiv, exportData, exportLayout, {
+                    responsive: false,
+                  }).then(() => {
+                    Plotly.downloadImage(exportDiv, {
+                      format: "svg",
+                      filename: `${dataset}.${geneName}`,
+                    }).then(() => {
+                      document.body.removeChild(exportDiv);
+                      Plotly.purge(exportDiv);
+                    });
                   });
                 },
               },
@@ -699,6 +733,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
 });
 
 GeneViewPlotlyPlot.propTypes = {
+  dataset: PropTypes.string.isRequired,
   geneName: PropTypes.string.isRequired,
   genes: PropTypes.arrayOf(
     PropTypes.shape({
@@ -721,6 +756,7 @@ GeneViewPlotlyPlot.propTypes = {
   chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
+  useWebGL: PropTypes.bool,
 };
 
 export default GeneViewPlotlyPlot;

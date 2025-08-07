@@ -33,20 +33,15 @@ function round(num, precision = 6) {
 }
 
 const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
+  dataset,
   snpName,
   snps,
   geneData,
   chromosome,
   cellTypes,
   handleSelect,
+  useWebGL,
 }) {
-  // TODO
-  // const [naturalDimensions, setNaturalDimensions] = useState({
-  //   width: 0,
-  //   height: 0,
-  // });
-  // const [displayScale, setDisplayScale] = useState(1);
-
   const combinedGeneList = Object.entries(geneData).flatMap(
     ([celltype, genes]) =>
       genes.map(
@@ -154,7 +149,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     const others = {
       x: otherSnps.map((s) => s.position),
       y: otherSnps.map((s) => jitterMap.get(s.snp_id)),
-      type: "scattergl",
+      type: useWebGL ? "scattergl" : "scatter",
       mode: "markers",
       marker: {
         color: "rgb(161, 161, 161)",
@@ -165,6 +160,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         },
       },
       customdata: otherSnps.map((s) => s.snp_id),
+      pointType: "snp",
       hoverinfo: "text",
       hovertext: otherSnps.map(
         (s) =>
@@ -196,7 +192,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     };
 
     return [others, target];
-  }, [snps, snpName, jitterMap]);
+  }, [snps, useWebGL, snpName, jitterMap]);
 
   // Handle resize TODO
   // const updateScale = useCallback(() => {
@@ -262,7 +258,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             y: [y0, y1],
             xaxis: "x",
             yaxis: `y${i + 2}`,
-            type: "scattergl",
+            type: useWebGL ? "scattergl" : "scatter",
             mode: "lines+markers",
             line: {
               color: dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
@@ -290,7 +286,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           };
         });
       }),
-    [cellTypes, geneData, minBetaMagnitude, maxBetaMagnitude],
+    [cellTypes, geneData, useWebGL, minBetaMagnitude, maxBetaMagnitude],
   );
 
   // Handle clicking points
@@ -399,7 +395,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const layout = useMemo(
     () => ({
       title: {
-        text: `<b>${snpName}</b><br>${chromosome}`,
+        text: `<b>${snpName}</b>`,
         font: { size: 20 },
       },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -419,7 +415,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         roworder: "top to bottom",
       },
       xaxis: {
-        title: { text: `Genomic Position` },
+        title: { text: `Genomic Position (${chromosome})` },
         range: initialXRange,
         minallowed: Math.min(nearbySnpsRange[0], xMin),
         maxallowed: Math.max(nearbySnpsRange[1], xMax),
@@ -529,6 +525,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     [
       snpName,
       chromosome,
+      totalHeight,
       cellTypes,
       initialXRange,
       nearbySnpsRange,
@@ -585,7 +582,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           toImageButtonOptions: {
             name: "Save as PNG",
             format: "png", // one of png, svg, jpeg, webp
-            filename: `BDP_png-${snpName}`, // TODO name
+            filename: `${dataset}.${snpName}`,
             scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
           },
           modeBarButtonsToRemove: [
@@ -600,9 +597,48 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                 name: "Save as SVG",
                 icon: Plotly.Icons.disk,
                 click: function (gd) {
-                  Plotly.downloadImage(gd, {
-                    format: "svg",
-                    filename: `BDP_svg-${snpName}`, // TODO name
+                  if (!useWebGL) {
+                    Plotly.downloadImage(gd, {
+                      format: "svg",
+                      filename: `${dataset}.${snpName}`,
+                    });
+                    return;
+                  }
+
+                  // Create offscreen and hidden container with same dimensions
+                  const exportDiv = document.createElement("div");
+                  exportDiv.style.position = "fixed";
+                  exportDiv.hidden = true;
+                  exportDiv.style.left = "-1000px";
+                  exportDiv.style.width = gd.offsetWidth + "px";
+                  exportDiv.style.height = gd.offsetHeight + "px";
+                  document.body.appendChild(exportDiv);
+
+                  // Convert scattergl to scatter
+                  const exportData = gd.data.map((trace) =>
+                    trace.type === "scattergl"
+                      ? { ...trace, type: "scatter" }
+                      : trace,
+                  );
+
+                  // Clone layout and disable responsiveness
+                  const exportLayout = {
+                    ...gd.layout,
+                    width: gd.offsetWidth,
+                    height: gd.offsetHeight,
+                    autosize: false,
+                  };
+
+                  Plotly.newPlot(exportDiv, exportData, exportLayout, {
+                    responsive: false,
+                  }).then(() => {
+                    Plotly.downloadImage(exportDiv, {
+                      format: "svg",
+                      filename: `${dataset}.${snpName}`,
+                    }).then(() => {
+                      document.body.removeChild(exportDiv);
+                      Plotly.purge(exportDiv);
+                    });
                   });
                 },
               },
@@ -622,6 +658,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 });
 
 SNPViewPlotlyPlot.propTypes = {
+  dataset: PropTypes.string.isRequired,
   snpName: PropTypes.string.isRequired,
   snps: PropTypes.arrayOf(
     PropTypes.shape({
@@ -644,6 +681,7 @@ SNPViewPlotlyPlot.propTypes = {
   chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
+  useWebGL: PropTypes.bool,
 };
 
 export default SNPViewPlotlyPlot;
