@@ -171,8 +171,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     const target = {
       x: [snp.position],
       y: [0],
-      type: "scatter",
-      mode: "markers+text",
+      type: "scattergl",
+      mode: "markers",
       marker: {
         color: "black",
         opacity: 1,
@@ -181,9 +181,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           width: 0,
         },
       },
-      text: [snp.snp_id],
       customdata: [snp.snp_id],
-      textposition: "bottom center",
       name: "Target SNP",
       pointType: "snp",
       showlegend: false,
@@ -191,7 +189,21 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       hovertext: `<b>SNP ID:</b> ${snp.snp_id}<br><b>Position:</b> ${snp.position}<br>`,
     };
 
-    return [others, target];
+    const targetLabel = {
+      x: [snp.position],
+      y: [-0.2],
+      type: "scatter",
+      mode: "text",
+      text: [snp.snp_id],
+      textposition: "bottom center",
+      showlegend: false,
+      hoverinfo: "skip",
+      textfont: {
+        color: "black",
+      },
+    };
+
+    return [others, target, targetLabel];
   }, [snps, useWebGL, snpName, jitterMap]);
 
   // Handle resize TODO
@@ -249,8 +261,6 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             gene.strand === "-" ? gene.position_start : gene.position_end;
           const y0 = gene.y;
           const y1 = y0;
-          const arrowSymbol =
-            gene.strand === "-" ? "triangle-left" : "triangle-right";
 
           return {
             name: gene.id,
@@ -265,13 +275,20 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
               width: 3,
             },
             marker: {
-              symbol: ["circle", arrowSymbol],
-              size: [0, 12],
+              symbol: [
+                "circle",
+                gene.strand === "-"
+                  ? "triangle-left"
+                  : gene.strand === "+"
+                    ? "triangle-right"
+                    : "circle",
+              ],
+              size: [gene.strand !== "x" ? 0 : 12, 12],
               color: [
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
               ],
-              opacity: [0, 1],
+              opacity: [gene.strand !== "x" ? 0 : 1, 1],
             },
             customdata: [gene.id],
             hoverinfo: "text",
@@ -279,7 +296,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
               `<b>Gene:</b> ${gene.id}<br>` +
               `<b>Start:</b> ${gene.position_start}<br>` +
               `<b>End:</b> ${gene.position_end}<br>` +
-              `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>` +
+              `<b>Strand:</b> ${gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"}<br>` +
               `<b>β:</b> ${formatNumber(gene.beta, 3)}<br>` +
               `−<b>log10(p):</b> ${formatNumber(gene.y, 3)}`,
             pointType: "gene",
@@ -324,8 +341,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           <br />
           <strong>End:</strong> {data[0].position_end}
           <br />
-          {/* <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"} */}
-          {/* <br /> */}
+          <strong>Strand:</strong>{" "}
+          {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
+          <br />
           {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
           {/* <br />−<strong>log10(p):</strong> {formatNumber(data.y, 6)} */}
           <table
@@ -674,7 +692,7 @@ SNPViewPlotlyPlot.propTypes = {
         beta_value: PropTypes.number.isRequired,
         position_start: PropTypes.number.isRequired,
         position_end: PropTypes.number.isRequired,
-        strand: PropTypes.string.isRequired,
+        strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
       }),
     ),
   ).isRequired,

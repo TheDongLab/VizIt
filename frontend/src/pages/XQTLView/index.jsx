@@ -37,6 +37,8 @@ import { supportsWebGL } from "../../utils/webgl.js";
 const webGLSupported = supportsWebGL();
 console.log("WebGL supported:", webGLSupported);
 
+import { getGeneLocation } from "../../api/qtl.js";
+
 function ConfirmationDialog({
   isOpen,
   handleClose,
@@ -245,6 +247,16 @@ function XQTLView() {
       await fetchGeneCellTypes(datasetId);
       await fetchGeneChromosome(datasetId);
       const locations = await fetchGeneLocations(datasetId, 10000000);
+      const gene = await getGeneLocation(datasetId, selectedGene);
+
+      if (!locations.some((g) => g.id === gene)) {
+        locations.push({
+          gene_id: selectedGene,
+          position_start: gene.data.start,
+          position_end: gene.data.end,
+          strand: gene.data.strand,
+        });
+      }
       setGenes(locations);
 
       await fetchSnpData(datasetId);

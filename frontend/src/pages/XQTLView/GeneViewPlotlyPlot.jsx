@@ -279,7 +279,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           `<b>Gene:</b> ${gene.gene_id}<br>` +
           `<b>Start:</b> ${gene.position_start}<br>` +
           `<b>End:</b> ${gene.position_end}<br>` +
-          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`;
+          `<b>Strand:</b> ${
+            gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"
+          }`;
         return [text, text, null];
       }),
       name: "Nearby Genes",
@@ -304,11 +306,15 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       marker: {
         symbol: [
           "circle",
-          targetGene.strand === "-" ? "triangle-left" : "triangle-right",
+          targetGene.strand === "-"
+            ? "triangle-left"
+            : targetGene.strand === "+"
+              ? "triangle-right"
+              : "circle",
         ],
-        size: [0, 12],
+        size: [targetGene.strand !== "x" ? 0 : 12, 12],
         color: ["black", "black"],
-        opacity: [0, 1],
+        opacity: [targetGene.strand !== "x" ? 0 : 1, 1],
       },
       customdata: [targetGene.gene_id],
       hoverinfo: "text",
@@ -316,7 +322,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         `<b>Gene:</b> ${targetGene.gene_id}<br>` +
         `<b>Start:</b> ${targetGene.position_start}<br>` +
         `<b>End:</b> ${targetGene.position_end}<br>` +
-        `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : "+"}`,
+        `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : targetGene.strand === "+" ? "+" : "N/A"}`,
       name: targetGene.gene_id,
       pointType: "gene",
       showlegend: false,
@@ -428,7 +434,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           <br />
           <strong>End:</strong> {data.position_end}
           <br />
-          <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"}
+          <strong>Strand:</strong>{" "}
+          {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
         </>
       );
 
@@ -740,7 +747,7 @@ GeneViewPlotlyPlot.propTypes = {
       gene_id: PropTypes.string.isRequired,
       position_start: PropTypes.number.isRequired,
       position_end: PropTypes.number.isRequired,
-      strand: PropTypes.oneOf(["+", "-"]).isRequired,
+      strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
     }),
   ).isRequired,
   snpData: PropTypes.objectOf(
