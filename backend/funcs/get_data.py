@@ -75,13 +75,13 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
         chromosome_file = os.path.join(
             "backend", "datasets", dataset, "gene_locations", chromosome + ".parquet"
         )
-        significant_genes_list = get_qtl_gene_list(dataset)
+        # significant_genes_list = get_qtl_gene_list(dataset)
 
         if os.path.exists(chromosome_file):
             df = pl.read_parquet(chromosome_file).filter(
                 (pl.col("position_start") >= start)
                 & (pl.col("position_end") <= end)
-                & pl.col("gene_id").is_in(significant_genes_list)
+                # & pl.col("gene_id").is_in(significant_genes_list)
             )
 
             if not df.is_empty():
@@ -299,9 +299,7 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         # return {col: gene_df.get_column(col).to_list() for col in gene_df.columns}
     else:
         print(data_file + " not found")
-        return (
-            "Error: QTL data file not found for the specified dataset and cell type."
-        )
+        return "Error: QTL data file not found for the specified dataset and cell type."
 
 
 def get_gene_data_for_snp(dataset, snp, celltype=""):
@@ -359,9 +357,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         return {col: snp_df.get_column(col).to_list() for col in snp_df.columns}
     else:
         print(data_file + " not found")
-        return (
-            "Error: QTL data file not found for the specified dataset and cell type."
-        )
+        return "Error: QTL data file not found for the specified dataset and cell type."
 
 
 def get_cell2sample_map(dataset):

@@ -74,6 +74,7 @@ const useQtlStore = create((set, get) => ({
             return geneList;
         } catch (error) {
             console.error("Error fetching gene list:", error);
+            throw error;
         }
     },
 
@@ -95,6 +96,7 @@ const useQtlStore = create((set, get) => ({
             return snpList;
         } catch (error) {
             console.error("Error fetching SNP list:", error);
+            throw error;
         }
     },
 
@@ -118,6 +120,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedChromosome: chromosome, loading: false });
         } catch (error) {
             console.error("Error fetching gene chromosome:", error);
+            throw error;
         }
     },
 
@@ -138,6 +141,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedChromosome: chromosome, loading: false });
         } catch (error) {
             console.error("Error fetching SNP chromosome:", error);
+            throw error;
         }
     },
 
@@ -161,6 +165,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedCellTypes: cellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
+            throw error;
         }
     },
 
@@ -181,6 +186,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedCellTypes: cellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
+            throw error;
         }
     },
 
@@ -212,6 +218,7 @@ const useQtlStore = create((set, get) => ({
             set({ snpData: newSnpData, loading: false });
         } catch (error) {
             console.error("Error fetching SNP data for gene:", error);
+            throw error;
         }
     },
 
@@ -244,6 +251,7 @@ const useQtlStore = create((set, get) => ({
             set({ geneData: newGeneData, loading: false });
         } catch (error) {
             console.error("Error fetching gene data for SNP:", error);
+            throw error;
         }
     },
 
@@ -277,6 +285,7 @@ const useQtlStore = create((set, get) => ({
             return genesRows;
         } catch (error) {
             console.error("Error fetching gene locations:", error);
+            throw error;
         }
     },
 
@@ -309,6 +318,7 @@ const useQtlStore = create((set, get) => ({
             return snpsRows;
         } catch (error) {
             console.error("Error fetching SNP locations:", error);
+            throw error;
         }
     },
 

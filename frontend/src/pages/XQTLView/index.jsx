@@ -138,6 +138,7 @@ function XQTLView() {
             setSelectedGene(urlGene);
           } else {
             setSelectedGene("");
+            setSelectionError(`Selection "${urlGene}" not found in dataset`);
           }
         }
 
@@ -146,6 +147,7 @@ function XQTLView() {
             setSelectedSnp(urlSnp);
           } else {
             setSelectedSnp("");
+            setSelectionError(`Selection "${urlSnp}" not found in dataset`);
           }
         }
       } catch (error) {
@@ -232,9 +234,11 @@ function XQTLView() {
 
   const [genes, setGenes] = useState([]);
   const [snps, setSnps] = useState([]);
+  const [selectionError, setSelectionError] = useState("");
 
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
+
     const isGene = selectedGene && selectedGene !== "";
     const isSnp = selectedSnp && selectedSnp !== "";
 
@@ -244,32 +248,48 @@ function XQTLView() {
       console.warn("Error: Both gene and SNP are selected.");
     } else if (isGene) {
       setDataLoading(true);
-      await fetchGeneCellTypes(datasetId);
-      await fetchGeneChromosome(datasetId);
-      const locations = await fetchGeneLocations(datasetId, 10000000);
-      const gene = await getGeneLocation(datasetId, selectedGene);
+      try {
+        await fetchGeneCellTypes(datasetId);
+        await fetchGeneChromosome(datasetId);
+        const locations = await fetchGeneLocations(datasetId, 10000000);
+        const gene = await getGeneLocation(datasetId, selectedGene);
 
-      if (!locations.some((g) => g.id === gene)) {
-        locations.push({
-          gene_id: selectedGene,
-          position_start: gene.data.start,
-          position_end: gene.data.end,
-          strand: gene.data.strand,
-        });
+        if (!locations.some((g) => g.id === gene)) {
+          locations.push({
+            gene_id: selectedGene,
+            position_start: gene.data.start,
+            position_end: gene.data.end,
+            strand: gene.data.strand,
+          });
+        }
+        setGenes(locations);
+
+        await fetchSnpData(datasetId);
+        setSelectionError("");
+        setDataLoading(false);
+      } catch (error) {
+        console.error("Error fetching gene data:", error);
+        setSelectionError(`Selection "${selectedGene}" not found in dataset`);
+        setDataLoading(false);
+        return;
       }
-      setGenes(locations);
-
-      await fetchSnpData(datasetId);
-      setDataLoading(false);
     } else if (isSnp) {
       setDataLoading(true);
-      await fetchSnpCellTypes(datasetId);
-      await fetchSnpChromosome(datasetId);
-      const locations = await fetchSnpLocations(datasetId, 1500000);
-      setSnps(locations);
+      try {
+        await fetchSnpCellTypes(datasetId);
+        await fetchSnpChromosome(datasetId);
+        const locations = await fetchSnpLocations(datasetId, 1500000);
+        setSnps(locations);
 
-      await fetchGeneData(datasetId);
-      setDataLoading(false);
+        await fetchGeneData(datasetId);
+        setSelectionError("");
+        setDataLoading(false);
+      } catch (error) {
+        console.error("Error fetching SNP data:", error);
+        setSelectionError(`Selection "${selectedSnp}" not found in dataset`);
+        setDataLoading(false);
+        return;
+      }
     }
   };
 
@@ -332,9 +352,21 @@ function XQTLView() {
 
   // Set the initial selected gene and SNP from URL parameters
   useEffect(() => {
-    if (urlGene !== selectedGene) setSelectedGene(urlGene || "");
-    if (urlSnp !== selectedSnp) setSelectedSnp(urlSnp || "");
-  }, []);
+    if (urlGene !== selectedGene) {
+      if (urlGene) {
+        setSelectedGene(urlGene);
+      } else {
+        setSelectedGene("");
+      }
+    }
+    if (urlSnp !== selectedSnp) {
+      if (urlSnp) {
+        setSelectedSnp(urlSnp);
+      } else {
+        setSelectedSnp("");
+      }
+    }
+  }, [urlGene, urlSnp]);
 
   const currentValue = useMemo(() => {
     if (selectedGene) {
@@ -534,7 +566,9 @@ function XQTLView() {
               No dataset selected for exploration
             </Typography>
           ) : error ? (
-            <Typography color="error">{error}</Typography>
+            <Typography sx={{ paddingTop: "100px" }} variant="h5" color="error">
+              {error}
+            </Typography>
           ) : (
             <div className="qtl-container">
               {/* Plot Container */}
@@ -542,12 +576,20 @@ function XQTLView() {
                 key={`${selectedGene || selectedSnp || "plot"}-view`}
                 className={`view-container`}
               >
-                {!selectedGene && !selectedSnp ? (
+                {!selectedGene && !selectedSnp && !selectionError ? (
                   <Typography
                     sx={{ color: "text.secondary", paddingTop: "100px" }}
                     variant="h5"
                   >
                     No gene or SNP selected for exploration
+                  </Typography>
+                ) : selectionError ? (
+                  <Typography
+                    sx={{ paddingTop: "100px" }}
+                    variant="h5"
+                    color="error"
+                  >
+                    {selectionError}
                   </Typography>
                 ) : selectedCellTypes.length === 0 ? (
                   <Typography
