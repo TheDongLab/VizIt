@@ -276,7 +276,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       hoverinfo: "text",
       hovertext: otherGenes.flatMap((gene) => {
         const text =
-          `<b>Gene:</b> ${gene.gene_id}<br>` +
+          `<b>${gene.strand !== "x" ? "Gene" : "Peak"}:</b> ${gene.gene_id}<br>` +
           `<b>Start:</b> ${gene.position_start}<br>` +
           `<b>End:</b> ${gene.position_end}<br>` +
           `<b>Strand:</b> ${
@@ -319,7 +319,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       customdata: [targetGene.gene_id],
       hoverinfo: "text",
       hovertext:
-        `<b>Gene:</b> ${targetGene.gene_id}<br>` +
+        `<b>${targetGene.strand !== "x" ? "Gene" : "Peak"}:</b> ${targetGene.gene_id}<br>` +
         `<b>Start:</b> ${targetGene.position_start}<br>` +
         `<b>End:</b> ${targetGene.position_end}<br>` +
         `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : targetGene.strand === "+" ? "+" : "N/A"}`,
@@ -428,7 +428,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
 
       const formattedData = (
         <>
-          <strong>Gene:</strong> {data.gene_id}
+          <strong>{data.strand !== "x" ? "Gene" : "Peak"}:</strong>{" "}
+          {data.gene_id}
           <br />
           <strong>Start:</strong> {data.position_start}
           <br />
