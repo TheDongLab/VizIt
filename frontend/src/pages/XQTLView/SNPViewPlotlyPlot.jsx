@@ -56,7 +56,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         }) => ({
           ...rest,
           id: gene_id,
-          y: -Math.log10(p_value),
+          y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
           beta: beta_value,
           x: strand === "-" ? position_end : position_start,
           position_start,
@@ -244,7 +244,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           }) => ({
             ...rest,
             id: gene_id,
-            y: -Math.log10(p_value),
+            y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
             beta: beta_value,
             x: strand === "-" ? position_end : position_start,
             position_start,

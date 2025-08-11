@@ -46,7 +46,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
       id: snp_id,
-      y: -Math.log10(p_value),
+      y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
       beta: beta_value,
       x: position,
       p_value,
@@ -118,7 +118,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         ({ snp_id, p_value, beta_value, position, ...rest }) => ({
           ...rest,
           id: snp_id,
-          y: -Math.log10(p_value),
+          y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
           beta: beta_value,
           x: position,
           p_value,
