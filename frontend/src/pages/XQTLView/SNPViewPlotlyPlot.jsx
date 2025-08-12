@@ -315,19 +315,20 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             },
             marker: {
               symbol: [
-                "circle",
+                gene.strand !== "x" ? "circle" : "line-ew",
                 gene.strand === "-"
                   ? "triangle-left"
                   : gene.strand === "+"
                     ? "triangle-right"
-                    : "circle",
+                    : "line-ew",
               ],
-              size: [gene.strand !== "x" ? 0 : 12, 12],
+              size: [gene.strand !== "x" ? 0 : 4, gene.strand !== "x" ? 12 : 4],
               color: [
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
               ],
               opacity: [gene.strand !== "x" ? 0 : 1, 1],
+              line: { width: 3 },
             },
             customdata: [gene.id],
             hoverinfo: "text",
