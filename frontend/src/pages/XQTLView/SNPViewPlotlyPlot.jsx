@@ -543,7 +543,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,
         // maxallowed: yMax,
-        showgrid: false,
+        showgrid: hasGwas,
         zeroline: false,
         ticks: hasGwas ? "outside" : "",
         ticklen: hasGwas ? 6 : 0,
