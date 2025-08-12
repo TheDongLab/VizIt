@@ -301,6 +301,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           const y0 = gene.y;
           const y1 = y0;
 
+          const isPeak = gene.strand === "x";
+
           return {
             name: gene.id,
             x: [x0, x1],
@@ -315,25 +317,25 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             },
             marker: {
               symbol: [
-                gene.strand !== "x" ? "circle" : "line-ew",
+                isPeak ? "line-ew" : "circle",
                 gene.strand === "-"
                   ? "triangle-left"
                   : gene.strand === "+"
                     ? "triangle-right"
                     : "line-ew",
               ],
-              size: [gene.strand !== "x" ? 0 : 4, gene.strand !== "x" ? 12 : 4],
+              size: [isPeak ? 4 : 0, isPeak ? 4 : 12],
               color: [
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
               ],
-              opacity: [gene.strand !== "x" ? 0 : 1, 1],
-              line: { width: 3 },
+              opacity: [isPeak ? 1 : 0, 1],
+              line: { width: isPeak ? 3 : 1 },
             },
             customdata: [gene.id],
             hoverinfo: "text",
             hovertext:
-              `<b>Gene:</b> ${gene.id}<br>` +
+              `<b>${isPeak ? "Peak" : "Gene"}:</b> ${gene.id}<br>` +
               `<b>Start:</b> ${gene.position_start}<br>` +
               `<b>End:</b> ${gene.position_end}<br>` +
               `<b>Strand:</b> ${gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"}<br>` +
@@ -392,7 +394,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 
       const formattedData = (
         <>
-          <strong>Gene:</strong> {data[0].id}
+          <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong> {data[0].id}
           <br />
           <strong>Start:</strong> {data[0].position_start}
           <br />
