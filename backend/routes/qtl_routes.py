@@ -17,6 +17,7 @@ from backend.funcs.get_data import (
     get_snp_location,
     get_gene_locations_in_chromosome,
     get_snp_locations_in_chromosome,
+    get_gwas_in_chromosome,
 )
 
 router = APIRouter()
@@ -86,6 +87,24 @@ async def getsnplocationsinchromosome(request: Request):
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting SNP locations.")
+    return response
+
+
+@router.get("/getgwasinchromosome")
+async def getgwasinchromosome(request: Request):
+    print("getgwasinchromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    chromosome = request.query_params.get("chromosome")
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+
+    start = int(start) if start else None
+    end = int(end) if end else None
+
+    response = get_gwas_in_chromosome(dataset_id, chromosome, start, end)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
     return response
 
 

@@ -37,7 +37,7 @@ import { supportsWebGL } from "../../utils/webgl.js";
 const webGLSupported = supportsWebGL();
 console.log("WebGL supported:", webGLSupported);
 
-import { getGeneLocation } from "../../api/qtl.js";
+import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 
 function ConfirmationDialog({
   isOpen,
@@ -105,6 +105,7 @@ function XQTLView() {
     fetchSnpChromosome,
     fetchGeneLocations,
     fetchSnpLocations,
+    fetchGwas,
     resetQtlState,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
@@ -234,6 +235,7 @@ function XQTLView() {
 
   const [genes, setGenes] = useState([]);
   const [snps, setSnps] = useState([]);
+  const [hasGwas, setHasGwas] = useState(false);
   const [selectionError, setSelectionError] = useState("");
 
   const fetchGeneOrSnpData = async () => {
@@ -278,7 +280,37 @@ function XQTLView() {
       try {
         await fetchSnpCellTypes(datasetId);
         await fetchSnpChromosome(datasetId);
-        const locations = await fetchSnpLocations(datasetId, 1500000);
+
+        let locations;
+        try {
+          locations = await fetchGwas(datasetId, 1500000);
+          setHasGwas(true);
+          locations = locations.map(
+            ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+              ...rest,
+              id: snp_id,
+              y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
+              beta: beta_value,
+              x: position,
+              snp_id,
+              p_value,
+              position,
+            }),
+          );
+        } catch (error) {
+          console.error("Error fetching GWAS data:", error);
+          locations = await fetchSnpLocations(datasetId, 1500000);
+          setHasGwas(false);
+        }
+
+        const snp = await getSnpLocation(datasetId, selectedSnp);
+
+        if (!locations.some((s) => s.id === snp)) {
+          locations.push({
+            snp_id: selectedSnp,
+            position: snp.data.position,
+          });
+        }
         setSnps(locations);
 
         await fetchGeneData(datasetId);
@@ -625,6 +657,7 @@ function XQTLView() {
                         dataset={datasetId}
                         snpName={selectedSnp}
                         snps={snps}
+                        hasGwas={hasGwas}
                         geneData={geneData}
                         chromosome={selectedChromosome}
                         cellTypes={selectedCellTypes}

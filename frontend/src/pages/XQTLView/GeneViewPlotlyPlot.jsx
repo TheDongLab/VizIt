@@ -520,7 +520,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       ...cellTypes.reduce((acc, celltype, i) => {
         acc[`yaxis${i + 2}`] = {
           title: { text: `−log10(p)`, font: { size: 12 } },
-          domain: calculateDomain(i + 1), // i+1 because first track is gene
+          domain: calculateDomain(i + 1), // i+1 because first track is SNPs
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
@@ -540,7 +540,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       }, {}),
       yaxis: {
         autorange: false,
-        domain: calculateDomain(0), // 0th track is for genes
+        domain: calculateDomain(0), // 0th track is for SNP track
         range: [-2, 2],
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,

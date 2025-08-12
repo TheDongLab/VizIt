@@ -172,3 +172,20 @@ export const getSnpLocationsInChromosome = async (
         throw error;
     }
 };
+
+export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgwasinchromosome`, {
+            params: {
+                dataset: dataset,
+                chromosome: chromosome,
+                start: start,
+                end: end,
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGwasInChromosome:", error);
+        throw error;
+    }
+};

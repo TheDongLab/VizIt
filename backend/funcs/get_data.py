@@ -120,6 +120,29 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
             return "Error: Chromosome file not found for the specified dataset."
 
 
+def get_gwas_in_chromosome(dataset, chromosome, start, end):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        chromosome_file = os.path.join(
+            "backend", "datasets", dataset, "gwas", chromosome + ".tsv"
+        )
+        # significant_snps_list = get_qtl_snp_list(dataset)
+
+        if os.path.exists(chromosome_file):
+            df = pl.read_csv(chromosome_file, separator="\t").filter(
+                (pl.col("position") >= start) & (pl.col("position") <= end)
+            )
+            if not df.is_empty():
+                df = df.drop_nulls()
+                return {col: df.get_column(col).to_list() for col in df.columns}
+            else:
+                return f"Error: No SNPs found in {chromosome} chromosome."
+        else:
+            print(chromosome_file + " not found")
+            return "Error: Chromosome file not found for the specified dataset."
+
+
 def get_gene_chromosome(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
@@ -409,7 +432,9 @@ def get_meta_list(dataset, query_str="all"):
         if query_str == "all" or query_str == "":
             return data
         elif query_str == "cell_level":
-            cellspot_meta_file = os.path.join("backend", "datasets", dataset, "cellspot_meta_mapping.json")
+            cellspot_meta_file = os.path.join(
+                "backend", "datasets", dataset, "cellspot_meta_mapping.json"
+            )
             if os.path.exists(cellspot_meta_file):
                 with open(cellspot_meta_file, "r") as f:
                     cellspot_meta = json.load(f)

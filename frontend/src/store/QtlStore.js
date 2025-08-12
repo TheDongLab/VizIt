@@ -12,6 +12,7 @@ import {
     getSnpLocation,
     getGeneLocationsInChromosome,
     getSnpLocationsInChromosome,
+    getGwasInChromosome,
 } from "../api/qtl.js";
 
 function columnToRow(data) {
@@ -318,6 +319,39 @@ const useQtlStore = create((set, get) => ({
             return snpsRows;
         } catch (error) {
             console.error("Error fetching SNP locations:", error);
+            throw error;
+        }
+    },
+
+    fetchGwas: async (dataset, radius) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGwas: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const positionResponse = await getSnpLocation(
+                dataset,
+                get().selectedSnp,
+            );
+            const position = positionResponse.data.position;
+
+            const response = await getGwasInChromosome(
+                dataset,
+                get().selectedChromosome,
+                position - radius,
+                position + radius,
+            );
+            const gwas = response.data;
+            const gwasRows = columnToRow(gwas);
+            return gwasRows;
+        } catch (error) {
+            console.error("Error fetching GWAS data:", error);
             throw error;
         }
     },
