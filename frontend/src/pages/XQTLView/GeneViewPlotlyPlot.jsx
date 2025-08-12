@@ -213,21 +213,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     return map;
   }, [combinedRange, genes]);
 
-  // Handle resize TODO
-  // const updateScale = useCallback(() => {
-  //   if (!containerRef.current || !naturalDimensions.width) return;
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const scale = containerWidth / naturalDimensions.width;
-  //   setDisplayScale(scale);
-  // }, [naturalDimensions.width]);
-
-  // useEffect(() => {
-  //   if (!containerRef.current) return;
-  //   const resizeObserver = new ResizeObserver(updateScale);
-  //   resizeObserver.observe(containerRef.current);
-  //   return () => resizeObserver.disconnect();
-  // }, [updateScale]);
-
   const geneTraces = useMemo(() => {
     const getStart = (gene) =>
       gene.strand === "-" ? gene.position_end : gene.position_start;
@@ -418,13 +403,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     } else if (pointType === "gene") {
       const data = genes.find((g) => g.gene_id === name);
       if (!data) return;
-
-      // const formattedData = `
-      //   Gene: ${data.gene_id}
-      //   Start: ${data.position_start}
-      //   End: ${data.position_end}
-      //   Strand: ${data.strand === "-" ? "−" : "+"}
-      // `.trim();
 
       const formattedData = (
         <>
@@ -618,31 +596,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       initialYRange,
     ],
   );
-
-  // TODO test this instead of my thing
-  // const resetZoom = (gd) => {
-  //   // Get the container size
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const containerHeight = containerRef.current.offsetHeight;
-
-  //   // Set zoom-out level to fit the container
-  //   const xRange = [0, containerWidth];
-  //   const yRange = [containerHeight, 0];
-
-  //   // const { width, height } = naturalDimensions;
-  //   // console.log("Container size:",containerWidth, containerHeight);
-  //   // console.log("Natural dimensions:",width, height);
-  //   //
-  //   // console.log(displayScale)
-
-  //   // Apply new range with relayout
-  //   Plotly.relayout(gd, {
-  //     "xaxis.range": xRange,
-  //     "yaxis.range": yRange,
-  //     // 'images[0].sizex': containerWidth,
-  //     // 'images[0].sizey': containerHeight
-  //   });
-  // };
 
   return (
     <div

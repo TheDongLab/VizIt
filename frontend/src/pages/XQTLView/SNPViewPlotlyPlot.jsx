@@ -120,8 +120,6 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     [gwasMin, gwasMax],
   );
 
-  console.log(initialGwasYRange, gwasMin, gwasMax, hasGwas);
-
   const nearbyXValues = useMemo(() => snps.map((s) => s.position), [snps]);
 
   const nearbySnpsRange = useMemo(() => {
@@ -165,7 +163,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         ? otherSnps.map((s) => s.y)
         : otherSnps.map((s) => jitterMap.get(s.snp_id)),
       // type: useWebGL ? "scattergl" : "scatter",
-      type: "scatter",
+      type: "scattergl",
       mode: "markers",
       marker: {
         color: hasGwas
@@ -201,8 +199,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     const target = {
       x: [snp.position],
       y: hasGwas ? [snp.y || (gwasMin + gwasMax) / 2] : [0],
-      type: "scatter",
-      mode: "markers+text",
+      type: "scattergl",
+      mode: "markers",
       marker: {
         color: "black",
         opacity: 1,
@@ -233,48 +231,45 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       },
     };
 
-    const targetLabel = {
-      x: [snp.position],
-      y: hasGwas ? [snp.y - 0.2 || (gwasMin + gwasMax) / 2 - 0.2] : [-0.2],
-      type: "scatter",
-      mode: "text",
-      text: [snp.snp_id],
-      // textposition: "bottom center",
-      showlegend: false,
-      hoverinfo: "skip",
-      textfont: {
-        color: "black",
-      },
-    };
-
     return [others, target];
-  }, [snps, useWebGL, snpName, jitterMap]);
+  }, [
+    snps,
+    otherSnps,
+    hasGwas,
+    gwasMin,
+    gwasMax,
+    snpName,
+    jitterMap,
+    minBetaMagnitude,
+    maxBetaMagnitude,
+  ]);
 
-  // Handle resize TODO
-  // const updateScale = useCallback(() => {
-  //   if (!containerRef.current || !naturalDimensions.width) return;
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const scale = containerWidth / naturalDimensions.width;
-  //   setDisplayScale(scale);
-  // }, [naturalDimensions.width]);
+  const targetAnnotation = useMemo(() => {
+    const snp = snps.find((s) => s.snp_id === snpName);
+    if (!snp) return null;
+    const yPos = hasGwas ? snp.y || (gwasMin + gwasMax) / 2 : 0;
+    const isTop = (yPos - gwasMin) / (gwasMax - gwasMin) < 0.2;
+    const distance = (gwasMax - gwasMin) * 0.04;
+    const annotationY = isTop ? yPos + distance : yPos - distance;
+    // const annotationY = hasGwas ? (isTop ? yPos - 0.2 : yPos + 0.2) : -0.2;
 
-  // useEffect(() => {
-  //   if (!containerRef.current) return;
-  //   const resizeObserver = new ResizeObserver(updateScale);
-  //   resizeObserver.observe(containerRef.current);
-  //   return () => resizeObserver.disconnect();
-  // }, [updateScale]);
-
-  // maybe useMemo
+    return {
+      x: snp.position,
+      y: annotationY,
+      xref: "x",
+      yref: "y",
+      text: snp.snp_id,
+      showarrow: false,
+      font: { color: "black" },
+      xanchor: "center",
+      yanchor: isTop ? "bottom" : "top", // Positions text above/below point
+    };
+  }, [gwasMax, gwasMin, hasGwas, snp]);
 
   // Multiple gene traces so each line can have its own color
   const geneTraces = useMemo(
     () =>
       cellTypes.flatMap((celltype, i) => {
-        // const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
-        // const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
-        // const y0 = gene.y;
-        // const y1 = y0;
         const cellGenes = geneData[celltype] || [];
         const geneList = cellGenes.map(
           ({
@@ -623,46 +618,25 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
               },
             ]
           : []),
+        targetAnnotation,
       ],
     }),
     [
       snpName,
-      chromosome,
       totalHeight,
       cellTypes,
+      chromosome,
       initialXRange,
       nearbySnpsRange,
       xMin,
       xMax,
+      hasGwas,
       calculateDomain,
+      initialGwasYRange,
+      targetAnnotation,
       initialYRange,
     ],
   );
-
-  // TODO test this instead of my thing
-  // const resetZoom = (gd) => {
-  //   // Get the container size
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const containerHeight = containerRef.current.offsetHeight;
-
-  //   // Set zoom-out level to fit the container
-  //   const xRange = [0, containerWidth];
-  //   const yRange = [containerHeight, 0];
-
-  //   // const { width, height } = naturalDimensions;
-  //   // console.log("Container size:",containerWidth, containerHeight);
-  //   // console.log("Natural dimensions:",width, height);
-  //   //
-  //   // console.log(displayScale)
-
-  //   // Apply new range with relayout
-  //   Plotly.relayout(gd, {
-  //     "xaxis.range": xRange,
-  //     "yaxis.range": yRange,
-  //     // 'images[0].sizex': containerWidth,
-  //     // 'images[0].sizey': containerHeight
-  //   });
-  // };
 
   return (
     <div
@@ -769,6 +743,7 @@ SNPViewPlotlyPlot.propTypes = {
       position: PropTypes.number.isRequired,
     }),
   ).isRequired,
+  hasGwas: PropTypes.bool.isRequired,
   geneData: PropTypes.objectOf(
     PropTypes.arrayOf(
       PropTypes.shape({
