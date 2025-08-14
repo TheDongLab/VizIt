@@ -162,13 +162,12 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       y: hasGwas
         ? otherSnps.map((s) => s.y)
         : otherSnps.map((s) => jitterMap.get(s.snp_id)),
-      // type: useWebGL ? "scattergl" : "scatter",
-      type: "scattergl",
+      type: useWebGL ? "scattergl" : "scatter",
       mode: "markers",
       marker: {
         color: hasGwas
           ? otherSnps.map((s) =>
-              dataToRGB(s, minBetaMagnitude, maxBetaMagnitude),
+              s.beta > 0 ? "rgb(230, 120, 120)" : "rgb(120, 120, 230)",
             )
           : "rgb(161, 161, 161)",
         opacity: 1,
@@ -565,8 +564,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           yref: "y",
           x0: 0,
           x1: 1,
-          y0: -2,
-          y1: 2,
+          y0: hasGwas ? Math.log10(5e-8) : -2,
+          y1: hasGwas ? -Math.log10(5e-8) : 2,
           fillcolor: "lightgray",
           opacity: 0.3,
           layer: "below",

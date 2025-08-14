@@ -105,7 +105,8 @@ function XQTLView() {
     fetchSnpChromosome,
     fetchGeneLocations,
     fetchSnpLocations,
-    fetchGwas,
+    fetchGwasForGene,
+    fetchGwasForSnp,
     resetQtlState,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
@@ -235,6 +236,7 @@ function XQTLView() {
 
   const [genes, setGenes] = useState([]);
   const [snps, setSnps] = useState([]);
+  const [gwasData, setGwasData] = useState([]); // Only used for gene view
   const [hasGwas, setHasGwas] = useState(false);
   const [selectionError, setSelectionError] = useState("");
 
@@ -266,6 +268,29 @@ function XQTLView() {
         }
         setGenes(locations);
 
+        let gwas;
+        try {
+          gwas = await fetchGwasForGene(datasetId, 1500000);
+          setHasGwas(true);
+          const gwasLocations = gwas.map(
+            ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+              ...rest,
+              id: snp_id,
+              y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
+              beta: beta_value,
+              x: position,
+              snp_id,
+              p_value,
+              position,
+            }),
+          );
+          setGwasData(gwasLocations);
+        } catch (error) {
+          console.error("Error fetching GWAS data:", error);
+          setHasGwas(false);
+          setGwasData([]);
+        }
+
         await fetchSnpData(datasetId);
         setSelectionError("");
         setDataLoading(false);
@@ -283,7 +308,7 @@ function XQTLView() {
 
         let locations;
         try {
-          locations = await fetchGwas(datasetId, 1500000);
+          locations = await fetchGwasForSnp(datasetId, 1500000);
           setHasGwas(true);
           locations = locations.map(
             ({ snp_id, p_value, beta_value, position, ...rest }) => ({
@@ -634,11 +659,14 @@ function XQTLView() {
                   !dataLoading &&
                   !loading &&
                   selectedChromosome && (
+                    // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
                     <div key={`${selectedGene}-plot`} className="gene-plot">
                       <GeneViewPlotlyPlot
                         dataset={datasetId}
                         geneName={selectedGene}
                         genes={genes}
+                        gwasData={gwasData}
+                        hasGwas={hasGwas}
                         snpData={snpData}
                         chromosome={selectedChromosome}
                         cellTypes={selectedCellTypes}

@@ -323,7 +323,41 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
-    fetchGwas: async (dataset, radius) => {
+    fetchGwasForGene: async (dataset, radius) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGwas: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const positionResponse = await getGeneLocation(
+                dataset,
+                get().selectedGene,
+            );
+            const startPosition = positionResponse.data.start;
+            const endPosition = positionResponse.data.end;
+
+            const response = await getGwasInChromosome(
+                dataset,
+                get().selectedChromosome,
+                startPosition - radius,
+                endPosition + radius,
+            );
+            const gwas = response.data;
+            const gwasRows = columnToRow(gwas);
+            return gwasRows;
+        } catch (error) {
+            console.error("Error fetching GWAS data:", error);
+            throw error;
+        }
+    },
+
+    fetchGwasForSnp: async (dataset, radius) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({

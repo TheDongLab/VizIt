@@ -36,6 +36,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   dataset,
   geneName,
   genes,
+  gwasData,
+  hasGwas,
   snpData,
   chromosome,
   cellTypes,
@@ -85,8 +87,17 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const yMin = Math.min(...yValues, 0);
   const yMax = Math.max(...yValues, 2) + yPadding;
 
+  const gwasMin = hasGwas ? Math.min(...gwasData.map((s) => s.y), 0) : -2;
+  const gwasMax = hasGwas
+    ? Math.max(...gwasData.map((s) => s.y), 2) + yPadding
+    : 2;
+
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
   const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
+  const initialGwasYRange = useMemo(
+    () => [gwasMin, gwasMax],
+    [gwasMin, gwasMax],
+  );
 
   const nearbyXValues = useMemo(
     () => genes.flatMap((gene) => [gene.position_start, gene.position_end]),
@@ -131,7 +142,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           x: snpList.map((snp) => snp.x),
           y: snpList.map((snp) => snp.y),
           xaxis: "x",
-          yaxis: `y${i + 2}`,
+          yaxis: `y${i + (hasGwas ? 3 : 2)}`,
           type: useWebGL ? "scattergl" : "scatter",
           mode: "markers",
           marker: {
@@ -158,6 +169,44 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       ];
     });
   }, [cellTypes, snpData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
+
+  const gwasTrace = useMemo(() => {
+    if (!hasGwas || gwasData.length === 0) return [];
+
+    return [
+      {
+        x: gwasData.map((s) => s.x),
+        y: gwasData.map((s) => s.y),
+        xaxis: "x",
+        yaxis: "y2", // Second track for GWAS
+        type: useWebGL ? "scattergl" : "scatter",
+        mode: "markers",
+        marker: {
+          color: gwasData.map((s) =>
+            s.beta > 0 ? "rgb(230, 120, 120)" : "rgb(120, 120, 230)",
+          ),
+          // color: gwasData.map((s) =>
+          //   dataToRGB(s, minBetaMagnitude, maxBetaMagnitude),
+          // ),
+          opacity: 1,
+          size: 6,
+          line: {
+            width: 0,
+          },
+        },
+        customdata: gwasData.map((s) => s.id),
+        pointType: "gwas",
+        hoverinfo: "text",
+        hovertext: gwasData.flatMap(
+          (s) =>
+            `<b>SNP:</b> ${s.snp_id}<br>` +
+            `<b>Position:</b> ${s.position}<br>` +
+            `<b>β (GWAS):</b> ${formatNumber(s.beta, 6)}<br>` +
+            `<b>−log10(p) (GWAS):</b> ${formatNumber(s.y, 6)}`,
+        ),
+      },
+    ];
+  }, [hasGwas, gwasData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
 
   // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
@@ -358,8 +407,19 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const pointType = pointData.pointType;
     const name = point.customdata || pointData.name;
 
-    if (pointType === "snp") {
-      const data = combinedSnpList.filter((s) => s.id === name);
+    if (pointType === "snp" || pointType === "gwas") {
+      let data = combinedSnpList.filter((s) => s.id === name);
+      if (hasGwas) {
+        data = data.concat(
+          gwasData
+            .filter((s) => s.id === name)
+            .map((s) => ({
+              ...s,
+              celltype: "GWAS",
+            })),
+        );
+      }
+
       if (!data || data.length === 0) return;
 
       const formattedData = (
@@ -434,7 +494,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const marginLeft = 80;
   const marginRight = 80;
 
-  const nTracks = cellTypes.length + 1; // +1 for the gene track
+  const nTracks = cellTypes.length + (hasGwas ? 1 : 0) + 1; // +1 for the gene track
   const totalHeight =
     marginTop +
     marginBottom +
@@ -474,7 +534,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       autosize: true,
       dragmode: "pan",
       grid: {
-        rows: cellTypes.length + 1,
+        rows: cellTypes.length + (hasGwas ? 1 : 0) + 1, // +1 for the gene track
         columns: 1,
         roworder: "top to bottom",
       },
@@ -499,9 +559,10 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         anchor: "y",
       },
       ...cellTypes.reduce((acc, celltype, i) => {
-        acc[`yaxis${i + 2}`] = {
+        const baseIndex = hasGwas ? i + 2 : i + 1;
+        acc[`yaxis${baseIndex + 1}`] = {
           title: { text: `−log10(p)`, font: { size: 12 } },
-          domain: calculateDomain(i + 1), // i+1 because first track is SNPs
+          domain: calculateDomain(baseIndex),
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
@@ -519,6 +580,28 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         };
         return acc;
       }, {}),
+      ...(hasGwas
+        ? {
+            [`yaxis2`]: {
+              title: { text: `−log10(p)`, font: { size: 12 } },
+              domain: calculateDomain(1), // Last track for GWAS
+              autorange: false,
+              range: initialGwasYRange,
+              fixedrange: true,
+              showgrid: true,
+              zeroline: false,
+              ticks: "outside",
+              ticklen: 6,
+              tickwidth: 1,
+              tickcolor: "black",
+              showline: true,
+              mirror: true,
+              linewidth: 1,
+              linecolor: "black",
+              anchor: "x",
+            },
+          }
+        : {}),
       yaxis: {
         autorange: false,
         domain: calculateDomain(0), // 0th track is for SNP track
@@ -554,7 +637,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           {
             type: "rect",
             xref: "paper",
-            yref: `y${i + 2}`,
+            yref: `y${i + (hasGwas ? 3 : 2)}`,
             x0: 0,
             x1: 1,
             y0: -2,
@@ -565,10 +648,27 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             line: { width: 0 },
           },
         ]),
+        ...(hasGwas
+          ? [
+              {
+                type: "rect",
+                xref: "paper",
+                yref: "y2",
+                x0: 0,
+                x1: 1,
+                y0: Math.log10(5e-8),
+                y1: -Math.log10(5e-8),
+                fillcolor: "lightgray",
+                opacity: 0.3,
+                // layer: "below",
+                line: { width: 0 },
+              },
+            ]
+          : []),
       ],
       annotations: [
         ...cellTypes.map((celltype, i) => {
-          const domain = calculateDomain(i + 1);
+          const domain = calculateDomain(i + (hasGwas ? 2 : 1));
 
           return {
             text: celltype,
@@ -584,6 +684,23 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             yanchor: "top",
           };
         }),
+        ...(hasGwas
+          ? [
+              {
+                text: "GWAS",
+                font: {
+                  size: 16,
+                },
+                xref: "paper",
+                yref: "paper",
+                x: 0.001,
+                y: calculateDomain(1)[1],
+                showarrow: false,
+                xanchor: "left",
+                yanchor: "top",
+              },
+            ]
+          : []),
       ],
     }),
     [
@@ -609,7 +726,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     >
       <Plot
         onClick={onClick}
-        data={[...geneTraces, ...snpTraces]}
+        data={[...geneTraces, ...snpTraces, ...gwasTrace]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
         useResizeHandler
