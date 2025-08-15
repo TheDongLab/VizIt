@@ -437,9 +437,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
 
       if (!data || data.length === 0) return;
 
+      const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
+
       const formattedData = (
         <>
-          <strong>SNP:</strong> {data[0].id}
+          <strong>SNP:</strong> {data[0].id}{" "}
+          <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+            (View in GWAS Catalog)
+          </a>
           <br />
           <strong>Position:</strong> {data[0].x}
           <br />

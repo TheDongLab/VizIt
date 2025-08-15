@@ -368,9 +368,14 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       const data = snps.find((s) => s.snp_id === name);
       if (!data) return;
 
+      const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data.snp_id)}`;
+
       const formattedData = (
         <>
-          <strong>SNP:</strong> {data.snp_id}
+          <strong>SNP:</strong> {data.snp_id}{" "}
+          <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+            (View in GWAS Catalog)
+          </a>
           <br />
           <strong>Position:</strong> {data.position}
         </>
@@ -381,9 +386,14 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       const data = snps.find((s) => s.snp_id === name);
       if (!data) return;
 
+      const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data.snp_id)}`;
+
       const formattedData = (
         <>
-          <strong>SNP:</strong> {data.snp_id}
+          <strong>SNP:</strong> {data.snp_id}{" "}
+          <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+            (View in GWAS Catalog)
+          </a>
           <br />
           <strong>Position:</strong> {data.position}
           <br />
