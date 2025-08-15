@@ -75,13 +75,13 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
         chromosome_file = os.path.join(
             "backend", "datasets", dataset, "gene_locations", chromosome + ".parquet"
         )
-        significant_genes_list = get_qtl_gene_list(dataset)
+        # significant_genes_list = get_qtl_gene_list(dataset)
 
         if os.path.exists(chromosome_file):
             df = pl.read_parquet(chromosome_file).filter(
                 (pl.col("position_start") >= start)
                 & (pl.col("position_end") <= end)
-                & pl.col("gene_id").is_in(significant_genes_list)
+                # & pl.col("gene_id").is_in(significant_genes_list)
             )
 
             if not df.is_empty():
@@ -109,6 +109,29 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
                 (pl.col("position") >= start)
                 & (pl.col("position") <= end)
                 & pl.col("snp_id").is_in(significant_snps_list)
+            )
+            if not df.is_empty():
+                df = df.drop_nulls()
+                return {col: df.get_column(col).to_list() for col in df.columns}
+            else:
+                return f"Error: No SNPs found in {chromosome} chromosome."
+        else:
+            print(chromosome_file + " not found")
+            return "Error: Chromosome file not found for the specified dataset."
+
+
+def get_gwas_in_chromosome(dataset, chromosome, start, end):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+    else:
+        chromosome_file = os.path.join(
+            "backend", "datasets", dataset, "gwas", chromosome + ".tsv"
+        )
+        # significant_snps_list = get_qtl_snp_list(dataset)
+
+        if os.path.exists(chromosome_file):
+            df = pl.read_csv(chromosome_file, separator="\t").filter(
+                (pl.col("position") >= start) & (pl.col("position") <= end)
             )
             if not df.is_empty():
                 df = df.drop_nulls()
@@ -299,9 +322,7 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         # return {col: gene_df.get_column(col).to_list() for col in gene_df.columns}
     else:
         print(data_file + " not found")
-        return (
-            "Error: QTL data file not found for the specified dataset and cell type."
-        )
+        return "Error: QTL data file not found for the specified dataset and cell type."
 
 
 def get_gene_data_for_snp(dataset, snp, celltype=""):
@@ -359,9 +380,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         return {col: snp_df.get_column(col).to_list() for col in snp_df.columns}
     else:
         print(data_file + " not found")
-        return (
-            "Error: QTL data file not found for the specified dataset and cell type."
-        )
+        return "Error: QTL data file not found for the specified dataset and cell type."
 
 
 def get_cell2sample_map(dataset):
@@ -413,7 +432,9 @@ def get_meta_list(dataset, query_str="all"):
         if query_str == "all" or query_str == "":
             return data
         elif query_str == "cell_level":
-            cellspot_meta_file = os.path.join("backend", "datasets", dataset, "cellspot_meta_mapping.json")
+            cellspot_meta_file = os.path.join(
+                "backend", "datasets", dataset, "cellspot_meta_mapping.json"
+            )
             if os.path.exists(cellspot_meta_file):
                 with open(cellspot_meta_file, "r") as f:
                     cellspot_meta = json.load(f)

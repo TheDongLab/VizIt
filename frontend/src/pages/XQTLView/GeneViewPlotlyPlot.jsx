@@ -32,21 +32,31 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
+function getDisplayOption(displayOptions, option, defaultValue) {
+  if (!displayOptions || typeof displayOptions[option] === "undefined") {
+    return defaultValue;
+  }
+  return displayOptions[option];
+}
+
 const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   dataset,
   geneName,
   genes,
+  gwasData,
+  hasGwas,
   snpData,
   chromosome,
   cellTypes,
   handleSelect,
   useWebGL,
+  displayOptions,
 }) {
   const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
     snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
       ...rest,
       id: snp_id,
-      y: -Math.log10(p_value),
+      y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
       beta: beta_value,
       x: position,
       p_value,
@@ -85,8 +95,17 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const yMin = Math.min(...yValues, 0);
   const yMax = Math.max(...yValues, 2) + yPadding;
 
+  const gwasMin = hasGwas ? Math.min(...gwasData.map((s) => s.y), 0) : -2;
+  const gwasMax = hasGwas
+    ? Math.max(...gwasData.map((s) => s.y), 2) + yPadding
+    : 2;
+
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
   const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
+  const initialGwasYRange = useMemo(
+    () => [gwasMin, gwasMax],
+    [gwasMin, gwasMax],
+  );
 
   const nearbyXValues = useMemo(
     () => genes.flatMap((gene) => [gene.position_start, gene.position_end]),
@@ -118,7 +137,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         ({ snp_id, p_value, beta_value, position, ...rest }) => ({
           ...rest,
           id: snp_id,
-          y: -Math.log10(p_value),
+          y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
           beta: beta_value,
           x: position,
           p_value,
@@ -131,7 +150,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           x: snpList.map((snp) => snp.x),
           y: snpList.map((snp) => snp.y),
           xaxis: "x",
-          yaxis: `y${i + 2}`,
+          yaxis: `y${i + (hasGwas ? 3 : 2)}`,
           type: useWebGL ? "scattergl" : "scatter",
           mode: "markers",
           marker: {
@@ -157,7 +176,52 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         },
       ];
     });
-  }, [cellTypes, snpData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
+  }, [
+    cellTypes,
+    snpData,
+    hasGwas,
+    useWebGL,
+    minBetaMagnitude,
+    maxBetaMagnitude,
+  ]);
+
+  const gwasTrace = useMemo(() => {
+    if (!hasGwas || gwasData.length === 0) return [];
+
+    return [
+      {
+        x: gwasData.map((s) => s.x),
+        y: gwasData.map((s) => s.y),
+        xaxis: "x",
+        yaxis: "y2", // Second track for GWAS
+        type: useWebGL ? "scattergl" : "scatter",
+        mode: "markers",
+        marker: {
+          color: gwasData.map((s) =>
+            s.beta > 0 ? "rgb(230, 120, 120)" : "rgb(120, 120, 230)",
+          ),
+          // color: gwasData.map((s) =>
+          //   dataToRGB(s, minBetaMagnitude, maxBetaMagnitude),
+          // ),
+          opacity: 1,
+          size: 6,
+          line: {
+            width: 0,
+          },
+        },
+        customdata: gwasData.map((s) => s.id),
+        pointType: "gwas",
+        hoverinfo: "text",
+        hovertext: gwasData.flatMap(
+          (s) =>
+            `<b>SNP:</b> ${s.snp_id}<br>` +
+            `<b>Position:</b> ${s.position}<br>` +
+            `<b>β (GWAS):</b> ${formatNumber(s.beta, 6)}<br>` +
+            `<b>−log10(p) (GWAS):</b> ${formatNumber(s.y, 6)}`,
+        ),
+      },
+    ];
+  }, [hasGwas, gwasData, useWebGL]);
 
   // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
@@ -213,21 +277,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     return map;
   }, [combinedRange, genes]);
 
-  // Handle resize TODO
-  // const updateScale = useCallback(() => {
-  //   if (!containerRef.current || !naturalDimensions.width) return;
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const scale = containerWidth / naturalDimensions.width;
-  //   setDisplayScale(scale);
-  // }, [naturalDimensions.width]);
-
-  // useEffect(() => {
-  //   if (!containerRef.current) return;
-  //   const resizeObserver = new ResizeObserver(updateScale);
-  //   resizeObserver.observe(containerRef.current);
-  //   return () => resizeObserver.disconnect();
-  // }, [updateScale]);
-
   const geneTraces = useMemo(() => {
     const getStart = (gene) =>
       gene.strand === "-" ? gene.position_end : gene.position_start;
@@ -276,10 +325,12 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       hoverinfo: "text",
       hovertext: otherGenes.flatMap((gene) => {
         const text =
-          `<b>Gene:</b> ${gene.gene_id}<br>` +
+          `<b>${gene.strand === "x" ? "Peak" : "Gene"}:</b> ${gene.gene_id}<br>` +
           `<b>Start:</b> ${gene.position_start}<br>` +
           `<b>End:</b> ${gene.position_end}<br>` +
-          `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}`;
+          `<b>Strand:</b> ${
+            gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"
+          }`;
         return [text, text, null];
       }),
       name: "Nearby Genes",
@@ -290,6 +341,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const x0 = getStart(gene);
     const x1 = getEnd(gene);
 
+    const targetIsPeak = targetGene.strand === "x";
+
     const target = {
       x: [x0, x1],
       y: [0, 0],
@@ -299,24 +352,29 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       mode: "lines+markers",
       line: {
         color: "black",
-        width: 3,
+        width: targetIsPeak ? 5 : 3,
       },
       marker: {
         symbol: [
-          "circle",
-          targetGene.strand === "-" ? "triangle-left" : "triangle-right",
+          targetIsPeak ? "line-ew" : "circle",
+          targetGene.strand === "-"
+            ? "triangle-left"
+            : targetGene.strand === "+"
+              ? "triangle-right"
+              : "line-ew",
         ],
-        size: [0, 12],
+        size: [targetIsPeak ? 8 : 0, targetIsPeak ? 8 : 12],
         color: ["black", "black"],
-        opacity: [0, 1],
+        opacity: [targetIsPeak ? 1 : 0, 1],
+        line: { width: targetIsPeak ? 5 : 1 },
       },
       customdata: [targetGene.gene_id],
       hoverinfo: "text",
       hovertext:
-        `<b>Gene:</b> ${targetGene.gene_id}<br>` +
+        `<b>${targetIsPeak ? "Peak" : "Gene"}:</b> ${targetGene.gene_id}<br>` +
         `<b>Start:</b> ${targetGene.position_start}<br>` +
         `<b>End:</b> ${targetGene.position_end}<br>` +
-        `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : "+"}`,
+        `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : targetGene.strand === "+" ? "+" : "N/A"}`,
       name: targetGene.gene_id,
       pointType: "gene",
       showlegend: false,
@@ -364,13 +422,29 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const pointType = pointData.pointType;
     const name = point.customdata || pointData.name;
 
-    if (pointType === "snp") {
-      const data = combinedSnpList.filter((s) => s.id === name);
+    if (pointType === "snp" || pointType === "gwas") {
+      let data = combinedSnpList.filter((s) => s.id === name);
+      if (hasGwas) {
+        data = data.concat(
+          gwasData
+            .filter((s) => s.id === name)
+            .map((s) => ({
+              ...s,
+              celltype: "GWAS",
+            })),
+        );
+      }
+
       if (!data || data.length === 0) return;
+
+      const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
 
       const formattedData = (
         <>
-          <strong>SNP:</strong> {data[0].id}
+          <strong>SNP:</strong> {data[0].id}{" "}
+          <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+            (View in GWAS Catalog)
+          </a>
           <br />
           <strong>Position:</strong> {data[0].x}
           <br />
@@ -413,22 +487,17 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       const data = genes.find((g) => g.gene_id === name);
       if (!data) return;
 
-      // const formattedData = `
-      //   Gene: ${data.gene_id}
-      //   Start: ${data.position_start}
-      //   End: ${data.position_end}
-      //   Strand: ${data.strand === "-" ? "−" : "+"}
-      // `.trim();
-
       const formattedData = (
         <>
-          <strong>Gene:</strong> {data.gene_id}
+          <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
+          {data.gene_id}
           <br />
           <strong>Start:</strong> {data.position_start}
           <br />
           <strong>End:</strong> {data.position_end}
           <br />
-          <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"}
+          <strong>Strand:</strong>{" "}
+          {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
         </>
       );
 
@@ -445,7 +514,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const marginLeft = 80;
   const marginRight = 80;
 
-  const nTracks = cellTypes.length + 1; // +1 for the gene track
+  const nTracks = cellTypes.length + (hasGwas ? 1 : 0) + 1; // +1 for the gene track
   const totalHeight =
     marginTop +
     marginBottom +
@@ -485,7 +554,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
       autosize: true,
       dragmode: "pan",
       grid: {
-        rows: cellTypes.length + 1,
+        rows: cellTypes.length + (hasGwas ? 1 : 0) + 1, // +1 for the gene track
         columns: 1,
         roworder: "top to bottom",
       },
@@ -496,7 +565,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         maxallowed: Math.max(nearbyGenesRange[1], xMax),
         autorange: false,
         tickfont: { size: 10 },
-        showgrid: true,
+        showgrid: getDisplayOption(displayOptions, "showGrid", true),
         ticks: "inside",
         ticklen: 6,
         tickwidth: 1,
@@ -510,13 +579,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         anchor: "y",
       },
       ...cellTypes.reduce((acc, celltype, i) => {
-        acc[`yaxis${i + 2}`] = {
+        const baseIndex = hasGwas ? i + 2 : i + 1;
+        acc[`yaxis${baseIndex + 1}`] = {
           title: { text: `−log10(p)`, font: { size: 12 } },
-          domain: calculateDomain(i + 1), // i+1 because first track is gene
+          domain: calculateDomain(baseIndex),
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
-          showgrid: true,
+          showgrid: getDisplayOption(displayOptions, "showGrid", true),
           zeroline: false,
           ticks: "outside",
           ticklen: 6,
@@ -530,9 +600,31 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         };
         return acc;
       }, {}),
+      ...(hasGwas
+        ? {
+            [`yaxis2`]: {
+              title: { text: `−log10(p)`, font: { size: 12 } },
+              domain: calculateDomain(1), // Last track for GWAS
+              autorange: false,
+              range: initialGwasYRange,
+              fixedrange: true,
+              showgrid: getDisplayOption(displayOptions, "showGrid", true),
+              zeroline: false,
+              ticks: "outside",
+              ticklen: 6,
+              tickwidth: 1,
+              tickcolor: "black",
+              showline: true,
+              mirror: true,
+              linewidth: 1,
+              linecolor: "black",
+              anchor: "x",
+            },
+          }
+        : {}),
       yaxis: {
         autorange: false,
-        domain: calculateDomain(0), // 0th track is for genes
+        domain: calculateDomain(0), // 0th track is for SNP track
         range: [-2, 2],
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,
@@ -561,11 +653,281 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           layer: "below",
           line: { width: 0 },
         },
+        ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
+          ? getDisplayOption(displayOptions, "crossGapDashedLine", true)
+            ? [
+                // Cross-gap mode (single line spanning all tracks)
+                {
+                  type: "line",
+                  xref: "x",
+                  yref: "paper",
+                  x0:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  x1:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  y0: 0,
+                  y1: 1,
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                },
+              ]
+            : [
+                // Track-only mode (separate lines per track)
+                // Gene track
+                {
+                  type: "line",
+                  xref: "x",
+                  yref: "y",
+                  x0:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  x1:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  y0: -2,
+                  y1: 2,
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                },
+                // GWAS track
+                ...(hasGwas
+                  ? [
+                      {
+                        type: "line",
+                        xref: "x",
+                        yref: "y2",
+                        x0:
+                          gene.strand === "-"
+                            ? gene.position_end
+                            : gene.strand === "+"
+                              ? gene.position_start
+                              : (gene.position_start + gene.position_end) / 2,
+                        x1:
+                          gene.strand === "-"
+                            ? gene.position_end
+                            : gene.strand === "+"
+                              ? gene.position_start
+                              : (gene.position_start + gene.position_end) / 2,
+                        y0: initialGwasYRange[0],
+                        y1: initialGwasYRange[1],
+                        line: {
+                          color: getDisplayOption(
+                            displayOptions,
+                            "dashedLineColor",
+                            "#DCDCDC",
+                          ),
+                          width: 1,
+                          dash: "dash",
+                        },
+                        layer: getDisplayOption(
+                          displayOptions,
+                          "dashedLineOnTop",
+                          false,
+                        )
+                          ? "above"
+                          : "below",
+                      },
+                    ]
+                  : []),
+                // Celltype tracks
+                ...cellTypes.map((celltype, i) => ({
+                  type: "line",
+                  xref: "x",
+                  yref: `y${i + (hasGwas ? 3 : 2)}`,
+                  x0:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  x1:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  y0: initialYRange[0],
+                  y1: initialYRange[1],
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                })),
+              ]
+          : []),
+        // ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
+        //   ? [
+        //       {
+        //         type: "line",
+        //         xref: "x",
+        //         yref: "paper",
+        //         x0:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         x1:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         y0: 0,
+        //         y1: 1,
+        //         line: {
+        //           color: "#dcdcdc",
+        //           width: 1,
+        //           dash: "dash",
+        //         },
+        //         layer: "below",
+        //       },
+        //     ]
+        //   : []),
+        // ...(gene
+        //   ? [
+        //       {
+        //         type: "line",
+        //         xref: "x",
+        //         yref: "y",
+        //         x0:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         x1:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         y0: -2,
+        //         y1: 2,
+        //         line: {
+        //           color: "rgb(220, 220, 220)",
+        //           width: 1,
+        //           dash: "dash",
+        //         },
+        //         layer: "below",
+        //       },
+        //     ]
+        //   : []),
+        // ...(hasGwas && gene
+        //   ? [
+        //       {
+        //         type: "line",
+        //         xref: "x",
+        //         yref: "y2",
+        //         x0:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         x1:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         y0: initialGwasYRange[0],
+        //         y1: initialGwasYRange[1],
+        //         line: {
+        //           color: "rgb(220, 220, 220)",
+        //           width: 1,
+        //           dash: "dash",
+        //         },
+        //         layer: "below",
+        //       },
+        //     ]
+        //   : []),
+        // ...cellTypes.map((celltype, i) => ({
+        //   type: "line",
+        //   xref: "x",
+        //   yref: `y${i + (hasGwas ? 3 : 2)}`,
+        //   x0: gene
+        //     ? gene.strand === "-"
+        //       ? gene.position_end
+        //       : gene.strand === "+"
+        //         ? gene.position_start
+        //         : (gene.position_start + gene.position_end) / 2
+        //     : 0,
+        //   x1: gene
+        //     ? gene.strand === "-"
+        //       ? gene.position_end
+        //       : gene.strand === "+"
+        //         ? gene.position_start
+        //         : (gene.position_start + gene.position_end) / 2
+        //     : 0,
+        //   y0: initialYRange[0],
+        //   y1: initialYRange[1],
+        //   line: {
+        //     color: "rgb(220, 220, 220)",
+        //     width: 1,
+        //     dash: "dash",
+        //   },
+        //   layer: "below",
+        // })),
         ...cellTypes.flatMap((celltype, i) => [
           {
             type: "rect",
             xref: "paper",
-            yref: `y${i + 2}`,
+            yref: `y${i + (hasGwas ? 3 : 2)}`,
             x0: 0,
             x1: 1,
             y0: -2,
@@ -576,10 +938,27 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             line: { width: 0 },
           },
         ]),
+        ...(hasGwas
+          ? [
+              {
+                type: "rect",
+                xref: "paper",
+                yref: "y2",
+                x0: 0,
+                x1: 1,
+                y0: Math.log10(5e-8),
+                y1: -Math.log10(5e-8),
+                fillcolor: "lightgray",
+                opacity: 0.3,
+                // layer: "below",
+                line: { width: 0 },
+              },
+            ]
+          : []),
       ],
       annotations: [
         ...cellTypes.map((celltype, i) => {
-          const domain = calculateDomain(i + 1);
+          const domain = calculateDomain(i + (hasGwas ? 2 : 1));
 
           return {
             text: celltype,
@@ -595,46 +974,42 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             yanchor: "top",
           };
         }),
+        ...(hasGwas
+          ? [
+              {
+                text: "GWAS",
+                font: {
+                  size: 16,
+                },
+                xref: "paper",
+                yref: "paper",
+                x: 0.001,
+                y: calculateDomain(1)[1],
+                showarrow: false,
+                xanchor: "left",
+                yanchor: "top",
+              },
+            ]
+          : []),
       ],
     }),
     [
       geneName,
-      chromosome,
       totalHeight,
       cellTypes,
+      hasGwas,
+      chromosome,
       initialXRange,
       nearbyGenesRange,
       xMin,
       xMax,
       calculateDomain,
+      initialGwasYRange,
+      gene,
+      displayOptions,
       initialYRange,
     ],
   );
-
-  // TODO test this instead of my thing
-  // const resetZoom = (gd) => {
-  //   // Get the container size
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const containerHeight = containerRef.current.offsetHeight;
-
-  //   // Set zoom-out level to fit the container
-  //   const xRange = [0, containerWidth];
-  //   const yRange = [containerHeight, 0];
-
-  //   // const { width, height } = naturalDimensions;
-  //   // console.log("Container size:",containerWidth, containerHeight);
-  //   // console.log("Natural dimensions:",width, height);
-  //   //
-  //   // console.log(displayScale)
-
-  //   // Apply new range with relayout
-  //   Plotly.relayout(gd, {
-  //     "xaxis.range": xRange,
-  //     "yaxis.range": yRange,
-  //     // 'images[0].sizex': containerWidth,
-  //     // 'images[0].sizey': containerHeight
-  //   });
-  // };
 
   return (
     <div
@@ -645,7 +1020,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     >
       <Plot
         onClick={onClick}
-        data={[...geneTraces, ...snpTraces]}
+        data={[...geneTraces, ...snpTraces, ...gwasTrace]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
         useResizeHandler
@@ -740,9 +1115,20 @@ GeneViewPlotlyPlot.propTypes = {
       gene_id: PropTypes.string.isRequired,
       position_start: PropTypes.number.isRequired,
       position_end: PropTypes.number.isRequired,
-      strand: PropTypes.oneOf(["+", "-"]).isRequired,
+      strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
     }),
   ).isRequired,
+  gwasData: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      snp_id: PropTypes.string.isRequired,
+      position: PropTypes.number.isRequired,
+      x: PropTypes.number.isRequired,
+      y: PropTypes.number.isRequired,
+      beta: PropTypes.number.isRequired,
+    }),
+  ).isRequired,
+  hasGwas: PropTypes.bool.isRequired,
   snpData: PropTypes.objectOf(
     PropTypes.arrayOf(
       PropTypes.shape({
@@ -757,6 +1143,12 @@ GeneViewPlotlyPlot.propTypes = {
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
   useWebGL: PropTypes.bool,
+  displayOptions: PropTypes.shape({
+    showDashedLine: PropTypes.bool,
+    crossGapDashedLine: PropTypes.bool,
+    dashedLineColor: PropTypes.string,
+    showGrid: PropTypes.bool,
+  }),
 };
 
 export default GeneViewPlotlyPlot;

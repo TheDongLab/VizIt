@@ -32,15 +32,24 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
+function getDisplayOption(displayOptions, option, defaultValue) {
+  if (!displayOptions || typeof displayOptions[option] === "undefined") {
+    return defaultValue;
+  }
+  return displayOptions[option];
+}
+
 const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   dataset,
   snpName,
   snps,
+  hasGwas,
   geneData,
   chromosome,
   cellTypes,
   handleSelect,
   useWebGL,
+  displayOptions,
 }) {
   const combinedGeneList = Object.entries(geneData).flatMap(
     ([celltype, genes]) =>
@@ -56,7 +65,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         }) => ({
           ...rest,
           id: gene_id,
-          y: -Math.log10(p_value),
+          y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
           beta: beta_value,
           x: strand === "-" ? position_end : position_start,
           position_start,
@@ -105,8 +114,19 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const yMin = Math.min(...yValues, 0);
   const yMax = Math.max(...yValues, 2) + yPadding;
 
+  const otherSnps = snps.filter((s) => s.snp_id !== snpName);
+
+  const gwasMin = hasGwas ? Math.min(...otherSnps.map((s) => s.y), 0) : -2;
+  const gwasMax = hasGwas
+    ? Math.max(...otherSnps.map((s) => s.y), 2) + yPadding
+    : 2;
+
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
   const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
+  const initialGwasYRange = useMemo(
+    () => [gwasMin, gwasMax],
+    [gwasMin, gwasMax],
+  );
 
   const nearbyXValues = useMemo(() => snps.map((s) => s.position), [snps]);
 
@@ -142,17 +162,22 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   }, [snps]);
 
   const snpTraces = useMemo(() => {
-    const otherSnps = snps.filter((s) => s.snp_id !== snpName);
     const snp = snps.find((s) => s.snp_id === snpName);
     if (!snp) return [];
 
     const others = {
       x: otherSnps.map((s) => s.position),
-      y: otherSnps.map((s) => jitterMap.get(s.snp_id)),
+      y: hasGwas
+        ? otherSnps.map((s) => s.y)
+        : otherSnps.map((s) => jitterMap.get(s.snp_id)),
       type: useWebGL ? "scattergl" : "scatter",
       mode: "markers",
       marker: {
-        color: "rgb(161, 161, 161)",
+        color: hasGwas
+          ? otherSnps.map((s) =>
+              s.beta > 0 ? "rgb(230, 120, 120)" : "rgb(120, 120, 230)",
+            )
+          : "rgb(161, 161, 161)",
         opacity: 1,
         size: 6,
         line: {
@@ -160,19 +185,29 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         },
       },
       customdata: otherSnps.map((s) => s.snp_id),
-      pointType: "snp",
+      pointType: hasGwas ? "gwas" : "snp",
       hoverinfo: "text",
-      hovertext: otherSnps.map(
-        (s) =>
-          `<b>SNP ID:</b> ${s.snp_id}<br><b>Position:</b> ${s.position}<br>`,
-      ),
+      hovertext: otherSnps.flatMap((s) => {
+        const text =
+          `<b>SNP:</b> ${s.snp_id}<br>` + `<b>Position:</b> ${s.position}<br>`;
+
+        if (hasGwas)
+          return (
+            text +
+            `<b>β (GWAS):</b> ${formatNumber(s.beta, 6)}<br>` +
+            `<b>−log10(p) (GWAS):</b> ${formatNumber(s.y, 6)}`
+          );
+        return text;
+      }),
     };
+
+    const targetHasGwas = hasGwas && snp.y != null;
 
     const target = {
       x: [snp.position],
-      y: [0],
-      type: "scatter",
-      mode: "markers+text",
+      y: hasGwas ? [snp.y || (gwasMin + gwasMax) / 2] : [0],
+      type: "scattergl",
+      mode: "markers",
       marker: {
         color: "black",
         opacity: 1,
@@ -181,44 +216,66 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           width: 0,
         },
       },
-      text: [snp.snp_id],
       customdata: [snp.snp_id],
-      textposition: "bottom center",
       name: "Target SNP",
-      pointType: "snp",
+      pointType: targetHasGwas ? "gwas" : "snp",
       showlegend: false,
       hoverinfo: "text",
-      hovertext: `<b>SNP ID:</b> ${snp.snp_id}<br><b>Position:</b> ${snp.position}<br>`,
+      hovertext:
+        `<b>SNP:</b> ${snp.snp_id}<br>` +
+        `<b>Position:</b> ${snp.position}<br>` +
+        (targetHasGwas
+          ? `<b>β (GWAS):</b> ${formatNumber(snp.beta_value, 6)}<br>` +
+            `<b>−log10(p) (GWAS):</b> ${formatNumber(-Math.log10(Math.max(snp.p_value, 1e-20)), 6)}`
+          : ""),
+      text: [snp.snp_id],
+      textposition:
+        (snp.y - gwasMin) / (gwasMax - gwasMin) > 0.2
+          ? "bottom center"
+          : "top center",
+      textfont: {
+        color: "black",
+      },
     };
 
     return [others, target];
-  }, [snps, useWebGL, snpName, jitterMap]);
+  }, [
+    snps,
+    otherSnps,
+    hasGwas,
+    useWebGL,
+    gwasMin,
+    gwasMax,
+    snpName,
+    jitterMap,
+  ]);
 
-  // Handle resize TODO
-  // const updateScale = useCallback(() => {
-  //   if (!containerRef.current || !naturalDimensions.width) return;
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const scale = containerWidth / naturalDimensions.width;
-  //   setDisplayScale(scale);
-  // }, [naturalDimensions.width]);
+  const targetAnnotation = useMemo(() => {
+    const snp = snps.find((s) => s.snp_id === snpName);
+    if (!snp) return null;
+    const yPos = hasGwas ? snp.y || (gwasMin + gwasMax) / 2 : 0;
+    const isTop = (yPos - gwasMin) / (gwasMax - gwasMin) < 0.2;
+    const distance = (gwasMax - gwasMin) * 0.04;
+    const annotationY = isTop ? yPos + distance : yPos - distance;
+    // const annotationY = hasGwas ? (isTop ? yPos - 0.2 : yPos + 0.2) : -0.2;
 
-  // useEffect(() => {
-  //   if (!containerRef.current) return;
-  //   const resizeObserver = new ResizeObserver(updateScale);
-  //   resizeObserver.observe(containerRef.current);
-  //   return () => resizeObserver.disconnect();
-  // }, [updateScale]);
-
-  // maybe useMemo
+    return {
+      x: snp.position,
+      y: annotationY,
+      xref: "x",
+      yref: "y",
+      text: snp.snp_id,
+      showarrow: false,
+      font: { color: "black" },
+      xanchor: "center",
+      yanchor: isTop ? "bottom" : "top", // Positions text above/below point
+    };
+  }, [gwasMax, gwasMin, hasGwas, snpName, snps]);
 
   // Multiple gene traces so each line can have its own color
   const geneTraces = useMemo(
     () =>
       cellTypes.flatMap((celltype, i) => {
-        // const x0 = gene.strand === "-" ? gene.position_end : gene.position_start;
-        // const x1 = gene.strand === "-" ? gene.position_start : gene.position_end;
-        // const y0 = gene.y;
-        // const y1 = y0;
         const cellGenes = geneData[celltype] || [];
         const geneList = cellGenes.map(
           ({
@@ -232,7 +289,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           }) => ({
             ...rest,
             id: gene_id,
-            y: -Math.log10(p_value),
+            y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
             beta: beta_value,
             x: strand === "-" ? position_end : position_start,
             position_start,
@@ -249,8 +306,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             gene.strand === "-" ? gene.position_start : gene.position_end;
           const y0 = gene.y;
           const y1 = y0;
-          const arrowSymbol =
-            gene.strand === "-" ? "triangle-left" : "triangle-right";
+
+          const isPeak = gene.strand === "x";
 
           return {
             name: gene.id,
@@ -265,23 +322,31 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
               width: 3,
             },
             marker: {
-              symbol: ["circle", arrowSymbol],
-              size: [0, 12],
+              symbol: [
+                isPeak ? "line-ew" : "circle",
+                gene.strand === "-"
+                  ? "triangle-left"
+                  : gene.strand === "+"
+                    ? "triangle-right"
+                    : "line-ew",
+              ],
+              size: [isPeak ? 4 : 0, isPeak ? 4 : 12],
               color: [
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
                 dataToRGB(gene, minBetaMagnitude, maxBetaMagnitude),
               ],
-              opacity: [0, 1],
+              opacity: [isPeak ? 1 : 0, 1],
+              line: { width: isPeak ? 3 : 1 },
             },
             customdata: [gene.id],
             hoverinfo: "text",
             hovertext:
-              `<b>Gene:</b> ${gene.id}<br>` +
+              `<b>${isPeak ? "Peak" : "Gene"}:</b> ${gene.id}<br>` +
               `<b>Start:</b> ${gene.position_start}<br>` +
               `<b>End:</b> ${gene.position_end}<br>` +
-              `<b>Strand:</b> ${gene.strand === "-" ? "−" : "+"}<br>` +
+              `<b>Strand:</b> ${gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"}<br>` +
               `<b>β:</b> ${formatNumber(gene.beta, 3)}<br>` +
-              `−<b>log10(p):</b> ${formatNumber(gene.y, 3)}`,
+              `<b>−log10(p):</b> ${formatNumber(gene.y, 3)}`,
             pointType: "gene",
           };
         });
@@ -303,11 +368,38 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       const data = snps.find((s) => s.snp_id === name);
       if (!data) return;
 
+      const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data.snp_id)}`;
+
       const formattedData = (
         <>
-          <strong>SNP:</strong> {data.snp_id}
+          <strong>SNP:</strong> {data.snp_id}{" "}
+          <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+            (View in GWAS Catalog)
+          </a>
           <br />
           <strong>Position:</strong> {data.position}
+        </>
+      );
+      handleSelect(name, formattedData, "snp");
+      return;
+    } else if (pointType === "gwas") {
+      const data = snps.find((s) => s.snp_id === name);
+      if (!data) return;
+
+      const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data.snp_id)}`;
+
+      const formattedData = (
+        <>
+          <strong>SNP:</strong> {data.snp_id}{" "}
+          <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+            (View in GWAS Catalog)
+          </a>
+          <br />
+          <strong>Position:</strong> {data.position}
+          <br />
+          <strong>β (GWAS):</strong> {formatNumber(data.beta, 6)}
+          <br />
+          <strong>−log10(p) (GWAS):</strong> {formatNumber(data.y, 6)}
         </>
       );
       handleSelect(name, formattedData, "snp");
@@ -318,14 +410,15 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 
       const formattedData = (
         <>
-          <strong>Gene:</strong> {data[0].id}
+          <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong> {data[0].id}
           <br />
           <strong>Start:</strong> {data[0].position_start}
           <br />
           <strong>End:</strong> {data[0].position_end}
           <br />
-          {/* <strong>Strand:</strong> {data.strand === "-" ? "−" : "+"} */}
-          {/* <br /> */}
+          <strong>Strand:</strong>{" "}
+          {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
+          <br />
           {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
           {/* <br />−<strong>log10(p):</strong> {formatNumber(data.y, 6)} */}
           <table
@@ -421,7 +514,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         maxallowed: Math.max(nearbySnpsRange[1], xMax),
         autorange: false,
         tickfont: { size: 10 },
-        showgrid: true,
+        showgrid: getDisplayOption(displayOptions, "showGrid", true),
         ticks: "inside",
         ticklen: 6,
         tickwidth: 1,
@@ -441,7 +534,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
-          showgrid: true,
+          showgrid: getDisplayOption(displayOptions, "showGrid", true),
           zeroline: false,
           ticks: "outside",
           ticklen: 6,
@@ -456,16 +549,27 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         return acc;
       }, {}),
       yaxis: {
+        title: hasGwas
+          ? {
+              text: `−log10(p)`,
+              font: { size: 12 },
+            }
+          : undefined,
         autorange: false,
         domain: calculateDomain(0), // 0th track is for genes
-        range: [-2, 2],
+        range: initialGwasYRange,
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,
         // maxallowed: yMax,
-        showgrid: false,
+        showgrid: hasGwas
+          ? getDisplayOption(displayOptions, "showGrid", true)
+          : false,
         zeroline: false,
-        ticks: "",
-        showticklabels: false,
+        ticks: hasGwas ? "outside" : "",
+        ticklen: hasGwas ? 6 : 0,
+        tickwidth: hasGwas ? 1 : 0,
+        tickcolor: hasGwas ? "black" : undefined,
+        showticklabels: hasGwas ? true : false,
         showline: true,
         mirror: true,
         linewidth: 1,
@@ -479,13 +583,99 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           yref: "y",
           x0: 0,
           x1: 1,
-          y0: -2,
-          y1: 2,
+          y0: hasGwas ? Math.log10(5e-8) : -2,
+          y1: hasGwas ? -Math.log10(5e-8) : 2,
           fillcolor: "lightgray",
           opacity: 0.3,
           layer: "below",
           line: { width: 0 },
         },
+        ...(getDisplayOption(displayOptions, "showDashedLine", true)
+          ? getDisplayOption(displayOptions, "crossGapDashedLine", true)
+            ? [
+                {
+                  type: "line",
+                  xref: "x",
+                  yref: "paper",
+                  x0: snpPosition,
+                  x1: snpPosition,
+                  y0: 0,
+                  y1: 1,
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                },
+              ]
+            : [
+                ...(hasGwas
+                  ? [
+                      {
+                        type: "line",
+                        xref: "x",
+                        yref: "y",
+                        x0: snpPosition,
+                        x1: snpPosition,
+                        y0: initialGwasYRange[0],
+                        y1: initialGwasYRange[1],
+                        line: {
+                          color: getDisplayOption(
+                            displayOptions,
+                            "dashedLineColor",
+                            "#DCDCDC",
+                          ),
+                          width: 1,
+                          dash: "dash",
+                        },
+                        layer: getDisplayOption(
+                          displayOptions,
+                          "dashedLineOnTop",
+                          false,
+                        )
+                          ? "above"
+                          : "below",
+                      },
+                    ]
+                  : []),
+                ...cellTypes.map((celltype, i) => ({
+                  type: "line",
+                  xref: "x",
+                  yref: `y${i + 2}`,
+                  x0: snpPosition,
+                  x1: snpPosition,
+                  y0: initialYRange[0],
+                  y1: initialYRange[1],
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                })),
+              ]
+          : []),
         ...cellTypes.flatMap((celltype, i) => [
           {
             type: "rect",
@@ -520,46 +710,42 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             yanchor: "top",
           };
         }),
+        ...(hasGwas
+          ? [
+              {
+                text: "GWAS",
+                font: { size: 16 },
+                xref: "paper",
+                yref: "paper",
+                x: 0.001,
+                y: calculateDomain(0)[1],
+                showarrow: false,
+                xanchor: "left",
+                yanchor: "top",
+              },
+            ]
+          : []),
+        targetAnnotation,
       ],
     }),
     [
       snpName,
-      chromosome,
       totalHeight,
       cellTypes,
+      chromosome,
       initialXRange,
       nearbySnpsRange,
       xMin,
       xMax,
+      hasGwas,
       calculateDomain,
+      initialGwasYRange,
+      displayOptions,
+      snpPosition,
+      targetAnnotation,
       initialYRange,
     ],
   );
-
-  // TODO test this instead of my thing
-  // const resetZoom = (gd) => {
-  //   // Get the container size
-  //   const containerWidth = containerRef.current.offsetWidth;
-  //   const containerHeight = containerRef.current.offsetHeight;
-
-  //   // Set zoom-out level to fit the container
-  //   const xRange = [0, containerWidth];
-  //   const yRange = [containerHeight, 0];
-
-  //   // const { width, height } = naturalDimensions;
-  //   // console.log("Container size:",containerWidth, containerHeight);
-  //   // console.log("Natural dimensions:",width, height);
-  //   //
-  //   // console.log(displayScale)
-
-  //   // Apply new range with relayout
-  //   Plotly.relayout(gd, {
-  //     "xaxis.range": xRange,
-  //     "yaxis.range": yRange,
-  //     // 'images[0].sizex': containerWidth,
-  //     // 'images[0].sizey': containerHeight
-  //   });
-  // };
 
   return (
     <div
@@ -666,6 +852,7 @@ SNPViewPlotlyPlot.propTypes = {
       position: PropTypes.number.isRequired,
     }),
   ).isRequired,
+  hasGwas: PropTypes.bool.isRequired,
   geneData: PropTypes.objectOf(
     PropTypes.arrayOf(
       PropTypes.shape({
@@ -674,7 +861,7 @@ SNPViewPlotlyPlot.propTypes = {
         beta_value: PropTypes.number.isRequired,
         position_start: PropTypes.number.isRequired,
         position_end: PropTypes.number.isRequired,
-        strand: PropTypes.string.isRequired,
+        strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
       }),
     ),
   ).isRequired,
@@ -682,6 +869,12 @@ SNPViewPlotlyPlot.propTypes = {
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
   useWebGL: PropTypes.bool,
+  displayOptions: PropTypes.shape({
+    showDashedLine: PropTypes.bool,
+    crossGapDashedLine: PropTypes.bool,
+    dashedLineColor: PropTypes.string,
+    showGrid: PropTypes.bool,
+  }),
 };
 
 export default SNPViewPlotlyPlot;

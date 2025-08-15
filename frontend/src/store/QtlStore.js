@@ -12,6 +12,7 @@ import {
     getSnpLocation,
     getGeneLocationsInChromosome,
     getSnpLocationsInChromosome,
+    getGwasInChromosome,
 } from "../api/qtl.js";
 
 function columnToRow(data) {
@@ -74,6 +75,7 @@ const useQtlStore = create((set, get) => ({
             return geneList;
         } catch (error) {
             console.error("Error fetching gene list:", error);
+            throw error;
         }
     },
 
@@ -95,6 +97,7 @@ const useQtlStore = create((set, get) => ({
             return snpList;
         } catch (error) {
             console.error("Error fetching SNP list:", error);
+            throw error;
         }
     },
 
@@ -118,6 +121,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedChromosome: chromosome, loading: false });
         } catch (error) {
             console.error("Error fetching gene chromosome:", error);
+            throw error;
         }
     },
 
@@ -138,6 +142,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedChromosome: chromosome, loading: false });
         } catch (error) {
             console.error("Error fetching SNP chromosome:", error);
+            throw error;
         }
     },
 
@@ -161,6 +166,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedCellTypes: cellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
+            throw error;
         }
     },
 
@@ -181,6 +187,7 @@ const useQtlStore = create((set, get) => ({
             set({ selectedCellTypes: cellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
+            throw error;
         }
     },
 
@@ -212,6 +219,7 @@ const useQtlStore = create((set, get) => ({
             set({ snpData: newSnpData, loading: false });
         } catch (error) {
             console.error("Error fetching SNP data for gene:", error);
+            throw error;
         }
     },
 
@@ -244,6 +252,7 @@ const useQtlStore = create((set, get) => ({
             set({ geneData: newGeneData, loading: false });
         } catch (error) {
             console.error("Error fetching gene data for SNP:", error);
+            throw error;
         }
     },
 
@@ -277,6 +286,7 @@ const useQtlStore = create((set, get) => ({
             return genesRows;
         } catch (error) {
             console.error("Error fetching gene locations:", error);
+            throw error;
         }
     },
 
@@ -309,7 +319,91 @@ const useQtlStore = create((set, get) => ({
             return snpsRows;
         } catch (error) {
             console.error("Error fetching SNP locations:", error);
+            throw error;
         }
+    },
+
+    fetchGwasForGene: async (dataset, radius) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGwas: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const positionResponse = await getGeneLocation(
+                dataset,
+                get().selectedGene,
+            );
+            const startPosition = positionResponse.data.start;
+            const endPosition = positionResponse.data.end;
+
+            const response = await getGwasInChromosome(
+                dataset,
+                get().selectedChromosome,
+                startPosition - radius,
+                endPosition + radius,
+            );
+            const gwas = response.data;
+            const gwasRows = columnToRow(gwas);
+            return gwasRows;
+        } catch (error) {
+            console.error("Error fetching GWAS data:", error);
+            throw error;
+        }
+    },
+
+    fetchGwasForSnp: async (dataset, radius) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGwas: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const positionResponse = await getSnpLocation(
+                dataset,
+                get().selectedSnp,
+            );
+            const position = positionResponse.data.position;
+
+            const response = await getGwasInChromosome(
+                dataset,
+                get().selectedChromosome,
+                position - radius,
+                position + radius,
+            );
+            const gwas = response.data;
+            const gwasRows = columnToRow(gwas);
+            return gwasRows;
+        } catch (error) {
+            console.error("Error fetching GWAS data:", error);
+            throw error;
+        }
+    },
+
+    resetQtlState: () => {
+        set({
+            dataset: null,
+            selectedGene: null,
+            selectedSnp: null,
+            geneList: [],
+            snpList: [],
+            selectedChromosome: null,
+            selectedCellTypes: [],
+            snpData: {},
+            geneData: {},
+            loading: false,
+            error: null,
+        });
     },
 }));
 

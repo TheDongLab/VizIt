@@ -15,11 +15,18 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
+  Menu,
+  MenuItem,
+  FormControlLabel,
+  Switch,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { PropTypes } from "prop-types";
 import { debounce } from "@mui/material/utils";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { useSearchParams } from "react-router-dom";
 
 import "./XQTLView.css";
@@ -36,6 +43,8 @@ import { supportsWebGL } from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
 console.log("WebGL supported:", webGLSupported);
+
+import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 
 function ConfirmationDialog({
   isOpen,
@@ -103,6 +112,9 @@ function XQTLView() {
     fetchSnpChromosome,
     fetchGeneLocations,
     fetchSnpLocations,
+    fetchGwasForGene,
+    fetchGwasForSnp,
+    resetQtlState,
   } = useQtlStore();
   const { loading, error } = useQtlStore();
 
@@ -135,6 +147,7 @@ function XQTLView() {
             setSelectedGene(urlGene);
           } else {
             setSelectedGene("");
+            setSelectionError(`Selection "${urlGene}" not found in dataset`);
           }
         }
 
@@ -143,6 +156,7 @@ function XQTLView() {
             setSelectedSnp(urlSnp);
           } else {
             setSelectedSnp("");
+            setSelectionError(`Selection "${urlSnp}" not found in dataset`);
           }
         }
       } catch (error) {
@@ -229,9 +243,13 @@ function XQTLView() {
 
   const [genes, setGenes] = useState([]);
   const [snps, setSnps] = useState([]);
+  const [gwasData, setGwasData] = useState([]); // Only used for gene view
+  const [hasGwas, setHasGwas] = useState(false);
+  const [selectionError, setSelectionError] = useState("");
 
   const fetchGeneOrSnpData = async () => {
     if (!datasetId) return;
+
     const isGene = selectedGene && selectedGene !== "";
     const isSnp = selectedSnp && selectedSnp !== "";
 
@@ -241,22 +259,101 @@ function XQTLView() {
       console.warn("Error: Both gene and SNP are selected.");
     } else if (isGene) {
       setDataLoading(true);
-      await fetchGeneCellTypes(datasetId);
-      await fetchGeneChromosome(datasetId);
-      const locations = await fetchGeneLocations(datasetId, 10000000);
-      setGenes(locations);
+      try {
+        await fetchGeneCellTypes(datasetId);
+        await fetchGeneChromosome(datasetId);
+        const locations = await fetchGeneLocations(datasetId, 10000000);
+        const gene = await getGeneLocation(datasetId, selectedGene);
 
-      await fetchSnpData(datasetId);
-      setDataLoading(false);
+        if (!locations.some((g) => g.id === gene)) {
+          locations.push({
+            gene_id: selectedGene,
+            position_start: gene.data.start,
+            position_end: gene.data.end,
+            strand: gene.data.strand,
+          });
+        }
+        setGenes(locations);
+
+        let gwas;
+        try {
+          gwas = await fetchGwasForGene(datasetId, 1500000);
+          setHasGwas(true);
+          const gwasLocations = gwas.map(
+            ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+              ...rest,
+              id: snp_id,
+              y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
+              beta: beta_value,
+              x: position,
+              snp_id,
+              p_value,
+              position,
+            }),
+          );
+          setGwasData(gwasLocations);
+        } catch (error) {
+          console.error("Error fetching GWAS data:", error);
+          setHasGwas(false);
+          setGwasData([]);
+        }
+
+        await fetchSnpData(datasetId);
+        setSelectionError("");
+        setDataLoading(false);
+      } catch (error) {
+        console.error("Error fetching gene data:", error);
+        setSelectionError(`Selection "${selectedGene}" not found in dataset`);
+        setDataLoading(false);
+        return;
+      }
     } else if (isSnp) {
       setDataLoading(true);
-      await fetchSnpCellTypes(datasetId);
-      await fetchSnpChromosome(datasetId);
-      const locations = await fetchSnpLocations(datasetId, 1500000);
-      setSnps(locations);
+      try {
+        await fetchSnpCellTypes(datasetId);
+        await fetchSnpChromosome(datasetId);
 
-      await fetchGeneData(datasetId);
-      setDataLoading(false);
+        let locations;
+        try {
+          locations = await fetchGwasForSnp(datasetId, 1500000);
+          setHasGwas(true);
+          locations = locations.map(
+            ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+              ...rest,
+              id: snp_id,
+              y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
+              beta: beta_value,
+              x: position,
+              snp_id,
+              p_value,
+              position,
+            }),
+          );
+        } catch (error) {
+          console.error("Error fetching GWAS data:", error);
+          locations = await fetchSnpLocations(datasetId, 1500000);
+          setHasGwas(false);
+        }
+
+        const snp = await getSnpLocation(datasetId, selectedSnp);
+
+        if (!locations.some((s) => s.id === snp)) {
+          locations.push({
+            snp_id: selectedSnp,
+            position: snp.data.position,
+          });
+        }
+        setSnps(locations);
+
+        await fetchGeneData(datasetId);
+        setSelectionError("");
+        setDataLoading(false);
+      } catch (error) {
+        console.error("Error fetching SNP data:", error);
+        setSelectionError(`Selection "${selectedSnp}" not found in dataset`);
+        setDataLoading(false);
+        return;
+      }
     }
   };
 
@@ -319,9 +416,21 @@ function XQTLView() {
 
   // Set the initial selected gene and SNP from URL parameters
   useEffect(() => {
-    if (urlGene !== selectedGene) setSelectedGene(urlGene || "");
-    if (urlSnp !== selectedSnp) setSelectedSnp(urlSnp || "");
-  }, []);
+    if (urlGene !== selectedGene) {
+      if (urlGene) {
+        setSelectedGene(urlGene);
+      } else {
+        setSelectedGene("");
+      }
+    }
+    if (urlSnp !== selectedSnp) {
+      if (urlSnp) {
+        setSelectedSnp(urlSnp);
+      } else {
+        setSelectedSnp("");
+      }
+    }
+  }, [urlGene, urlSnp]);
 
   const currentValue = useMemo(() => {
     if (selectedGene) {
@@ -341,12 +450,75 @@ function XQTLView() {
     return null;
   }, [combinedList, selectedGene, selectedSnp]);
 
+  // Clear zustand state on unmount
   useEffect(() => {
     return () => {
-      setSelectedGene("");
-      setSelectedSnp("");
+      resetQtlState();
     };
   }, []);
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [displayOptions, setDisplayOptions] = useState({
+    showDashedLine: true,
+    crossGapDashedLine: true,
+    dashedLineColor: "#DCDCDC",
+    showGrid: true,
+  });
+  const [tempDisplayOptions, setTempDisplayOptions] = useState({
+    ...displayOptions,
+  });
+
+  const menuOpen = Boolean(anchorEl);
+
+  useEffect(() => {
+    if (menuOpen) {
+      setTempDisplayOptions({ ...displayOptions });
+    }
+  }, [menuOpen]);
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setDisplayOptions({ ...tempDisplayOptions });
+    setAnchorEl(null);
+  };
+
+  const handleOptionChange = (option) => (event) => {
+    setTempDisplayOptions({
+      ...tempDisplayOptions,
+      [option]: event.target.checked,
+    });
+    // Update immediately for switches
+    if (option !== "dashedLineColor") {
+      setDisplayOptions({
+        ...displayOptions,
+        [option]: event.target.checked,
+      });
+    }
+  };
+
+  const handleColorChange = (e) => {
+    setTempDisplayOptions({
+      ...tempDisplayOptions,
+      dashedLineColor: e.target.value,
+    });
+  };
+
+  const handleColorBlur = () => {
+    setDisplayOptions({
+      ...displayOptions,
+      dashedLineColor: tempDisplayOptions.dashedLineColor,
+    });
+  };
+
+  const saveColorChange = () => {
+    setDisplayOptions({
+      ...displayOptions,
+      dashedLineColor: tempDisplayOptions.dashedLineColor,
+    });
+  };
 
   return (
     <div
@@ -493,6 +665,125 @@ function XQTLView() {
             </Button>
           </Box>
         </div>
+        <div className="control-group">
+          <Tooltip title="Graph display options">
+            <IconButton
+              onClick={handleMenuOpen}
+              color="inherit"
+              aria-label="display options"
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={anchorEl}
+            open={menuOpen}
+            onClose={handleMenuClose}
+            PaperProps={{
+              style: {
+                width: "500px",
+                padding: "10px",
+              },
+            }}
+          >
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.showDashedLine}
+                    onChange={handleOptionChange("showDashedLine")}
+                  />
+                }
+                label="Show dashed line"
+              />
+            </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.crossGapDashedLine}
+                    onChange={handleOptionChange("crossGapDashedLine")}
+                  />
+                }
+                label="Cross-gap dashed line"
+              />
+            </MenuItem>
+            <MenuItem>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body2">Dashed line color:</Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <input
+                    type="color"
+                    value={
+                      /^#[0-9A-Fa-f]{6}$/.test(
+                        tempDisplayOptions.dashedLineColor,
+                      )
+                        ? tempDisplayOptions.dashedLineColor
+                        : "#000000" // fallback color for when user is typing in text box
+                    }
+                    onChange={handleColorChange}
+                    onBlur={handleColorBlur}
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      cursor: "pointer",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                    }}
+                  />
+                  <TextField
+                    size="small"
+                    value={tempDisplayOptions.dashedLineColor}
+                    onChange={handleColorChange}
+                    inputProps={{
+                      style: {
+                        width: "80px",
+                        padding: "5px",
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={saveColorChange}
+                    sx={{ height: "30px" }}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              </Box>
+            </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.dashedLineOnTop}
+                    onChange={handleOptionChange("dashedLineOnTop")}
+                  />
+                }
+                label="Dashed line on top"
+              />
+            </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.showGrid}
+                    onChange={handleOptionChange("showGrid")}
+                  />
+                }
+                label="Show grid"
+              />
+            </MenuItem>
+          </Menu>
+        </div>
       </div>
       <div className="plot-content">
         <ConfirmationDialog
@@ -521,7 +812,9 @@ function XQTLView() {
               No dataset selected for exploration
             </Typography>
           ) : error ? (
-            <Typography color="error">{error}</Typography>
+            <Typography sx={{ paddingTop: "100px" }} variant="h5" color="error">
+              {error}
+            </Typography>
           ) : (
             <div className="qtl-container">
               {/* Plot Container */}
@@ -529,12 +822,20 @@ function XQTLView() {
                 key={`${selectedGene || selectedSnp || "plot"}-view`}
                 className={`view-container`}
               >
-                {!selectedGene && !selectedSnp ? (
+                {!selectedGene && !selectedSnp && !selectionError ? (
                   <Typography
                     sx={{ color: "text.secondary", paddingTop: "100px" }}
                     variant="h5"
                   >
                     No gene or SNP selected for exploration
+                  </Typography>
+                ) : selectionError ? (
+                  <Typography
+                    sx={{ paddingTop: "100px" }}
+                    variant="h5"
+                    color="error"
+                  >
+                    {selectionError}
                   </Typography>
                 ) : selectedCellTypes.length === 0 ? (
                   <Typography
@@ -547,16 +848,20 @@ function XQTLView() {
                   !dataLoading &&
                   !loading &&
                   selectedChromosome && (
+                    // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
                     <div key={`${selectedGene}-plot`} className="gene-plot">
                       <GeneViewPlotlyPlot
                         dataset={datasetId}
                         geneName={selectedGene}
                         genes={genes}
+                        gwasData={gwasData}
+                        hasGwas={hasGwas}
                         snpData={snpData}
                         chromosome={selectedChromosome}
                         cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
                         useWebGL={webGLSupported}
+                        displayOptions={displayOptions}
                       />
                     </div>
                   )
@@ -570,11 +875,13 @@ function XQTLView() {
                         dataset={datasetId}
                         snpName={selectedSnp}
                         snps={snps}
+                        hasGwas={hasGwas}
                         geneData={geneData}
                         chromosome={selectedChromosome}
                         cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
                         useWebGL={webGLSupported}
+                        displayOptions={displayOptions}
                       />
                     </div>
                   )
