@@ -32,6 +32,13 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
+function getDisplayOption(displayOptions, option, defaultValue) {
+  if (!displayOptions || typeof displayOptions[option] === "undefined") {
+    return defaultValue;
+  }
+  return displayOptions[option];
+}
+
 const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   dataset,
   snpName,
@@ -42,6 +49,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   cellTypes,
   handleSelect,
   useWebGL,
+  displayOptions,
 }) {
   const combinedGeneList = Object.entries(geneData).flatMap(
     ([celltype, genes]) =>
@@ -235,12 +243,11 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
     snps,
     otherSnps,
     hasGwas,
+    useWebGL,
     gwasMin,
     gwasMax,
     snpName,
     jitterMap,
-    minBetaMagnitude,
-    maxBetaMagnitude,
   ]);
 
   const targetAnnotation = useMemo(() => {
@@ -263,7 +270,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       xanchor: "center",
       yanchor: isTop ? "bottom" : "top", // Positions text above/below point
     };
-  }, [gwasMax, gwasMin, hasGwas, snp]);
+  }, [gwasMax, gwasMin, hasGwas, snpName, snps]);
 
   // Multiple gene traces so each line can have its own color
   const geneTraces = useMemo(
@@ -497,7 +504,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         maxallowed: Math.max(nearbySnpsRange[1], xMax),
         autorange: false,
         tickfont: { size: 10 },
-        showgrid: true,
+        showgrid: getDisplayOption(displayOptions, "showGrid", true),
         ticks: "inside",
         ticklen: 6,
         tickwidth: 1,
@@ -517,7 +524,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
-          showgrid: true,
+          showgrid: getDisplayOption(displayOptions, "showGrid", true),
           zeroline: false,
           ticks: "outside",
           ticklen: 6,
@@ -544,7 +551,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         fixedrange: true, // Prevent zooming on y-axis
         // minallowed: yMin,
         // maxallowed: yMax,
-        showgrid: hasGwas,
+        showgrid: hasGwas
+          ? getDisplayOption(displayOptions, "showGrid", true)
+          : false,
         zeroline: false,
         ticks: hasGwas ? "outside" : "",
         ticklen: hasGwas ? 6 : 0,
@@ -571,6 +580,92 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           layer: "below",
           line: { width: 0 },
         },
+        ...(getDisplayOption(displayOptions, "showDashedLine", true)
+          ? getDisplayOption(displayOptions, "crossGapDashedLine", true)
+            ? [
+                {
+                  type: "line",
+                  xref: "x",
+                  yref: "paper",
+                  x0: snpPosition,
+                  x1: snpPosition,
+                  y0: 0,
+                  y1: 1,
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                },
+              ]
+            : [
+                ...(hasGwas
+                  ? [
+                      {
+                        type: "line",
+                        xref: "x",
+                        yref: "y",
+                        x0: snpPosition,
+                        x1: snpPosition,
+                        y0: initialGwasYRange[0],
+                        y1: initialGwasYRange[1],
+                        line: {
+                          color: getDisplayOption(
+                            displayOptions,
+                            "dashedLineColor",
+                            "#DCDCDC",
+                          ),
+                          width: 1,
+                          dash: "dash",
+                        },
+                        layer: getDisplayOption(
+                          displayOptions,
+                          "dashedLineOnTop",
+                          false,
+                        )
+                          ? "above"
+                          : "below",
+                      },
+                    ]
+                  : []),
+                ...cellTypes.map((celltype, i) => ({
+                  type: "line",
+                  xref: "x",
+                  yref: `y${i + 2}`,
+                  x0: snpPosition,
+                  x1: snpPosition,
+                  y0: initialYRange[0],
+                  y1: initialYRange[1],
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                })),
+              ]
+          : []),
         ...cellTypes.flatMap((celltype, i) => [
           {
             type: "rect",
@@ -635,6 +730,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       hasGwas,
       calculateDomain,
       initialGwasYRange,
+      displayOptions,
+      snpPosition,
       targetAnnotation,
       initialYRange,
     ],
@@ -762,6 +859,12 @@ SNPViewPlotlyPlot.propTypes = {
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
   useWebGL: PropTypes.bool,
+  displayOptions: PropTypes.shape({
+    showDashedLine: PropTypes.bool,
+    crossGapDashedLine: PropTypes.bool,
+    dashedLineColor: PropTypes.string,
+    showGrid: PropTypes.bool,
+  }),
 };
 
 export default SNPViewPlotlyPlot;

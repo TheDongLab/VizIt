@@ -15,11 +15,18 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
+  Menu,
+  MenuItem,
+  FormControlLabel,
+  Switch,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { PropTypes } from "prop-types";
 import { debounce } from "@mui/material/utils";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { useSearchParams } from "react-router-dom";
 
 import "./XQTLView.css";
@@ -450,6 +457,69 @@ function XQTLView() {
     };
   }, []);
 
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [displayOptions, setDisplayOptions] = useState({
+    showDashedLine: true,
+    crossGapDashedLine: true,
+    dashedLineColor: "#DCDCDC",
+    showGrid: true,
+  });
+  const [tempDisplayOptions, setTempDisplayOptions] = useState({
+    ...displayOptions,
+  });
+
+  const menuOpen = Boolean(anchorEl);
+
+  useEffect(() => {
+    if (menuOpen) {
+      setTempDisplayOptions({ ...displayOptions });
+    }
+  }, [menuOpen]);
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setDisplayOptions({ ...tempDisplayOptions });
+    setAnchorEl(null);
+  };
+
+  const handleOptionChange = (option) => (event) => {
+    setTempDisplayOptions({
+      ...tempDisplayOptions,
+      [option]: event.target.checked,
+    });
+    // Update immediately for switches
+    if (option !== "dashedLineColor") {
+      setDisplayOptions({
+        ...displayOptions,
+        [option]: event.target.checked,
+      });
+    }
+  };
+
+  const handleColorChange = (e) => {
+    setTempDisplayOptions({
+      ...tempDisplayOptions,
+      dashedLineColor: e.target.value,
+    });
+  };
+
+  const handleColorBlur = () => {
+    setDisplayOptions({
+      ...displayOptions,
+      dashedLineColor: tempDisplayOptions.dashedLineColor,
+    });
+  };
+
+  const saveColorChange = () => {
+    setDisplayOptions({
+      ...displayOptions,
+      dashedLineColor: tempDisplayOptions.dashedLineColor,
+    });
+  };
+
   return (
     <div
       className="plot-page-container"
@@ -595,6 +665,125 @@ function XQTLView() {
             </Button>
           </Box>
         </div>
+        <div className="control-group">
+          <Tooltip title="Graph display options">
+            <IconButton
+              onClick={handleMenuOpen}
+              color="inherit"
+              aria-label="display options"
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={anchorEl}
+            open={menuOpen}
+            onClose={handleMenuClose}
+            PaperProps={{
+              style: {
+                width: "500px",
+                padding: "10px",
+              },
+            }}
+          >
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.showDashedLine}
+                    onChange={handleOptionChange("showDashedLine")}
+                  />
+                }
+                label="Show dashed line"
+              />
+            </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.crossGapDashedLine}
+                    onChange={handleOptionChange("crossGapDashedLine")}
+                  />
+                }
+                label="Cross-gap dashed line"
+              />
+            </MenuItem>
+            <MenuItem>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body2">Dashed line color:</Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <input
+                    type="color"
+                    value={
+                      /^#[0-9A-Fa-f]{6}$/.test(
+                        tempDisplayOptions.dashedLineColor,
+                      )
+                        ? tempDisplayOptions.dashedLineColor
+                        : "#000000" // fallback color for when user is typing in text box
+                    }
+                    onChange={handleColorChange}
+                    onBlur={handleColorBlur}
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      cursor: "pointer",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                    }}
+                  />
+                  <TextField
+                    size="small"
+                    value={tempDisplayOptions.dashedLineColor}
+                    onChange={handleColorChange}
+                    inputProps={{
+                      style: {
+                        width: "80px",
+                        padding: "5px",
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={saveColorChange}
+                    sx={{ height: "30px" }}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              </Box>
+            </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.dashedLineOnTop}
+                    onChange={handleOptionChange("dashedLineOnTop")}
+                  />
+                }
+                label="Dashed line on top"
+              />
+            </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.showGrid}
+                    onChange={handleOptionChange("showGrid")}
+                  />
+                }
+                label="Show grid"
+              />
+            </MenuItem>
+          </Menu>
+        </div>
       </div>
       <div className="plot-content">
         <ConfirmationDialog
@@ -672,6 +861,7 @@ function XQTLView() {
                         cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
                         useWebGL={webGLSupported}
+                        displayOptions={displayOptions}
                       />
                     </div>
                   )
@@ -691,6 +881,7 @@ function XQTLView() {
                         cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
                         useWebGL={webGLSupported}
+                        displayOptions={displayOptions}
                       />
                     </div>
                   )

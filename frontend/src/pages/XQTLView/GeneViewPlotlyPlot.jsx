@@ -32,6 +32,13 @@ function round(num, precision = 6) {
   return Number(Number(num).toPrecision(precision));
 }
 
+function getDisplayOption(displayOptions, option, defaultValue) {
+  if (!displayOptions || typeof displayOptions[option] === "undefined") {
+    return defaultValue;
+  }
+  return displayOptions[option];
+}
+
 const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   dataset,
   geneName,
@@ -43,6 +50,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   cellTypes,
   handleSelect,
   useWebGL,
+  displayOptions,
 }) {
   const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
     snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
@@ -168,7 +176,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         },
       ];
     });
-  }, [cellTypes, snpData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
+  }, [
+    cellTypes,
+    snpData,
+    hasGwas,
+    useWebGL,
+    minBetaMagnitude,
+    maxBetaMagnitude,
+  ]);
 
   const gwasTrace = useMemo(() => {
     if (!hasGwas || gwasData.length === 0) return [];
@@ -206,7 +221,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         ),
       },
     ];
-  }, [hasGwas, gwasData, useWebGL, minBetaMagnitude, maxBetaMagnitude]);
+  }, [hasGwas, gwasData, useWebGL]);
 
   // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
@@ -545,7 +560,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         maxallowed: Math.max(nearbyGenesRange[1], xMax),
         autorange: false,
         tickfont: { size: 10 },
-        showgrid: true,
+        showgrid: getDisplayOption(displayOptions, "showGrid", true),
         ticks: "inside",
         ticklen: 6,
         tickwidth: 1,
@@ -566,7 +581,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           autorange: false,
           range: initialYRange,
           fixedrange: true, // Prevent zooming on y-axis
-          showgrid: true,
+          showgrid: getDisplayOption(displayOptions, "showGrid", true),
           zeroline: false,
           ticks: "outside",
           ticklen: 6,
@@ -588,7 +603,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
               autorange: false,
               range: initialGwasYRange,
               fixedrange: true,
-              showgrid: true,
+              showgrid: getDisplayOption(displayOptions, "showGrid", true),
               zeroline: false,
               ticks: "outside",
               ticklen: 6,
@@ -633,6 +648,276 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           layer: "below",
           line: { width: 0 },
         },
+        ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
+          ? getDisplayOption(displayOptions, "crossGapDashedLine", true)
+            ? [
+                // Cross-gap mode (single line spanning all tracks)
+                {
+                  type: "line",
+                  xref: "x",
+                  yref: "paper",
+                  x0:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  x1:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  y0: 0,
+                  y1: 1,
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                },
+              ]
+            : [
+                // Track-only mode (separate lines per track)
+                // Gene track
+                {
+                  type: "line",
+                  xref: "x",
+                  yref: "y",
+                  x0:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  x1:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  y0: -2,
+                  y1: 2,
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                },
+                // GWAS track
+                ...(hasGwas
+                  ? [
+                      {
+                        type: "line",
+                        xref: "x",
+                        yref: "y2",
+                        x0:
+                          gene.strand === "-"
+                            ? gene.position_end
+                            : gene.strand === "+"
+                              ? gene.position_start
+                              : (gene.position_start + gene.position_end) / 2,
+                        x1:
+                          gene.strand === "-"
+                            ? gene.position_end
+                            : gene.strand === "+"
+                              ? gene.position_start
+                              : (gene.position_start + gene.position_end) / 2,
+                        y0: initialGwasYRange[0],
+                        y1: initialGwasYRange[1],
+                        line: {
+                          color: getDisplayOption(
+                            displayOptions,
+                            "dashedLineColor",
+                            "#DCDCDC",
+                          ),
+                          width: 1,
+                          dash: "dash",
+                        },
+                        layer: getDisplayOption(
+                          displayOptions,
+                          "dashedLineOnTop",
+                          false,
+                        )
+                          ? "above"
+                          : "below",
+                      },
+                    ]
+                  : []),
+                // Celltype tracks
+                ...cellTypes.map((celltype, i) => ({
+                  type: "line",
+                  xref: "x",
+                  yref: `y${i + (hasGwas ? 3 : 2)}`,
+                  x0:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  x1:
+                    gene.strand === "-"
+                      ? gene.position_end
+                      : gene.strand === "+"
+                        ? gene.position_start
+                        : (gene.position_start + gene.position_end) / 2,
+                  y0: initialYRange[0],
+                  y1: initialYRange[1],
+                  line: {
+                    color: getDisplayOption(
+                      displayOptions,
+                      "dashedLineColor",
+                      "#DCDCDC",
+                    ),
+                    width: 1,
+                    dash: "dash",
+                  },
+                  layer: getDisplayOption(
+                    displayOptions,
+                    "dashedLineOnTop",
+                    false,
+                  )
+                    ? "above"
+                    : "below",
+                })),
+              ]
+          : []),
+        // ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
+        //   ? [
+        //       {
+        //         type: "line",
+        //         xref: "x",
+        //         yref: "paper",
+        //         x0:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         x1:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         y0: 0,
+        //         y1: 1,
+        //         line: {
+        //           color: "#dcdcdc",
+        //           width: 1,
+        //           dash: "dash",
+        //         },
+        //         layer: "below",
+        //       },
+        //     ]
+        //   : []),
+        // ...(gene
+        //   ? [
+        //       {
+        //         type: "line",
+        //         xref: "x",
+        //         yref: "y",
+        //         x0:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         x1:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         y0: -2,
+        //         y1: 2,
+        //         line: {
+        //           color: "rgb(220, 220, 220)",
+        //           width: 1,
+        //           dash: "dash",
+        //         },
+        //         layer: "below",
+        //       },
+        //     ]
+        //   : []),
+        // ...(hasGwas && gene
+        //   ? [
+        //       {
+        //         type: "line",
+        //         xref: "x",
+        //         yref: "y2",
+        //         x0:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         x1:
+        //           gene.strand === "-"
+        //             ? gene.position_end
+        //             : gene.strand === "+"
+        //               ? gene.position_start
+        //               : (gene.position_start + gene.position_end) / 2,
+        //         y0: initialGwasYRange[0],
+        //         y1: initialGwasYRange[1],
+        //         line: {
+        //           color: "rgb(220, 220, 220)",
+        //           width: 1,
+        //           dash: "dash",
+        //         },
+        //         layer: "below",
+        //       },
+        //     ]
+        //   : []),
+        // ...cellTypes.map((celltype, i) => ({
+        //   type: "line",
+        //   xref: "x",
+        //   yref: `y${i + (hasGwas ? 3 : 2)}`,
+        //   x0: gene
+        //     ? gene.strand === "-"
+        //       ? gene.position_end
+        //       : gene.strand === "+"
+        //         ? gene.position_start
+        //         : (gene.position_start + gene.position_end) / 2
+        //     : 0,
+        //   x1: gene
+        //     ? gene.strand === "-"
+        //       ? gene.position_end
+        //       : gene.strand === "+"
+        //         ? gene.position_start
+        //         : (gene.position_start + gene.position_end) / 2
+        //     : 0,
+        //   y0: initialYRange[0],
+        //   y1: initialYRange[1],
+        //   line: {
+        //     color: "rgb(220, 220, 220)",
+        //     width: 1,
+        //     dash: "dash",
+        //   },
+        //   layer: "below",
+        // })),
         ...cellTypes.flatMap((celltype, i) => [
           {
             type: "rect",
@@ -705,14 +990,18 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     }),
     [
       geneName,
-      chromosome,
       totalHeight,
       cellTypes,
+      hasGwas,
+      chromosome,
       initialXRange,
       nearbyGenesRange,
       xMin,
       xMax,
       calculateDomain,
+      initialGwasYRange,
+      gene,
+      displayOptions,
       initialYRange,
     ],
   );
@@ -824,6 +1113,17 @@ GeneViewPlotlyPlot.propTypes = {
       strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
     }),
   ).isRequired,
+  gwasData: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      snp_id: PropTypes.string.isRequired,
+      position: PropTypes.number.isRequired,
+      x: PropTypes.number.isRequired,
+      y: PropTypes.number.isRequired,
+      beta: PropTypes.number.isRequired,
+    }),
+  ).isRequired,
+  hasGwas: PropTypes.bool.isRequired,
   snpData: PropTypes.objectOf(
     PropTypes.arrayOf(
       PropTypes.shape({
@@ -838,6 +1138,12 @@ GeneViewPlotlyPlot.propTypes = {
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
   useWebGL: PropTypes.bool,
+  displayOptions: PropTypes.shape({
+    showDashedLine: PropTypes.bool,
+    crossGapDashedLine: PropTypes.bool,
+    dashedLineColor: PropTypes.string,
+    showGrid: PropTypes.bool,
+  }),
 };
 
 export default GeneViewPlotlyPlot;
