@@ -605,7 +605,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                     color: getDisplayOption(
                       displayOptions,
                       "dashedLineColor",
-                      "#DCDCDC",
+                      "#000000",
                     ),
                     width: 1,
                     dash: "dash",
@@ -634,7 +634,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                           color: getDisplayOption(
                             displayOptions,
                             "dashedLineColor",
-                            "#DCDCDC",
+                            "#000000",
                           ),
                           width: 1,
                           dash: "dash",
@@ -661,7 +661,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                     color: getDisplayOption(
                       displayOptions,
                       "dashedLineColor",
-                      "#DCDCDC",
+                      "#000000",
                     ),
                     width: 1,
                     dash: "dash",

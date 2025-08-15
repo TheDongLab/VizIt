@@ -461,7 +461,7 @@ function XQTLView() {
   const [displayOptions, setDisplayOptions] = useState({
     showDashedLine: true,
     crossGapDashedLine: true,
-    dashedLineColor: "#DCDCDC",
+    dashedLineColor: "#000000",
     showGrid: true,
   });
   const [tempDisplayOptions, setTempDisplayOptions] = useState({
