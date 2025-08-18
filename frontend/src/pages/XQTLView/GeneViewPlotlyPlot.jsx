@@ -507,8 +507,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   };
 
   // Calculate layout dimensions
-  const pixelsPerTrack = 150;
-  const pixelsPerGap = 20;
+  const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 150);
+  const pixelsPerGap = getDisplayOption(displayOptions, "gapHeight", 20);
   const marginTop = 80;
   const marginBottom = 80;
   const marginLeft = 80;
@@ -530,7 +530,10 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const calculateDomain = useCallback(
     (trackIndex) => {
       const start = trackIndex * (trackDomainHeight + gapDomainHeight);
-      return [start, start + trackDomainHeight];
+      const end = start + trackDomainHeight;
+
+      // Prevent floating point precision errors from exceeding 1.0
+      return [start, Math.min(end, 1.0)];
     },
     [trackDomainHeight, gapDomainHeight],
   );
@@ -1148,6 +1151,8 @@ GeneViewPlotlyPlot.propTypes = {
     crossGapDashedLine: PropTypes.bool,
     dashedLineColor: PropTypes.string,
     showGrid: PropTypes.bool,
+    trackHeight: PropTypes.number,
+    gapHeight: PropTypes.number,
   }),
 };
 

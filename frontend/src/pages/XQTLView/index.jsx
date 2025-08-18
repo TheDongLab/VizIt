@@ -463,6 +463,8 @@ function XQTLView() {
     crossGapDashedLine: true,
     dashedLineColor: "#000000",
     showGrid: true,
+    trackHeight: 150,
+    gapHeight: 20,
   });
   const [tempDisplayOptions, setTempDisplayOptions] = useState({
     ...displayOptions,
@@ -474,7 +476,7 @@ function XQTLView() {
     if (menuOpen) {
       setTempDisplayOptions({ ...displayOptions });
     }
-  }, [menuOpen]);
+  }, [displayOptions, menuOpen]);
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -497,27 +499,6 @@ function XQTLView() {
         [option]: event.target.checked,
       });
     }
-  };
-
-  const handleColorChange = (e) => {
-    setTempDisplayOptions({
-      ...tempDisplayOptions,
-      dashedLineColor: e.target.value,
-    });
-  };
-
-  const handleColorBlur = () => {
-    setDisplayOptions({
-      ...displayOptions,
-      dashedLineColor: tempDisplayOptions.dashedLineColor,
-    });
-  };
-
-  const saveColorChange = () => {
-    setDisplayOptions({
-      ...displayOptions,
-      dashedLineColor: tempDisplayOptions.dashedLineColor,
-    });
   };
 
   return (
@@ -717,7 +698,7 @@ function XQTLView() {
                   width: "100%",
                 }}
               >
-                <Typography variant="body2">Dashed line color:</Typography>
+                <Typography variant="body">Dashed line color:</Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <input
                     type="color"
@@ -728,8 +709,12 @@ function XQTLView() {
                         ? tempDisplayOptions.dashedLineColor
                         : "#000000" // fallback color for when user is typing in text box
                     }
-                    onChange={handleColorChange}
-                    onBlur={handleColorBlur}
+                    onChange={(e) => {
+                      setTempDisplayOptions({
+                        ...tempDisplayOptions,
+                        dashedLineColor: e.target.value,
+                      });
+                    }}
                     style={{
                       width: "30px",
                       height: "30px",
@@ -741,7 +726,12 @@ function XQTLView() {
                   <TextField
                     size="small"
                     value={tempDisplayOptions.dashedLineColor}
-                    onChange={handleColorChange}
+                    onChange={(e) => {
+                      setTempDisplayOptions({
+                        ...tempDisplayOptions,
+                        dashedLineColor: e.target.value,
+                      });
+                    }}
                     inputProps={{
                       style: {
                         width: "80px",
@@ -752,7 +742,11 @@ function XQTLView() {
                   <Button
                     variant="contained"
                     size="small"
-                    onClick={saveColorChange}
+                    onClick={() => {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }}
                     sx={{ height: "30px" }}
                   >
                     Save
@@ -781,6 +775,88 @@ function XQTLView() {
                 }
                 label="Show grid"
               />
+            </MenuItem>
+            <MenuItem>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body">Track height:</Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={tempDisplayOptions.trackHeight}
+                  onChange={(e) =>
+                    setTempDisplayOptions({
+                      ...tempDisplayOptions,
+                      trackHeight: e.target.value,
+                    })
+                  }
+                  inputProps={{
+                    style: {
+                      width: "80px",
+                      padding: "5px",
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    setDisplayOptions({
+                      ...tempDisplayOptions,
+                    });
+                  }}
+                  sx={{ height: "30px" }}
+                >
+                  Save
+                </Button>
+              </Box>
+            </MenuItem>
+            <MenuItem>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body">Gap height:</Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={tempDisplayOptions.gapHeight}
+                  onChange={(e) =>
+                    setTempDisplayOptions({
+                      ...tempDisplayOptions,
+                      gapHeight: e.target.value,
+                    })
+                  }
+                  inputProps={{
+                    style: {
+                      width: "80px",
+                      padding: "5px",
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    setDisplayOptions({
+                      ...tempDisplayOptions,
+                    });
+                  }}
+                  sx={{ height: "30px" }}
+                >
+                  Save
+                </Button>
+              </Box>
             </MenuItem>
           </Menu>
         </div>
