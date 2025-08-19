@@ -8,7 +8,8 @@ const DiseaseSelector = ({ homeData,selectedDisease, onDiseaseChange }) => {
   const diseaseTypes = {
     // "Healthy": "Healthy",
     "PD": "Parkinson's Disease",
-    "AD": "Alzheimer's Disease"
+    "AD": "Alzheimer's Disease",
+      "Control": "Control",
   };
 
   return (

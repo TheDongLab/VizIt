@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import React from "react";
 
 
-const PlotlyStackedViolin = React.memo(function PlotlyStackedViolin({gene, exprData, metaData, group, includeZeros, type = "violin"}) {
+const PlotlyStackedViolin = React.memo(function PlotlyStackedViolin({gene, exprData, metaData, group, includeZeros,mainCluster,datasetId, type = "violin"}) {
     if (metaData.length === 0) return "Sample not found in the MetaData";
     if (gene !== "stackedviolin") return null;
 
@@ -71,9 +71,11 @@ const PlotlyStackedViolin = React.memo(function PlotlyStackedViolin({gene, exprD
                 const medianVal = sorted[Math.floor(sorted.length / 2)];
                 const count = data.length;
 
+                const x_label = (group === mainCluster) ? `<a href="/views/clusters?dataset=${datasetId}&cluster=${x_i}">${x_i}</a>` : x_i;
+
                 // Violin trace (no hover)
                 traces.push({
-                    x: Array(data.length).fill(x_i),
+                    x: Array(data.length).fill(x_label),
                     y: data,
                     type: 'violin',
                     name: `${gene} - ${x_i}`,
@@ -94,7 +96,7 @@ const PlotlyStackedViolin = React.memo(function PlotlyStackedViolin({gene, exprD
                 traces.push({
                     type: 'scatter',
                     mode: 'markers',
-                    x: [x_i, x_i, x_i],
+                    x: [x_label, x_label, x_label],
                     y: [minVal, medianVal, maxVal],
                     marker: {color: 'black', size: 2, symbol: 'circle'},
                     hovertemplate:
@@ -209,6 +211,8 @@ PlotlyStackedViolin.propTypes = {
     metaData: PropTypes.object.isRequired,
     group: PropTypes.string.isRequired,
     includeZeros: PropTypes.bool.isRequired,
+    mainCluster: PropTypes.string.isRequired,
+    datasetId: PropTypes.string.isRequired,
     type: PropTypes.string.isRequired
 };
 export default PlotlyStackedViolin;

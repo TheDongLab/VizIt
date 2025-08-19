@@ -37,9 +37,11 @@ function filterExprBySampleId(exprObj, sampleList) {
 }
 
 const GeneMetaPlots = ({
-                           geneList, sampleList, exprData,
-                           cellMetaData, sampleMetaData, CellMetaMap, group, exprValueType
+                           geneList, sampleList, exprData, cellMetaData, sampleMetaData, CellMetaMap,
+                           group, exprValueType,mainCluster,datasetId
                        }) => {
+
+    console.log("geneMetaPlots: mainCluster",mainCluster,"datasetId",datasetId)
     const {pseudoExprDict, fetchPseudoExprData} = useSampleGeneMetaStore();
     const cell_level_meta = Object.keys(CellMetaMap ?? {});
     const [includeZeros, setIncludeZeros] = useState(false);
@@ -193,6 +195,8 @@ const GeneMetaPlots = ({
                                         metaData={processedMetaData}
                                         group={group}
                                         includeZeros={includeZeros}
+                                        mainCluster = {mainCluster}
+                                        datasetId = {datasetId}
                                         type="boxplot"
                                     />
                                 )}
@@ -210,6 +214,8 @@ const GeneMetaPlots = ({
                                         metaData={processedMetaData}
                                         group={group}
                                         includeZeros={includeZeros}
+                                        mainCluster = {mainCluster}
+                                        datasetId = {datasetId}
                                         type="violin"
                                     />
                                 )}
@@ -247,7 +253,9 @@ GeneMetaPlots.propTypes = {
     sampleMetaData: PropTypes.object.isRequired,
     CellMetaMap: PropTypes.object.isRequired,
     group: PropTypes.string.isRequired,
-    exprValueType: PropTypes.string.isRequired
+    exprValueType: PropTypes.string.isRequired,
+    mainCluster: PropTypes.string.isRequired,
+    datasetId: PropTypes.string.isRequired
 };
 
 export default GeneMetaPlots;

@@ -99,8 +99,14 @@ const DatasetsPage = () => {
             }
 
             // Check disease filter (assuming you have disease field in your data)
-            if (selectedFilters.disease.length > 0 && record.disease && !selectedFilters.disease.includes(record.disease)) {
-                return false
+            if (
+                selectedFilters.disease.length > 0 &&
+                !record.disease
+                .split(',')
+                .map(d => d.trim())
+                .some(d => selectedFilters.disease.includes(d))
+            ) {
+                return false;
             }
 
             return true

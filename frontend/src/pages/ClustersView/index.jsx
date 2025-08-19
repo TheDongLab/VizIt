@@ -42,8 +42,8 @@ function ClustersView() {
     const {selectedClusters, setSelectedClusters} = useClusterStore()
     const {clusterList, fetchClusterList, markerGenes, fetchMarkerGenes} = useClusterStore()
     const {cellCounts, fetchCellCounts, diffExpGenes, fetchDiffExpGenes} = useClusterStore()
-    const {fetchMainClusterInfo,mainCluster, getMainCluster } = useClusterStore()
-    const {loading, error,metadataLoading } = useClusterStore()
+    const {fetchMainClusterInfo, mainCluster, getMainCluster} = useClusterStore()
+    const {loading, error, metadataLoading} = useClusterStore()
 
     const [clusterSearchText, setClusterSearchText] = useState("")
     const [datasetSearchText, setDatasetSearchText] = useState("")
@@ -51,14 +51,18 @@ function ClustersView() {
     useEffect(() => {
         fetchDatasetList()
         fetchMainClusterInfo(selectedDataset);
+
+        // Set initial clusters from URL only once on first load
+        if (initialClusters.length) {
+            setSelectedClusters(initialClusters)
+        }
     }, [])
 
-     // Main data fetches (control loading state)
+    // Main data fetches (control loading state)
     const fetchPrimaryData = async () => {
         await fetchMainClusterInfo(selectedDataset)
         const mainCluster = await getMainCluster() // update the mainCluster
 
-        setSelectedClusters([]) // clear the selectedClusters
         useClusterStore.setState({clusterList: []}) // clear the clusterList
 
         await fetchUMAPData(selectedDataset)
@@ -66,24 +70,17 @@ function ClustersView() {
         await fetchClusterList(selectedDataset)
     }
     useEffect(() => {
-        fetchPrimaryData()
+        fetchPrimaryData(initialClusters)
     }, [selectedDataset])
 
     // Filter qtl datasets
     const datasetOptions = datasetRecords
-        .filter((d) => !d.assay.toLowerCase().endsWith("qtl"))
-        .map((d) => d.dataset_id);
+    .filter((d) => !d.assay.toLowerCase().endsWith("qtl"))
+    .map((d) => d.dataset_id);
 
     useEffect(() => {
-        const initialSelectedClusters = initialClusters.length ? initialClusters : []
-
         setDataset(selectedDataset)
-
-        useClusterStore.setState({
-            selectedClusters: initialSelectedClusters,
-        })
-
-        fetchMarkerGenes(selectedDataset) // Fetch marker genes for selected cell types
+        fetchMarkerGenes(selectedDataset) // Fetch marker genes for selected clusters
         fetchCellCounts(selectedDataset)
         fetchDiffExpGenes(selectedDataset)
     }, [selectedDataset])
@@ -98,14 +95,14 @@ function ClustersView() {
 
     /** Handles dataset selection change */
     const handleDatasetChange = (event, newValue) => {
-        // Clear selected cell types
+        // Clear selected clusters
         setSelectedClusters([])
         setDataset(newValue)
         setSelectedDataset(newValue)
-        updateQueryParams(selectedClusters, newValue)
+        updateQueryParams([], newValue)
     }
 
-    /** Handles cell type selection change */
+    /** Handles cluster selection change */
     const handleClusterChange = (event, newValue) => {
         setSelectedClusters(newValue)
         updateQueryParams(newValue, selectedDataset)
@@ -152,7 +149,8 @@ function ClustersView() {
                         inputValue={datasetSearchText}
                         onInputChange={(event, newInputValue) => setDatasetSearchText(newInputValue)}
                         renderInput={(params) => (
-                            <TextField {...params} label="Select Dataset" variant="standard" style={{margin: "10px 0px"}}/>
+                            <TextField {...params} label="Select Dataset" variant="standard"
+                                       style={{margin: "10px 0px"}}/>
                         )}
                     />
 
@@ -186,7 +184,8 @@ function ClustersView() {
 
                     {/* a button to fetch data and a loading indicator*/}
                     <Box sx={{display: "flex", justifyContent: "center", margin: "20px 0px"}}>
-                        <Button variant="outlined" endIcon={<ScatterPlotIcon/>} disabled={loading} onClick={handleLoadPlot}>
+                        <Button variant="outlined" endIcon={<ScatterPlotIcon/>} disabled={loading}
+                                onClick={handleLoadPlot}>
                             {loading ? "Loading plots..." : "Refresh Plots"}
                         </Button>
                     </Box>
@@ -206,7 +205,7 @@ function ClustersView() {
                             {/*    </Typography>*/}
                             {/*</Box>*/}
                         </>
-                    ) }
+                    )}
 
                     {selectedDataset === "" || selectedDataset === null ? (
                         <Typography sx={{color: "text.secondary", paddingTop: "100px"}} variant="h5">
@@ -244,13 +243,15 @@ function ClustersView() {
                                             selectedClusters={selectedClusters}
                                             isAllClustersSelected={isAllClustersSelected}
                                             mainCluster={mainCluster}
+                                            datasetId={selectedDataset}
                                         />
                                     )}
                                 </div>
                             </div>}
 
                             {selectedClusters.length > 0 && <div className="plot-section" id="cell-counts-deg-section">
-                                <Divider sx={{marginTop: "10px"}} flexItem>Cell Counts & Differential Expression</Divider>
+                                <Divider sx={{marginTop: "10px"}} flexItem>Cell Counts & Differential
+                                    Expression</Divider>
                                 <Grid container spacing={2} className="bottom-plots-container">
                                     <Grid item xs={12} md={6}>
                                         {cellCounts && selectedClusters.length > 0 && (
@@ -259,7 +260,8 @@ function ClustersView() {
                                     </Grid>
                                     <Grid item xs={12} md={6}>
                                         {diffExpGenes && selectedClusters.length > 0 && (
-                                            <HeatmapPlot2 diffExpGenes={diffExpGenes} selectedClusters={selectedClusters}/>
+                                            <HeatmapPlot2 diffExpGenes={diffExpGenes}
+                                                          selectedClusters={selectedClusters}/>
                                         )}
                                     </Grid>
                                 </Grid>
