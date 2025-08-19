@@ -441,6 +441,8 @@ function GeneView() {
                                     CellMetaMap={CellMetaMap}
                                     group={grouping}
                                     exprValueType={exprValueType}
+                                    mainCluster={mainCluster}
+                                    datasetId={datasetId}
                                 />
                             )}
                         </>

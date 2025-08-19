@@ -68,11 +68,21 @@ function VisiumView() {
 
 
      const fetchPrimaryData = async () => {
-        setDataset(datasetId);
+          setDataset(datasetId);
         await fetchSampleList(datasetId);
         await fetchGeneList(datasetId);
         await fetchMetaList(datasetId, "cell_level");
         await fetchVisiumDefaults(datasetId);
+
+         if (!datasetId) {
+            // Clear everything if no dataset is selected
+            setSelectedSamples([]);
+            setSelectedGenes([]);
+            setSelectedMetaFeatures([]);
+            useSampleGeneMetaStore.setState({exprDataDict: {}});
+            updateQueryParams("", [], [], []);
+            return;
+        }
 
         // Get the current state after fetching defaults
         const { defaultSamples, defaultGenes, defaultFeatures } = useVisiumStore.getState();
@@ -304,22 +314,17 @@ function VisiumView() {
                 </div>
                 {/* Left UMAP Plot Area (80%) */}
                 <div className="plot-main">
-                    {loading ? (
+                    {loading && datasetId ? (
                         <>
-                            <Box sx={{width: '100%'}}>
-                                <LinearProgress/>
-                            </Box>
-                            <Box sx={{display: "flex", justifyContent: "center", paddingTop: "100px"}}>
-                                <CircularProgress/>
-                            </Box>
+                            <Box sx={{width: '100%'}}><LinearProgress/></Box>
+                            <Box sx={{display: "flex", justifyContent: "center", paddingTop: "100px"}}><CircularProgress/></Box>
                             <Box sx={{display: "flex", justifyContent: "center", paddingTop: "10px"}}>
-                                <Typography sx={{marginLeft: "10px", color: "text.secondary"}} variant="h5">Loading
-                                    sample list and metadata...</Typography>
+                                <Typography sx={{marginLeft: "10px", color: "text.secondary"}} variant="h5">Loading sample list and metadata...</Typography>
                             </Box>
                         </>
-                    ) : datasetId === "" || datasetId === "all" || datasetId === undefined || datasetId === null ? (
+                    ) : !datasetId ? (
                         <Typography sx={{color: "text.secondary", paddingTop: "100px"}} variant="h5">
-                            No dataset selected for exploration
+                            Please select a dataset to explore
                         </Typography>
                     ) : error ? (
                         <Typography color="error">{error}</Typography>

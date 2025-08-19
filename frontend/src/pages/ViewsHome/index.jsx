@@ -90,25 +90,25 @@ export default function HomePage() {
                                         {option.description}
                                     </Typography>
                                 </CardContent>
-                                <CardActions sx={{p: 2, pt: 0}}>
-                                    <Button
-                                        component={Link}
-                                        to={option.href}
-                                        variant="contained"
-                                        fullWidth
-                                        size="medium"
-                                        style={{backgroundColor: "#2f2f2f", color: "#fff"}}
-                                        sx={{
-                                            borderRadius: 1,
-                                            py: 1,
-                                            textTransform: "none",
-                                            fontSize: "1rem",
-                                            fontWeight: 500,
-                                        }}
-                                    >
-                                        Explore {option.title}
-                                    </Button>
-                                </CardActions>
+                                {/*<CardActions sx={{p: 2, pt: 0}}>*/}
+                                {/*    <Button*/}
+                                {/*        component={Link}*/}
+                                {/*        to={option.href}*/}
+                                {/*        variant="contained"*/}
+                                {/*        fullWidth*/}
+                                {/*        size="medium"*/}
+                                {/*        style={{backgroundColor: "#2f2f2f", color: "#fff"}}*/}
+                                {/*        sx={{*/}
+                                {/*            borderRadius: 1,*/}
+                                {/*            py: 1,*/}
+                                {/*            textTransform: "none",*/}
+                                {/*            fontSize: "1rem",*/}
+                                {/*            fontWeight: 500,*/}
+                                {/*        }}*/}
+                                {/*    >*/}
+                                {/*        Explore {option.title}*/}
+                                {/*    </Button>*/}
+                                {/*</CardActions>*/}
                             </Card>
                         </Grid>
                     ))}

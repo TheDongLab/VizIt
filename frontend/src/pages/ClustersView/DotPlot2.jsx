@@ -4,7 +4,7 @@ import {useEffect, useRef} from "react"
 import PropTypes from "prop-types"
 import Plotly from "plotly.js-dist-min"
 
-const DotPlot2 = ({markerGenes, selectedClusters, isAllClustersSelected, mainCluster}) => {
+const DotPlot2 = ({markerGenes, selectedClusters, isAllClustersSelected, mainCluster,datasetId}) => {
     // console.log("DotPlot2", markerGenes, selectedClusters, isAllClustersSelected, mainCluster)
 
     const plotRef = useRef(null)
@@ -58,7 +58,7 @@ const DotPlot2 = ({markerGenes, selectedClusters, isAllClustersSelected, mainClu
                 if(selectedClusters.includes(cluster)) cluster = `<b>${cluster}</b>`
                 if (geneData) {
                     xValues.push(cluster)
-                    yValues.push(geneName)
+                    yValues.push(`<a href="/views/geneview?dataset=${datasetId}&group=${mainCluster}&gene=${geneName}">${geneName}</a>`)
 
                     // Calculate percentage of cells expressing the gene
                     const percentage = geneData.n_expr_cells / geneData.cluster_n_cells
@@ -115,7 +115,7 @@ const DotPlot2 = ({markerGenes, selectedClusters, isAllClustersSelected, mainClu
                     tickvals: [0, 2, 4, 6],
                     ticktext: ["0", "2", "4", "6+"],
                     // Position the colorbar below the vertical center line
-                    y: 0.85,
+                    y: 0.90,
                     len: 1 / (selectedClusters.length + 1),
                     yanchor: "top",
                 },
@@ -139,7 +139,7 @@ const DotPlot2 = ({markerGenes, selectedClusters, isAllClustersSelected, mainClu
         // Create a separate trace for each legend dot
         sizeLegendSizes.forEach((size, i) => {
             legendTraces.push({
-                x: [1.1], // Position in the legend area
+                x: [1.12], // Position in the legend area
                 y: [firstDotY - i * bubbleSpacing], // Vertical position
                 mode: "markers+text",
                 type: "scatter",
@@ -252,7 +252,8 @@ DotPlot2.propTypes = {
     markerGenes: PropTypes.array.isRequired,
     selectedClusters: PropTypes.array.isRequired,
     isAllClustersSelected: PropTypes.bool.isRequired,
-    mainCluster: PropTypes.string.isRequired
+    mainCluster: PropTypes.string.isRequired,
+    datasetId: PropTypes.string.isRequired
 }
 
 export default DotPlot2

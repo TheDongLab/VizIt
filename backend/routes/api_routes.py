@@ -283,7 +283,7 @@ async def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
             assay_ls.append(dataset.assay)
             organism_ls.append(dataset.organism)
             tissue_ls.append(dataset.tissue)
-            disease_ls.append(dataset.disease)
+            disease_ls+=[d.strip() for d in dataset.disease.split(",")]
 
         dataset_fileters = [
             {"title": "Assay Type", "key": "assayType", "options": set(assay_ls), },
