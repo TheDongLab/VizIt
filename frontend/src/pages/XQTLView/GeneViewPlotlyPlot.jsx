@@ -446,6 +446,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             (View in GWAS Catalog)
           </a>
           <br />
+          <strong>Chromosome:</strong> {chromosome}
+          <br />
           <strong>Position:</strong> {data[0].x}
           <br />
           {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
@@ -491,6 +493,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         <>
           <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
           {data.gene_id}
+          <br />
+          <strong>Chromosome:</strong> {chromosome}
           <br />
           <strong>Start:</strong> {data.position_start}
           <br />

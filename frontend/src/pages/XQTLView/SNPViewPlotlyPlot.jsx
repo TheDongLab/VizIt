@@ -377,6 +377,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             (View in GWAS Catalog)
           </a>
           <br />
+          <strong>Chromosome:</strong> {chromosome}
+          <br />
           <strong>Position:</strong> {data.position}
         </>
       );
@@ -395,6 +397,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             (View in GWAS Catalog)
           </a>
           <br />
+          <strong>Chromosome:</strong> {chromosome}
+          <br />
           <strong>Position:</strong> {data.position}
           <br />
           <strong>β (GWAS):</strong> {formatNumber(data.beta, 6)}
@@ -411,6 +415,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
       const formattedData = (
         <>
           <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong> {data[0].id}
+          <br />
+          <strong>Chromosome:</strong> {chromosome}
           <br />
           <strong>Start:</strong> {data[0].position_start}
           <br />
