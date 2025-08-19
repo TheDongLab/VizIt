@@ -679,7 +679,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                     color: getDisplayOption(
                       displayOptions,
                       "dashedLineColor",
-                      "#DCDCDC",
+                      "#000000",
                     ),
                     width: 1,
                     dash: "dash",
@@ -718,7 +718,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                     color: getDisplayOption(
                       displayOptions,
                       "dashedLineColor",
-                      "#DCDCDC",
+                      "#000000",
                     ),
                     width: 1,
                     dash: "dash",
@@ -756,7 +756,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                           color: getDisplayOption(
                             displayOptions,
                             "dashedLineColor",
-                            "#DCDCDC",
+                            "#000000",
                           ),
                           width: 1,
                           dash: "dash",
@@ -794,7 +794,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                     color: getDisplayOption(
                       displayOptions,
                       "dashedLineColor",
-                      "#DCDCDC",
+                      "#000000",
                     ),
                     width: 1,
                     dash: "dash",
