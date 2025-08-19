@@ -793,7 +793,7 @@ function XQTLView() {
                   onChange={(e) =>
                     setTempDisplayOptions({
                       ...tempDisplayOptions,
-                      trackHeight: e.target.value,
+                      trackHeight: Number(e.target.value),
                     })
                   }
                   inputProps={{
@@ -834,7 +834,7 @@ function XQTLView() {
                   onChange={(e) =>
                     setTempDisplayOptions({
                       ...tempDisplayOptions,
-                      gapHeight: e.target.value,
+                      gapHeight: Number(e.target.value),
                     })
                   }
                   inputProps={{
