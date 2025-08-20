@@ -94,23 +94,6 @@
     overflow: hidden;
 }
 
-/* Cell type label */
-.gene-plot::before {
-    content: attr(data-celltype);
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    text-align: center;
-    padding: 10px;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    /* border-right: 1px solid #e0e0e0; */
-    margin-right: 10px;
-    white-space: nowrap;
-}
-
 .gene-plot > div {
     flex: 1;
     height: 100%;
@@ -125,23 +108,6 @@
     max-width: 100vw;
     margin-bottom: 20px;
     overflow: hidden;
-}
-
-/* Cell type label */
-.snp-plot::before {
-    content: attr(data-celltype);
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    text-align: center;
-    padding: 10px;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    /* border-right: 1px solid #e0e0e0; */
-    margin-right: 10px;
-    white-space: nowrap;
 }
 
 .snp-plot > div {
