@@ -1,9 +1,12 @@
 import os
 import pandas as pd
 import polars as pl
+import numpy as np
+import pyBigWig
 import json
 import toml
 import re
+from functools import lru_cache
 
 
 def safe_filename(name):
@@ -89,7 +92,7 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
 
                 return {col: df.get_column(col).to_list() for col in df.columns}
             else:
-                return f"Error: No genes found in {chromosome} chromosome."
+                return f"No genes found in {chromosome} chromosome ({start}-{end})."
         else:
             print(chromosome_file + " not found")
             return "Error: Chromosome file not found for the specified dataset."
@@ -114,7 +117,7 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
                 df = df.drop_nulls()
                 return {col: df.get_column(col).to_list() for col in df.columns}
             else:
-                return f"Error: No SNPs found in {chromosome} chromosome."
+                return f"No SNPs found in {chromosome} ({start}-{end})."
         else:
             print(chromosome_file + " not found")
             return "Error: Chromosome file not found for the specified dataset."
@@ -863,3 +866,136 @@ def get_visium_defaults(dataset):
         return data
     else:
         return f"Error: visium_defaults file not found."
+
+
+@lru_cache(maxsize=32)
+def get_cached_bigwig_handle(dataset, celltype):
+    celltype_mapping_file = os.path.join(
+        "backend", "datasets", dataset, "celltype_mapping.json"
+    )
+
+    if not os.path.exists(celltype_mapping_file):
+        return None
+
+    with open(celltype_mapping_file, "r") as f:
+        celltype_mapping = json.load(f)
+
+    celltype_file = celltype_mapping.get(celltype, celltype)
+    bw_path = os.path.join("backend", "datasets", dataset, "celltypes", celltype_file)
+
+    if not os.path.exists(bw_path):
+        return None
+
+    try:
+        return pyBigWig.open(bw_path)
+    except Exception as e:
+        print(f"Error opening BigWig file {bw_path}: {e}")
+        return None
+
+
+def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_size=1):
+    print(f"bin_size {bin_size}")
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+
+    try:
+        bw = get_cached_bigwig_handle(dataset, celltype)
+
+        if bw is None:
+            return f"Error: BigWig file not found for cell type {celltype} in dataset {dataset}"
+
+        if not hasattr(bw, "chroms") or not callable(bw.chroms):
+            return f"Error: Invalid BigWig handle for cell type {celltype}"
+
+        if chromosome not in bw.chroms():
+            return f"Error: Chromosome {chromosome} not found in BigWig file for cell type {celltype}"
+
+        chrom_len = bw.chroms()[chromosome]
+        start = max(0, start)
+        end = min(end, chrom_len)
+
+        if start >= end:
+            return f"Error: Invalid range {chromosome}:{start}-{end}"
+
+        positions = []
+        values = []
+
+        if bin_size == 1:
+            # For single base resolution, use intervals instead of values for efficiency
+            intervals = bw.intervals(chromosome, start, end)
+            if intervals:
+                for interval in intervals:
+                    interval_start, interval_end, value = interval
+                    # Add all positions in this interval
+                    for pos in range(
+                        max(start, interval_start), min(end, interval_end) + 1
+                    ):
+                        positions.append(pos)
+                        values.append(value)
+        else:
+            # Use a more efficient binning approach
+            num_bins = (end - start) // bin_size + 1
+            bin_values = [[] for _ in range(num_bins)]
+
+            # Get all intervals in the region
+            intervals = bw.intervals(chromosome, start, end)
+
+            if intervals:
+                for interval in intervals:
+                    interval_start, interval_end, value = interval
+                    # Determine which bins this interval affects
+                    first_bin = max(0, (interval_start - start) // bin_size)
+                    last_bin = min(num_bins - 1, (interval_end - start) // bin_size)
+
+                    for bin_idx in range(first_bin, last_bin + 1):
+                        bin_start = start + bin_idx * bin_size
+                        bin_end = min(start + (bin_idx + 1) * bin_size, end)
+
+                        # Calculate overlap between interval and bin
+                        overlap_start = max(interval_start, bin_start)
+                        overlap_end = min(interval_end, bin_end)
+                        overlap_length = max(0, overlap_end - overlap_start)
+
+                        if overlap_length > 0:
+                            bin_values[bin_idx].append((value, overlap_length))
+
+            # Calculate weighted average for each bin
+            for bin_idx in range(num_bins):
+                if bin_values[bin_idx]:
+                    total_weight = 0
+                    weighted_sum = 0
+
+                    for value, weight in bin_values[bin_idx]:
+                        weighted_sum += value * weight
+                        total_weight += weight
+
+                    if total_weight > 0:
+                        positions.append(start + bin_idx * bin_size)
+                        values.append(weighted_sum / total_weight)
+
+        if not positions:
+            return f"Error: No coverage found in {chromosome}:{start}-{end} for cell type {celltype}"
+
+        return {"position": positions, "value": values}
+    except Exception as e:
+        print(f"Error processing BigWig data: {e}")
+        return f"Error processing data: {str(e)}"
+    finally:
+        pass
+
+
+def get_celltype_list(dataset):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+
+    celltype_mapping_file = os.path.join(
+        "backend", "datasets", dataset, "celltype_mapping.json"
+    )
+    if not os.path.exists(celltype_mapping_file):
+        print(celltype_mapping_file + " not found")
+        return f"Error: Celltype mapping file not found for dataset {dataset}"
+
+    with open(celltype_mapping_file, "r") as f:
+        celltype_mapping = json.load(f)
+
+    return list(celltype_mapping.keys())
