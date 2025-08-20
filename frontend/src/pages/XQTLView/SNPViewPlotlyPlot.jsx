@@ -92,11 +92,19 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   ]);
   const yValues = combinedGeneList.map((gene) => gene.y);
   const betaValues = combinedGeneList.map((gene) => gene.beta);
-  const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
-  const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
+  const maxBetaMagnitude = betaValues.reduce(
+    (max, b) => Math.max(max, Math.abs(b)),
+    0,
+  );
+  const minBetaMagnitude = betaValues.reduce(
+    (min, b) => Math.min(min, Math.abs(b)),
+    Infinity,
+  );
 
-  const geneMin = Math.min(...xValues);
-  const geneMax = Math.max(...xValues);
+  // const geneMin = Math.min(...xValues);
+  // const geneMax = Math.max(...xValues);
+  const geneMin = xValues.reduce((min, x) => Math.min(min, x), Infinity);
+  const geneMax = xValues.reduce((max, x) => Math.max(max, x), -Infinity);
 
   const combinedMin = Math.min(geneMin, snpPosition);
   const combinedMax = Math.max(geneMax, snpPosition);
@@ -111,14 +119,17 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const xMax = Math.min(paddedMax, snpPosition + radius);
 
   const yPadding = 1;
-  const yMin = Math.min(...yValues, 0);
-  const yMax = Math.max(...yValues, 2) + yPadding;
+  const yMin = yValues.reduce((min, y) => Math.min(min, y, 0), Infinity);
+  const yMax =
+    yValues.reduce((max, y) => Math.max(max, y, 2), -Infinity) + yPadding;
 
   const otherSnps = snps.filter((s) => s.snp_id !== snpName);
 
-  const gwasMin = hasGwas ? Math.min(...otherSnps.map((s) => s.y), 0) : -2;
+  const gwasMin = hasGwas
+    ? otherSnps.reduce((min, s) => Math.min(min, s.y), 0)
+    : -2;
   const gwasMax = hasGwas
-    ? Math.max(...otherSnps.map((s) => s.y), 2) + yPadding
+    ? otherSnps.reduce((max, s) => Math.max(max, s.y), 2) + yPadding
     : 2;
 
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
@@ -131,8 +142,14 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const nearbyXValues = useMemo(() => snps.map((s) => s.position), [snps]);
 
   const nearbySnpsRange = useMemo(() => {
-    const nearbyMin = Math.min(...nearbyXValues);
-    const nearbyMax = Math.max(...nearbyXValues);
+    const nearbyMin = nearbyXValues.reduce(
+      (min, x) => Math.min(min, x),
+      Infinity,
+    );
+    const nearbyMax = nearbyXValues.reduce(
+      (max, x) => Math.max(max, x),
+      -Infinity,
+    );
     const nearbyPadding =
       Math.round(((nearbyMax - nearbyMin) * 0.05) / 1000) * 1000; // 5% padding
     return [
