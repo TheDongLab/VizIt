@@ -194,13 +194,14 @@ function GenomicRegionView() {
       console.log("Parsed region:", region);
 
       setRegion(region.chromosome, region.start, region.end);
+      console.log("however", selectedChromosome, selectedRange);
 
-      try {
-        await fetchData();
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setSelectionError("Failed to fetch data for this region.");
-      }
+      // try {
+      //   await fetchData();
+      // } catch (error) {
+      //   console.error("Error fetching data:", error);
+      //   setSelectionError("Failed to fetch data for this region.");
+      // }
     } else {
       setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
     }
@@ -236,6 +237,7 @@ function GenomicRegionView() {
       end === null ||
       end === undefined
     ) {
+      console.warn("Error: Incomplete region selection");
       return;
     } else if (start >= end) {
       console.warn("Error: Start position must be less than end position");
@@ -243,14 +245,18 @@ function GenomicRegionView() {
     } else {
       setDataLoading(true);
       setSelectionError("");
+      console.log(
+        "(Inside fetchData) Fetching data for:",
+        chromosome,
+        start,
+        end,
+      );
       try {
         await fetchCellTypes(datasetId);
         const padding = Math.ceil(Math.abs(start - end) * 0.25);
-        const locations = await fetchGeneLocations(
-          datasetId,
-          start - padding,
-          end + padding,
-        );
+        const s = Math.max(0, start - padding);
+        const e = Math.max(0, end + padding);
+        const locations = await fetchGeneLocations(datasetId, s, e);
 
         setNearbyGenes(locations);
 
@@ -278,21 +284,9 @@ function GenomicRegionView() {
         // }
 
         const binSize = Math.ceil(Math.abs(end - start) * 0.005);
-        console.log(
-          `fetchSignalData(${datasetId}, ${start - padding}, ${end + padding}, ${binSize})`,
-        );
-        console.log(
-          start - padding,
-          end + padding,
-          binSize,
-          start + padding - (end + padding),
-        );
-        await fetchSignalData(
-          datasetId,
-          start - padding,
-          end + padding,
-          binSize,
-        );
+        console.log(`fetchSignalData(${datasetId}, ${s}, ${e}, ${binSize})`);
+        console.log(s, e, binSize, e - s);
+        await fetchSignalData(datasetId, s, e, binSize);
         console.log("Fetched signal data:", signalData);
       } catch (error) {
         console.error("Error fetching signal data:", error);

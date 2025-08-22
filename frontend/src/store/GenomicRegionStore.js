@@ -77,7 +77,15 @@ const useSignalStore = create((set, get) => ({
             return;
         }
         const chromosome = get().selectedChromosome;
-        if (!chromosome || !start || !end) {
+        console.log(chromosome, start, end);
+        // start and end can be 0
+        if (
+            !chromosome ||
+            start === null ||
+            start === undefined ||
+            end === null ||
+            end === undefined
+        ) {
             set({
                 error: "fetchSignalData: No chromosome or range selected",
                 loading: false,

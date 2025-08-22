@@ -27,7 +27,7 @@ async def getregionsignaldata(request: Request):
     start = int(request.query_params.get("start"))
     end = int(request.query_params.get("end"))
     celltype = request.query_params.get("celltype")
-    bin_size = int(request.query_params.get("binSize", 1))
+    bin_size = int(request.query_params.get("binsize", 1))
 
     print(bin_size)
 

@@ -3,6 +3,7 @@ import pandas as pd
 import polars as pl
 import numpy as np
 import pyBigWig
+import math
 import json
 import toml
 import re
@@ -868,12 +869,11 @@ def get_visium_defaults(dataset):
         return f"Error: visium_defaults file not found."
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=128)  # bump cache size since you’ll open more small files
 def get_cached_bigwig_handle(dataset, celltype):
     celltype_mapping_file = os.path.join(
         "backend", "datasets", dataset, "celltype_mapping.json"
     )
-
     if not os.path.exists(celltype_mapping_file):
         return None
 
@@ -881,107 +881,82 @@ def get_cached_bigwig_handle(dataset, celltype):
         celltype_mapping = json.load(f)
 
     celltype_file = celltype_mapping.get(celltype, celltype)
-    bw_path = os.path.join("backend", "datasets", dataset, "celltypes", celltype_file)
 
-    if not os.path.exists(bw_path):
-        return None
+    bw_path = os.path.join(
+        "backend",
+        "datasets",
+        dataset,
+        "celltypes",
+        celltype_file,
+    )
 
     try:
         return pyBigWig.open(bw_path)
     except Exception as e:
-        print(f"Error opening BigWig file {bw_path}: {e}")
+        print(f"Error: Could not open {bw_path}")
+        print(f"{e}")
         return None
 
 
+def format_signal_value(value, sig_figs=5):
+    if value == 0:
+        return 0.0
+
+    magnitude = math.floor(math.log10(abs(value))) if value != 0 else 0
+    decimal_places = max(0, sig_figs - magnitude - 1)
+
+    return round(value, decimal_places)
+
+
 def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_size=1):
-    print(f"bin_size {bin_size}")
     if dataset == "all":
         return "Error: Dataset is not specified."
 
     try:
         bw = get_cached_bigwig_handle(dataset, celltype)
-
         if bw is None:
-            return f"Error: BigWig file not found for cell type {celltype} in dataset {dataset}"
+            return f"Error: BigWig file not found for {celltype} in dataset {dataset}"
 
-        if not hasattr(bw, "chroms") or not callable(bw.chroms):
-            return f"Error: Invalid BigWig handle for cell type {celltype}"
+        chrom_len = bw.chroms().get(chromosome)
+        if chrom_len is None:
+            return f"Error: Chromosome {chromosome} not found in {celltype}/{dataset}"
 
-        if chromosome not in bw.chroms():
-            return f"Error: Chromosome {chromosome} not found in BigWig file for cell type {celltype}"
-
-        chrom_len = bw.chroms()[chromosome]
         start = max(0, start)
         end = min(end, chrom_len)
-
         if start >= end:
             return f"Error: Invalid range {chromosome}:{start}-{end}"
 
-        positions = []
-        values = []
+        # Binning
+        if bin_size > 1:
+            num_bins = (end - start) // bin_size
+            if (end - start) % bin_size != 0:
+                num_bins += 1
 
-        if bin_size == 1:
-            # For single base resolution, use intervals instead of values for efficiency
-            intervals = bw.intervals(chromosome, start, end)
-            if intervals:
-                for interval in intervals:
-                    interval_start, interval_end, value = interval
-                    # Add all positions in this interval
-                    for pos in range(
-                        max(start, interval_start), min(end, interval_end) + 1
-                    ):
-                        positions.append(pos)
-                        values.append(value)
-        else:
-            # Use a more efficient binning approach
-            num_bins = (end - start) // bin_size + 1
-            bin_values = [[] for _ in range(num_bins)]
+            values = bw.stats(chromosome, start, end, nBins=num_bins, type="mean")
+            positions = [start + i * bin_size for i in range(num_bins)]
+            values = [v if v is not None else 0 for v in values]
 
-            # Get all intervals in the region
-            intervals = bw.intervals(chromosome, start, end)
+            formatted_values = [
+                format_signal_value(v) if v is not None else 0.0 for v in values
+            ]
+            return {"position": positions, "value": formatted_values}
 
-            if intervals:
-                for interval in intervals:
-                    interval_start, interval_end, value = interval
-                    # Determine which bins this interval affects
-                    first_bin = max(0, (interval_start - start) // bin_size)
-                    last_bin = min(num_bins - 1, (interval_end - start) // bin_size)
+        # No binning
+        intervals = bw.intervals(chromosome, start, end)
+        if not intervals:
+            return f"Error: No coverage in {chromosome}:{start}-{end} for celltype {celltype}"
 
-                    for bin_idx in range(first_bin, last_bin + 1):
-                        bin_start = start + bin_idx * bin_size
-                        bin_end = min(start + (bin_idx + 1) * bin_size, end)
-
-                        # Calculate overlap between interval and bin
-                        overlap_start = max(interval_start, bin_start)
-                        overlap_end = min(interval_end, bin_end)
-                        overlap_length = max(0, overlap_end - overlap_start)
-
-                        if overlap_length > 0:
-                            bin_values[bin_idx].append((value, overlap_length))
-
-            # Calculate weighted average for each bin
-            for bin_idx in range(num_bins):
-                if bin_values[bin_idx]:
-                    total_weight = 0
-                    weighted_sum = 0
-
-                    for value, weight in bin_values[bin_idx]:
-                        weighted_sum += value * weight
-                        total_weight += weight
-
-                    if total_weight > 0:
-                        positions.append(start + bin_idx * bin_size)
-                        values.append(weighted_sum / total_weight)
-
-        if not positions:
-            return f"Error: No coverage found in {chromosome}:{start}-{end} for cell type {celltype}"
+        positions, values = [], []
+        for interval_start, interval_end, value in intervals:
+            for pos in range(max(start, interval_start), min(end, interval_end) + 1):
+                positions.append(pos)
+                values.append(format_signal_value(value))
 
         return {"position": positions, "value": values}
+
     except Exception as e:
         print(f"Error processing BigWig data: {e}")
         return f"Error processing data: {str(e)}"
-    finally:
-        pass
 
 
 def get_celltype_list(dataset):

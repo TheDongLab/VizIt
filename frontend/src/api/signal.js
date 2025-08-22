@@ -19,7 +19,7 @@ export const getRegionSignalData = async (
         start: start,
         end: end,
         celltype: celltype,
-        binSize: binSize,
+        binsize: binSize,
       },
     });
     return response;

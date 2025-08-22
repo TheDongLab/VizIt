@@ -53,12 +53,28 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   // Calculate X and Y ranges
   // const radius = 1_000_000;
   // const xValues = signalList.map((snp) => snp.x);
+  console.log("range", range);
   const yValues = signalList
+    .filter((snp) => snp.x >= range.start && snp.x <= range.end)
     .map((snp) => snp.y)
     .filter((y) => Number.isFinite(y));
   //print first 20 in yvalues
-  console.log("First 20 yValues:", yValues.slice(0, 20));
+  console.log("yValues:", yValues);
   console.log(yValues.length);
+  const maxSignal = signalList.reduce(
+    (max, current) => {
+      return current.y > max.y ? current : max;
+    },
+    { y: -Infinity, x: 0 },
+  );
+
+  console.log(
+    "First few positions:",
+    signalList.slice(0, 5).map((s) => s.x),
+  );
+  console.log(`Largest value: ${maxSignal.y}`);
+  console.log(`Position: ${maxSignal.x}`);
+  console.log(`Celltype: ${maxSignal.celltype}`);
   // // const betaValues = signalList.map((snp) => snp.beta);
   // // const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
   // // const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
@@ -81,6 +97,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   const yPadding = 1;
   const yMax = yValues.reduce((max, y) => Math.max(max, y), 0) + yPadding;
   const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
+
+  console.log("yMin:", yMin, "yMax:", yMax);
 
   // const gwasMin = hasGwas ? Math.min(...gwasData.map((s) => s.y), 0) : -2;
   // const gwasMax = hasGwas
