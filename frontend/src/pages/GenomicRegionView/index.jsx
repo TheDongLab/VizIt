@@ -194,6 +194,7 @@ function GenomicRegionView() {
       console.log("Parsed region:", region);
 
       setRegion(region.chromosome, region.start, region.end);
+      setVisibleRange({ start: region.start, end: region.end });
       console.log("however", selectedChromosome, selectedRange);
 
       // try {
@@ -318,34 +319,44 @@ function GenomicRegionView() {
   };
 
   // Handle clicking points
-  // const [selectedPoint, setSelectedPoint] = useState(null);
-  // const [selectedPointData, setSelectedPointData] = useState(null);
-  // const [type, setType] = useState(null);
-  // const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [selectedPointData, setSelectedPointData] = useState(null);
+  const [type, setType] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // const handleSelect = useCallback((name, data, type) => {
-  //   setSelectedPoint(name);
-  //   setSelectedPointData(data);
-  //   setType(type);
-  //   setIsDialogOpen(true);
-  // }, []);
+  const handleSelect = useCallback((name, data, type) => {
+    setSelectedPoint(name);
+    setSelectedPointData(data);
+    setType(type);
+    setIsDialogOpen(true);
+  }, []);
 
-  // const handleClose = () => {
-  //   setIsDialogOpen(false);
-  //   setSelectedPoint(null);
-  //   setSelectedPointData(null);
-  // };
+  const handleClose = () => {
+    setIsDialogOpen(false);
+    setSelectedPoint(null);
+    setSelectedPointData(null);
+  };
 
-  // const handleConfirm = () => {
-  //   setIsDialogOpen(false);
-  //   if (selectedPoint) {
-  //     if (type === "gene") {
-  //       selectGeneOrSnp("gene", selectedPoint);
-  //     } else if (type === "snp") {
-  //       selectGeneOrSnp("snp", selectedPoint);
-  //     }
-  //   }
-  // };
+  const handleConfirm = () => {
+    setIsDialogOpen(false);
+    console.log("why no work");
+    console.log(selectedPoint);
+    if (selectedPoint) {
+      if (type === "gene") {
+        console.warn("Clicked on gene. Not implemented!");
+        return;
+      } else if (type === "signal") {
+        const parts = selectedPoint.split("–");
+        if (parts.length == 2) {
+          const start = parseInt(parts[0]);
+          const end = parseInt(parts[1]);
+          console.log(start, end);
+          setSelectedRange(start, end);
+          setVisibleRange({ start, end });
+        }
+      }
+    }
+  };
 
   // Set the initial selected gene and SNP from URL parameters
   useEffect(() => {
@@ -373,6 +384,14 @@ function GenomicRegionView() {
   useEffect(() => {
     console.log(regionSearchText, selectedChromosome, selectedRange);
   }, [regionSearchText]);
+
+  useEffect(() => {
+    // when the selectedchromosome or range changes, update the region search text
+    if (selectedChromosome && selectedRange)
+      setRegionSearchText(
+        `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+      );
+  }, [selectedChromosome, selectedRange]);
 
   // TODO Clear zustand state on unmount
   // useEffect(() => {
@@ -426,59 +445,55 @@ function GenomicRegionView() {
   };
 
   const [visibleRange, setVisibleRange] = useState(null);
-  const [isZooming, setIsZooming] = useState(false);
   const [currentBinSize, setCurrentBinSize] = useState(null);
 
-  const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
+  // const debounce = (func, wait) => {
+  //   let timeout;
+  //   return function executedFunction(...args) {
+  //     const later = () => {
+  //       clearTimeout(timeout);
+  //       func(...args);
+  //     };
+  //     clearTimeout(timeout);
+  //     timeout = setTimeout(later, wait);
+  //   };
+  // };
+
+  // Memoize the debounced function properly
+  const debouncedUpdate = useMemo(
+    () =>
+      debounce((figure) => {
+        if (
+          figure &&
+          figure.layout &&
+          figure.layout.xaxis &&
+          figure.layout.xaxis.range
+        ) {
+          const [start, end] = figure.layout.xaxis.range;
+          const newRange = { start: Math.floor(start), end: Math.ceil(end) };
+
+          if (
+            !visibleRange ||
+            newRange.start !== visibleRange.start ||
+            newRange.end !== visibleRange.end
+          ) {
+            setVisibleRange(newRange);
+          }
+        }
+      }, 500),
+    [visibleRange, setVisibleRange],
+  );
 
   // Handle plot updates and visible range changes
   const handlePlotUpdate = useCallback(
-    debounce((figure) => {
-      if (
-        figure &&
-        figure.layout &&
-        figure.layout.xaxis &&
-        figure.layout.xaxis.range
-      ) {
-        const [start, end] = figure.layout.xaxis.range;
-        const newRange = { start: Math.floor(start), end: Math.ceil(end) };
-
-        // Only update if the range has actually changed
-        if (
-          !visibleRange ||
-          newRange.start !== visibleRange.start ||
-          newRange.end !== visibleRange.end
-        ) {
-          setVisibleRange(newRange);
-        }
-      }
-    }, 500),
-    [visibleRange], // Add visibleRange to dependencies
+    (figure) => {
+      debouncedUpdate(figure);
+    },
+    [debouncedUpdate],
   );
 
   useEffect(() => {
     if (visibleRange && selectedChromosome && datasetId) {
-      const rangeSize = visibleRange.end - visibleRange.start;
-
-      // Determine appropriate bin size based on zoom level
-      // let binSize;
-      // if (rangeSize <= 100000) {
-      //   binSize = 1000; // High resolution for close zoom
-      // } else if (rangeSize <= 1000000) {
-      //   binSize = 10000; // Medium resolution
-      // } else {
-      //   binSize = 100000; // Low resolution for wide view
-      // }
       const binSize = Math.ceil(
         Math.abs(visibleRange.end - visibleRange.start) * 0.005,
       );
@@ -918,13 +933,13 @@ function GenomicRegionView() {
         </div>
       </div>
       <div className="plot-content">
-        {/* <ConfirmationDialog */}
-        {/*   isOpen={isDialogOpen} */}
-        {/*   handleClose={handleClose} */}
-        {/*   handleConfirm={handleConfirm} */}
-        {/*   title={`Do you want to open details for ${selectedPoint ?? "point"}?`} */}
-        {/*   description={selectedPointData ?? "No additional data available."} */}
-        {/* /> */}
+        <ConfirmationDialog
+          isOpen={isDialogOpen}
+          handleClose={handleClose}
+          handleConfirm={handleConfirm}
+          title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
+          description={selectedPointData ?? "No additional data available."}
+        />
 
         {/* Plot Area */}
         <div className="plot-main">
@@ -993,10 +1008,11 @@ function GenomicRegionView() {
                         nearbyGenes={nearbyGenes}
                         /* gwasData={gwasData} */
                         /* hasGwas={hasGwas} */
-                        /* handleSelect={handleSelect} */
+                        handleSelect={handleSelect}
                         useWebGL={webGLSupported}
                         displayOptions={displayOptions}
                         handlePlotUpdate={handlePlotUpdate}
+                        binSize={currentBinSize}
                       />
                     </div>
                   )

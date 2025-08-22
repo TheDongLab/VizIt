@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -23,9 +23,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   cellTypes,
   signalData,
   nearbyGenes,
+  handleSelect,
   useWebGL,
   displayOptions,
   handlePlotUpdate,
+  binSize,
 }) {
   const range = visibleRange || selectedRange;
   console.log("range (effective)", range);
@@ -237,59 +239,17 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   //   ];
   // }, [hasGwas, gwasData, useWebGL]);
 
-  // Advanced jitter to avoid overlapping gene labels
   const jitterMap = useMemo(() => {
     const map = new Map();
-    const maxAmplitude = 1.55;
-    const maxXSpacing = (selectedRange.end - selectedRange.start) * 0.02;
-    const minYSpacing = 0.3;
-    const maxAttempts = 100;
+    const maxAmplitude = 1.75;
 
-    const assigned = []; // array of { pos: number, jitter: number }
-
-    const sortedGenes = [...nearbyGenes].sort(
-      (a, b) => a.position_start - b.position_start,
-    );
-
-    let numFallbacks = 0;
-
-    for (const gene of sortedGenes) {
-      let jitterValue;
-      let attempts = 0;
-
-      while (attempts < maxAttempts) {
-        const candidate = Math.random() * maxAmplitude;
-        const sign = Math.random() > 0.5 ? 1 : -1;
-        const jitter = sign * candidate;
-
-        const isTooClose = assigned.some(
-          ({ pos, jitter: prev }) =>
-            Math.abs(prev - jitter) < minYSpacing &&
-            Math.abs(pos - gene.position_start) < maxXSpacing,
-        );
-
-        if (!isTooClose) {
-          jitterValue = jitter;
-          break;
-        }
-
-        attempts++;
-      }
-
-      if (jitterValue === undefined) {
-        numFallbacks++;
-        jitterValue = (Math.random() - 0.5) * 2 * maxAmplitude;
-      }
-
-      assigned.push({ pos: gene.position_start, jitter: jitterValue });
-      map.set(gene.gene_id, jitterValue);
-    }
-
-    console.log(
-      `Assigned ${assigned.length} genes with ${numFallbacks} fallbacks`,
-    );
+    nearbyGenes.forEach((g) => {
+      const sign = Math.random() > 0.5 ? 1 : -1;
+      const amplitude = Math.random() * maxAmplitude;
+      map.set(g.gene_id, sign * amplitude);
+    });
     return map;
-  }, [nearbyGenes, selectedRange.end, selectedRange.start]);
+  }, [nearbyGenes]);
 
   const geneTraces = useMemo(() => {
     const getStart = (gene) =>
@@ -347,189 +307,193 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       showlegend: false,
     };
 
-    const otherLabels = {
-      x: nearbyGenes.flatMap((gene) => [(getStart(gene) + getEnd(gene)) / 2]),
-      y: nearbyGenes.flatMap((gene) => [jitterMap.get(gene.gene_id) - 0.2]),
-      type: "scatter",
-      mode: "text",
-      text: nearbyGenes.map((gene) => gene.gene_id),
-      textposition: "bottom center",
-      showlegend: false,
-      hoverinfo: "skip",
-      textfont: {
-        size: 10,
-        color: "rgb(161,161,161)",
-      },
-    };
+    // const otherLabels = {
+    //   x: nearbyGenes.flatMap((gene) => [(getStart(gene) + getEnd(gene)) / 2]),
+    //   y: nearbyGenes.flatMap((gene) => [jitterMap.get(gene.gene_id) - 0.2]),
+    //   type: "scatter",
+    //   mode: "text",
+    //   text: nearbyGenes.map((gene) => gene.gene_id),
+    //   textposition: "bottom center",
+    //   showlegend: false,
+    //   hoverinfo: "skip",
+    //   textfont: {
+    //     size: 10,
+    //     color: "rgb(161,161,161)",
+    //   },
+    // };
 
-    return [others, otherLabels];
+    return [others];
   }, [jitterMap, nearbyGenes]);
 
   // Handle clicking points
-  // const onClick = (data) => {
-  //   console.log("onClick data:", data);
-  //   if (!data.points || data.points.length === 0) return;
+  const onClick = (data) => {
+    console.log("onClick data:", data);
+    if (!data.points || data.points.length === 0) return;
 
-  //   const point = data.points[0];
-  //   const pointData = point.data;
-  //   const pointType = pointData.pointType;
-  //   const name = point.customdata || pointData.name;
+    const point = data.points[0];
+    const pointData = point.data;
+    const pointType = pointData.pointType;
+    const name = point.customdata || pointData.name;
 
-  //   if (pointType === "snp" || pointType === "gwas") {
-  //     let data = combinedSnpList.filter((s) => s.id === name);
-  //     if (hasGwas) {
-  //       data = data.concat(
-  //         gwasData
-  //           .filter((s) => s.id === name)
-  //           .map((s) => ({
-  //             ...s,
-  //             celltype: "GWAS",
-  //           })),
-  //       );
-  //     }
+    if (pointType === "signal") {
+      // let data = combinedSnpList.filter((s) => s.id === name);
+      let data = signalList.filter((s) => s.x === point.x);
+      // if (hasGwas) {
+      //   data = data.concat(
+      //     gwasData
+      //       .filter((s) => s.id === name)
+      //       .map((s) => ({
+      //         ...s,
+      //         celltype: "GWAS",
+      //       })),
+      //   );
+      // }
 
-  //     if (!data || data.length === 0) return;
+      if (!data || data.length === 0) return;
 
-  //     const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
+      const binStart = data[0].x;
+      const binEnd = binStart + binSize - 1;
 
-  //     const formattedData = (
-  //       <>
-  //         <strong>SNP:</strong> {data[0].id}{" "}
-  //         <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
-  //           (View in GWAS Catalog)
-  //         </a>
-  //         <br />
-  //         <strong>Position:</strong> {data[0].x}
-  //         <br />
-  //         {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
-  //         {/* <br />−<strong>log10(p):</strong>{" "} */}
-  //         {/* {formatNumber(data.y * Math.sign(data.beta), 6)} */}
-  //         {/* Group each cell‑type’s stats on the same row */}
-  //         <table
-  //           style={{
-  //             marginTop: "0.75em",
-  //             borderCollapse: "collapse",
-  //             width: "100%",
-  //           }}
-  //         >
-  //           <thead>
-  //             <tr>
-  //               <th style={{ textAlign: "left" }}>Cell Type</th>
-  //               <th style={{ textAlign: "right" }}>β</th>
-  //               <th style={{ textAlign: "right" }}>−log10(p)</th>
-  //             </tr>
-  //           </thead>
-  //           <tbody>
-  //             {data.map((d, idx) => (
-  //               <tr key={idx}>
-  //                 <td>{d.celltype}</td>
-  //                 <td style={{ textAlign: "right" }}>
-  //                   {formatNumber(d.beta, 3)}
-  //                 </td>
-  //                 <td style={{ textAlign: "right" }}>{formatNumber(d.y, 3)}</td>
-  //               </tr>
-  //             ))}
-  //           </tbody>
-  //         </table>
-  //       </>
-  //     );
+      // const gwasUrl = `https:www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
 
-  //     handleSelect(name, formattedData, "snp");
-  //     return;
-  //   } else if (pointType === "gene") {
-  //     const data = genes.find((g) => g.gene_id === name);
-  //     if (!data) return;
+      const formattedData = (
+        <>
+          <strong>Bin Range:</strong> {binStart}–{binEnd}
+          <br />
+          <strong>Chromosome:</strong> {chromosome}
+          <br />
+          {/* Group each cell‑type’s stats on the same row */}
+          <table
+            style={{
+              marginTop: "0.75em",
+              borderCollapse: "collapse",
+              width: "100%",
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Cell Type</th>
+                <th style={{ textAlign: "right" }}>Signal Strength</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((d, idx) => (
+                <tr key={idx}>
+                  <td>{d.celltype}</td>
+                  <td style={{ textAlign: "right" }}>{formatNumber(d.y, 3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      );
 
-  //     const formattedData = (
-  //       <>
-  //         <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
-  //         {data.gene_id}
-  //         <br />
-  //         <strong>Start:</strong> {data.position_start}
-  //         <br />
-  //         <strong>End:</strong> {data.position_end}
-  //         <br />
-  //         <strong>Strand:</strong>{" "}
-  //         {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
-  //       </>
-  //     );
+      // const formattedData = (
+      //   <>
+      //     <strong>SNP:</strong> {data[0].id}{" "}
+      //     <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
+      //       (View in GWAS Catalog)
+      //     </a>
+      //     <br />
+      //     <strong>Position:</strong> {data[0].x}
+      //     <br />
+      //     <strong>β:</strong> {formatNumber(data.beta, 6)}
+      //     <br />−<strong>log10(p):</strong>{" "}
+      //     {formatNumber(data.y * Math.sign(data.beta), 6)}
+      //     Group each cell‑type’s stats on the same row
+      //     <table
+      //       style={{
+      //         marginTop: "0.75em",
+      //         borderCollapse: "collapse",
+      //         width: "100%",
+      //       }}
+      //     >
+      //       <thead>
+      //         <tr>
+      //           <th style={{ textAlign: "left" }}>Cell Type</th>
+      //           <th style={{ textAlign: "right" }}>β</th>
+      //           <th style={{ textAlign: "right" }}>−log10(p)</th>
+      //         </tr>
+      //       </thead>
+      //       <tbody>
+      //         {data.map((d, idx) => (
+      //           <tr key={idx}>
+      //             <td>{d.celltype}</td>
+      //             <td style={{ textAlign: "right" }}>
+      //               {formatNumber(d.beta, 3)}
+      //             </td>
+      //             <td style={{ textAlign: "right" }}>{formatNumber(d.y, 3)}</td>
+      //           </tr>
+      //         ))}
+      //       </tbody>
+      //     </table>
+      //   </>
+      // );
 
-  //     handleSelect(name, formattedData, "gene");
-  //     return;
-  //   }
-  // };
+      handleSelect(name, formattedData, "signal");
+      return;
+    } else if (pointType === "gene") {
+      const data = nearbyGenes.find((g) => g.gene_id === name);
+      if (!data) return;
+
+      // TODO
+      const formattedData = (
+        <>
+          <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
+          {data.gene_id}
+          <br />
+          <strong>Start:</strong> {data.position_start}
+          <br />
+          <strong>End:</strong> {data.position_end}
+          <br />
+          <strong>Strand:</strong>{" "}
+          {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
+        </>
+      );
+
+      handleSelect(name, formattedData, "gene");
+      return;
+    }
+  };
 
   const signalTraces = useMemo(() => {
     return cellTypes.map((celltype, i) => {
       const cellData = signalData[celltype] || [];
+      const xValues = cellData.map((d) => d.position);
+      const yValues = cellData.map((d) => d.value);
 
-      // For WebGL, we can use a single scattergl trace with mode 'lines' and fill 'tozeroy'
-      if (useWebGL) {
-        // Sort data by position
-        const sortedData = [...cellData].sort(
-          (a, b) => a.position - b.position,
-        );
-        const xValues = sortedData.map((d) => d.position);
-        const yValues = sortedData.map((d) => d.value);
+      const color = `hsl(${(i * 360) / cellTypes.length}, 70%, 60%)`;
 
-        return {
-          name: celltype,
-          x: xValues,
-          y: yValues,
-          type: "scattergl",
-          mode: "lines",
-          fill: "tozeroy",
-          line: { shape: "hv", width: 0 },
-          fillcolor: `hsl(${(i * 360) / cellTypes.length}, 70%, 60%)`,
-          xaxis: "x",
-          yaxis: `y${i + (hasGwas ? 3 : 2)}`,
-          hoverinfo: "x+y+name",
-          hovertemplate:
-            `<b>${celltype}</b><br>` +
-            `Position: %{x}<br>` +
-            `Value: %{y:.3f}<br>` +
-            `<extra></extra>`,
-        };
-      } else {
-        // TODO
-        // For non-WebGL, create bar-like traces
-        // Group data into bins for better performance
-        const binSize = Math.max(1, Math.floor(cellData.length / 1000));
-        const binnedData = [];
+      const binRanges = xValues.map((binStart) => {
+        const binEnd = binStart + binSize - 1;
+        return `${binStart}–${binEnd}`;
+      });
 
-        for (let j = 0; j < cellData.length; j += binSize) {
-          const chunk = cellData.slice(j, j + binSize);
-          if (chunk.length > 0) {
-            const avgPosition =
-              chunk.reduce((sum, d) => sum + d.position, 0) / chunk.length;
-            const avgValue =
-              chunk.reduce((sum, d) => sum + d.value, 0) / chunk.length;
-            binnedData.push({ position: avgPosition, value: avgValue });
-          }
-        }
-
-        return {
-          name: celltype,
-          x: binnedData.map((d) => d.position),
-          y: binnedData.map((d) => d.value),
-          type: "scatter",
-          mode: "markers",
-          marker: {
-            size: 3,
-            color: `hsl(${(i * 360) / cellTypes.length}, 70%, 60%)`,
-          },
-          xaxis: "x",
-          yaxis: `y${i + 1}`,
-          hoverinfo: "x+y+name",
-          hovertemplate:
-            `<b>${celltype}</b><br>` +
-            `Position: %{x}<br>` +
-            `Value: %{y:.3f}<br>` +
-            `<extra></extra>`,
-        };
-      }
+      return {
+        name: celltype,
+        x: xValues,
+        y: yValues,
+        type: useWebGL ? "scattergl" : "scatter",
+        mode: "lines",
+        fill: "tozeroy",
+        line: { shape: "hv", width: 0 },
+        fillcolor: color,
+        xaxis: "x",
+        yaxis: `y${i + (hasGwas ? 3 : 2)}`,
+        hoverinfo: "x+y+name",
+        hovertemplate:
+          `<b>${celltype}</b><br>` +
+          `Bin Range: %{customdata}<br>` +
+          `Value: %{y:.3f}<br>` +
+          `<extra></extra>`,
+        hoverlabel: {
+          bgcolor: color,
+        },
+        pointType: "signal",
+        customdata: binRanges,
+      };
     });
-  }, [cellTypes, signalData, useWebGL]);
+  }, [cellTypes, hasGwas, signalData, useWebGL]);
 
   // Calculate layout dimensions
   const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 50);
@@ -589,6 +553,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       xaxis: {
         title: { text: `Genomic Position (${chromosome})` },
         range: initialXRange,
+        // range: [range.start, range.end],
         // minallowed: 0,
         // maxallowed: initialXRange[1],
         // minallowed: Math.min(nearbyGenesRange[0], xMin),
@@ -611,7 +576,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       ...cellTypes.reduce((acc, celltype, i) => {
         const baseIndex = hasGwas ? i + 2 : i + 1;
         acc[`yaxis${baseIndex + 1}`] = {
-          title: { text: `−log10(p)`, font: { size: 10 } },
+          title: { text: `Signal`, font: { size: 10 } },
           domain: calculateDomain(baseIndex),
           autorange: false,
           range: initialYRange,
@@ -634,7 +599,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       ...(hasGwas
         ? {
             [`yaxis2`]: {
-              title: { text: `−log10(p)`, font: { size: 10 } },
+              title: { text: `signal`, font: { size: 10 } },
               domain: calculateDomain(1), // Last track for GWAS
               autorange: false,
               range: initialGwasYRange,
@@ -1038,6 +1003,10 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     ],
   );
 
+  useEffect(() => {
+    console.log("initialXRANGE", initialXRange);
+  }, [initialXRange]);
+
   return (
     <div
       style={{
@@ -1048,7 +1017,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       <Plot
         onUpdate={handlePlotUpdate}
         onInitialized={handlePlotUpdate}
-        /* onClick={onClick} */
+        onClick={onClick}
         data={[...geneTraces, ...signalTraces]}
         style={{ width: "100%", height: "100%" }}
         layout={layout}
