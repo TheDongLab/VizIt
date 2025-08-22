@@ -77,8 +77,7 @@ const useSignalStore = create((set, get) => ({
             return;
         }
         const chromosome = get().selectedChromosome;
-        console.log(chromosome, start, end);
-        // start and end can be 0
+
         if (
             !chromosome ||
             start === null ||
@@ -108,9 +107,7 @@ const useSignalStore = create((set, get) => ({
                 binSize,
             );
             const signalData = response.data;
-            console.log("signalData", signalData);
             const signalDataRows = columnToRow(signalData);
-            console.log("in the zustand", c, signalDataRows);
             return [c, signalDataRows];
         });
 

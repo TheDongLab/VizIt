@@ -30,7 +30,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   binSize,
 }) {
   const range = visibleRange || selectedRange;
-  console.log("range (effective)", range);
   const hasGwas = false;
   // const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
   //   snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
@@ -59,28 +58,18 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   // Calculate X and Y ranges
   // const radius = 1_000_000;
   // const xValues = signalList.map((snp) => snp.x);
-  console.log("range", range);
   const yValues = signalList
-    .filter((snp) => snp.x >= selectedRange.start && snp.x <= selectedRange.end)
+    .filter((snp) => snp.x >= visibleRange.start && snp.x <= visibleRange.end)
     .map((snp) => snp.y)
     .filter((y) => Number.isFinite(y));
-  //print first 20 in yvalues
-  console.log("yValues:", yValues);
-  console.log(yValues.length);
-  const maxSignal = signalList.reduce(
-    (max, current) => {
-      return current.y > max.y ? current : max;
-    },
-    { y: -Infinity, x: 0 },
-  );
 
-  console.log(
-    "First few positions:",
-    signalList.slice(0, 5).map((s) => s.x),
-  );
-  console.log(`Largest value: ${maxSignal.y}`);
-  console.log(`Position: ${maxSignal.x}`);
-  console.log(`Celltype: ${maxSignal.celltype}`);
+  // const maxSignal = signalList.reduce(
+  //   (max, current) => {
+  //     return current.y > max.y ? current : max;
+  //   },
+  //   { y: -Infinity, x: 0 },
+  // );
+
   // // const betaValues = signalList.map((snp) => snp.beta);
   // // const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
   // // const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
@@ -103,8 +92,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   const yPadding = 1;
   const yMax = yValues.reduce((max, y) => Math.max(max, y), 0) + yPadding;
   const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
-
-  console.log("yMin:", yMin, "yMax:", yMax);
 
   // const gwasMin = hasGwas ? Math.min(...gwasData.map((s) => s.y), 0) : -2;
   // const gwasMax = hasGwas
@@ -360,6 +347,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         <>
           <strong>Bin Range:</strong> {binStart}–{binEnd}
           <br />
+          <strong>Bin Size:</strong> {binSize} bp
+          <br />
           <strong>Chromosome:</strong> {chromosome}
           <br />
           {/* Group each cell‑type’s stats on the same row */}
@@ -466,7 +455,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
 
       const binRanges = xValues.map((binStart) => {
         const binEnd = binStart + binSize - 1;
-        return `${binStart}–${binEnd}`;
+        return `${binStart}–${binEnd} (${binSize} bp)`;
       });
 
       return {
@@ -1003,10 +992,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     ],
   );
 
-  useEffect(() => {
-    console.log("initialXRANGE", initialXRange);
-  }, [initialXRange]);
-
   return (
     <div
       style={{
@@ -1107,14 +1092,31 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
 
 RegionViewPlotlyPlot.propTypes = {
   dataset: PropTypes.string.isRequired,
-  geneName: PropTypes.string.isRequired,
-  genes: PropTypes.arrayOf(
+  selectedRange: PropTypes.shape({
+    start: PropTypes.number.isRequired,
+    end: PropTypes.number.isRequired,
+  }).isRequired,
+  visibleRange: PropTypes.shape({
+    start: PropTypes.number.isRequired,
+    end: PropTypes.number.isRequired,
+  }).isRequired,
+  binSize: PropTypes.number.isRequired,
+  nearbyGenes: PropTypes.arrayOf(
     PropTypes.shape({
       gene_id: PropTypes.string.isRequired,
       position_start: PropTypes.number.isRequired,
       position_end: PropTypes.number.isRequired,
       strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
     }),
+  ).isRequired,
+  signalData: PropTypes.objectOf(
+    PropTypes.arrayOf(
+      PropTypes.shape({
+        position: PropTypes.number.isRequired,
+        value: PropTypes.number.isRequired,
+        celltype: PropTypes.string.isRequired,
+      }),
+    ),
   ).isRequired,
   gwasData: PropTypes.arrayOf(
     PropTypes.shape({
@@ -1127,16 +1129,6 @@ RegionViewPlotlyPlot.propTypes = {
     }),
   ).isRequired,
   hasGwas: PropTypes.bool.isRequired,
-  snpData: PropTypes.objectOf(
-    PropTypes.arrayOf(
-      PropTypes.shape({
-        snp_id: PropTypes.string.isRequired,
-        p_value: PropTypes.number.isRequired,
-        beta_value: PropTypes.number.isRequired,
-        position: PropTypes.number.isRequired,
-      }),
-    ),
-  ).isRequired,
   chromosome: PropTypes.string.isRequired,
   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
   handleSelect: PropTypes.func.isRequired,
@@ -1149,6 +1141,7 @@ RegionViewPlotlyPlot.propTypes = {
     trackHeight: PropTypes.number,
     gapHeight: PropTypes.number,
   }),
+  handlePlotUpdate: PropTypes.func.isRequired,
 };
 
 // RegionViewPlotlyPlot.propTypes = {

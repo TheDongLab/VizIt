@@ -188,14 +188,10 @@ function GenomicRegionView() {
   };
 
   const handleRegionSubmit = async () => {
-    console.log("Submitting region:", regionSearchText);
     const region = parseRegionString(regionSearchText);
     if (region) {
-      console.log("Parsed region:", region);
-
       setRegion(region.chromosome, region.start, region.end);
       setVisibleRange({ start: region.start, end: region.end });
-      console.log("however", selectedChromosome, selectedRange);
 
       // try {
       //   await fetchData();
@@ -207,10 +203,6 @@ function GenomicRegionView() {
       setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
     }
   };
-
-  useEffect(() => {
-    console.log("WATCH IS RUN AGAIN", selectedChromosome, selectedRange);
-  }, [selectedChromosome, selectedRange]);
 
   const [selectionError, setSelectionError] = useState("");
 
@@ -284,11 +276,9 @@ function GenomicRegionView() {
         //   setGwasData([]);
         // }
 
-        const binSize = Math.ceil(Math.abs(end - start) * 0.005);
+        const binSize = Math.ceil(Math.abs(end - start) * 0.002);
         console.log(`fetchSignalData(${datasetId}, ${s}, ${e}, ${binSize})`);
-        console.log(s, e, binSize, e - s);
         await fetchSignalData(datasetId, s, e, binSize);
-        console.log("Fetched signal data:", signalData);
       } catch (error) {
         console.error("Error fetching signal data:", error);
         setSelectionError(
@@ -339,8 +329,6 @@ function GenomicRegionView() {
 
   const handleConfirm = () => {
     setIsDialogOpen(false);
-    console.log("why no work");
-    console.log(selectedPoint);
     if (selectedPoint) {
       if (type === "gene") {
         console.warn("Clicked on gene. Not implemented!");
@@ -350,7 +338,6 @@ function GenomicRegionView() {
         if (parts.length == 2) {
           const start = parseInt(parts[0]);
           const end = parseInt(parts[1]);
-          console.log(start, end);
           setSelectedRange(start, end);
           setVisibleRange({ start, end });
         }
@@ -376,14 +363,6 @@ function GenomicRegionView() {
       setRegionSearchText(`${urlChromosome}:${urlStart}-${urlEnd}`);
     }
   }, [urlRegion]);
-
-  useEffect(() => {
-    console.log(selectedChromosome, selectedRange);
-  }, [selectedChromosome, selectedRange]);
-
-  useEffect(() => {
-    console.log(regionSearchText, selectedChromosome, selectedRange);
-  }, [regionSearchText]);
 
   useEffect(() => {
     // when the selectedchromosome or range changes, update the region search text
@@ -495,7 +474,7 @@ function GenomicRegionView() {
   useEffect(() => {
     if (visibleRange && selectedChromosome && datasetId) {
       const binSize = Math.ceil(
-        Math.abs(visibleRange.end - visibleRange.start) * 0.005,
+        Math.abs(visibleRange.end - visibleRange.start) * 0.002,
       );
 
       // Only fetch if the bin size changed significantly or was panned
@@ -580,7 +559,6 @@ function GenomicRegionView() {
         // }
 
         await fetchSignalData(datasetId, start, end, binSize);
-        console.log("Fetched signal data:", signalData);
       } catch (error) {
         console.error("Error fetching signal data:", error);
         setSelectionError(
