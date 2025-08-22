@@ -147,7 +147,7 @@ function XQTLView() {
             setSelectedGene(urlGene);
           } else {
             setSelectedGene("");
-            setSelectionError(`Selection "${urlGene}" not found in dataset`);
+            setSelectionError("Please enter a valid gene, peak, or SNP");
           }
         }
 
@@ -156,7 +156,7 @@ function XQTLView() {
             setSelectedSnp(urlSnp);
           } else {
             setSelectedSnp("");
-            setSelectionError(`Selection "${urlSnp}" not found in dataset`);
+            setSelectionError("Please enter a valid gene, peak, or SNP");
           }
         }
       } catch (error) {
@@ -303,7 +303,7 @@ function XQTLView() {
         setDataLoading(false);
       } catch (error) {
         console.error("Error fetching gene data:", error);
-        setSelectionError(`Selection "${selectedGene}" not found in dataset`);
+        setSelectionError("Please enter a valid gene, peak, or SNP");
         setDataLoading(false);
         return;
       }
@@ -350,7 +350,7 @@ function XQTLView() {
         setDataLoading(false);
       } catch (error) {
         console.error("Error fetching SNP data:", error);
-        setSelectionError(`Selection "${selectedSnp}" not found in dataset`);
+        setSelectionError("Please enter a valid gene, peak, or SNP");
         setDataLoading(false);
         return;
       }
