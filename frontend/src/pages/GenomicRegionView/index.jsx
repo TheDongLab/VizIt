@@ -425,6 +425,160 @@ function GenomicRegionView() {
     }
   };
 
+  const [visibleRange, setVisibleRange] = useState(null);
+  const [isZooming, setIsZooming] = useState(false);
+  const [currentBinSize, setCurrentBinSize] = useState(null);
+
+  const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+
+  // Handle plot updates and visible range changes
+  const handlePlotUpdate = useCallback(
+    debounce((figure) => {
+      if (
+        figure &&
+        figure.layout &&
+        figure.layout.xaxis &&
+        figure.layout.xaxis.range
+      ) {
+        const [start, end] = figure.layout.xaxis.range;
+        const newRange = { start: Math.floor(start), end: Math.ceil(end) };
+
+        // Only update if the range has actually changed
+        if (
+          !visibleRange ||
+          newRange.start !== visibleRange.start ||
+          newRange.end !== visibleRange.end
+        ) {
+          setVisibleRange(newRange);
+        }
+      }
+    }, 500),
+    [visibleRange], // Add visibleRange to dependencies
+  );
+
+  useEffect(() => {
+    if (visibleRange && selectedChromosome && datasetId) {
+      const rangeSize = visibleRange.end - visibleRange.start;
+
+      // Determine appropriate bin size based on zoom level
+      // let binSize;
+      // if (rangeSize <= 100000) {
+      //   binSize = 1000; // High resolution for close zoom
+      // } else if (rangeSize <= 1000000) {
+      //   binSize = 10000; // Medium resolution
+      // } else {
+      //   binSize = 100000; // Low resolution for wide view
+      // }
+      const binSize = Math.ceil(
+        Math.abs(visibleRange.end - visibleRange.start) * 0.005,
+      );
+
+      // Only fetch if the bin size changed significantly or was panned
+      if (
+        !currentBinSize ||
+        binSize !== currentBinSize ||
+        visibleRange.start !== selectedRange.start ||
+        visibleRange.end !== selectedRange.end
+      ) {
+        setCurrentBinSize(binSize);
+        fetchDataForRange(visibleRange, binSize);
+      }
+    }
+  }, [visibleRange, selectedChromosome, datasetId]);
+
+  // Separate function to fetch data for a specific range
+  const fetchDataForRange = async (range, binSize) => {
+    if (!datasetId) return;
+
+    if (!range) {
+      console.warn("Selected range is null");
+      return;
+    }
+
+    if (!selectedChromosome) {
+      console.warn("Selected chromosome is null");
+      return;
+    }
+
+    const chromosome = selectedChromosome;
+    const { start, end } = range;
+    console.log("INSIDE FETCHDATAFORRANGE", chromosome, start, end);
+
+    if (
+      !chromosome ||
+      start === null ||
+      start === undefined ||
+      end === null ||
+      end === undefined
+    ) {
+      console.warn("Error: Incomplete region selection");
+      return;
+    } else if (start >= end) {
+      console.warn("Error: Start position must be less than end position");
+      setSelectionError("Start position must be less than end position.");
+    } else {
+      setDataLoading(true);
+      setSelectionError("");
+      console.log(
+        "(Inside fetchData) Fetching data for:",
+        chromosome,
+        start,
+        end,
+      );
+      try {
+        await fetchCellTypes(datasetId);
+        const locations = await fetchGeneLocations(datasetId, start, end);
+
+        setNearbyGenes(locations);
+
+        // let gwas;
+        // try {
+        //   gwas = await fetchGwasForGene(datasetId, 1500000);
+        //   setHasGwas(true);
+        //   const gwasLocations = gwas.map(
+        //     ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+        //       ...rest,
+        //       id: snp_id,
+        //       y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
+        //       beta: beta_value,
+        //       x: position,
+        //       snp_id,
+        //       p_value,
+        //       position,
+        //     }),
+        //   );
+        //   setGwasData(gwasLocations);
+        // } catch (error) {
+        //   console.error("Error fetching GWAS data:", error);
+        //   setHasGwas(false);
+        //   setGwasData([]);
+        // }
+
+        await fetchSignalData(datasetId, start, end, binSize);
+        console.log("Fetched signal data:", signalData);
+      } catch (error) {
+        console.error("Error fetching signal data:", error);
+        setSelectionError(
+          "Error fetching data for the selected region. Please check your selection.",
+        );
+        setDataLoading(false);
+        return;
+      } finally {
+        setDataLoading(false);
+      }
+    }
+  };
+
   return (
     <div
       className="plot-page-container"
@@ -820,8 +974,8 @@ function GenomicRegionView() {
                     No cell types available
                   </Typography>
                 ) : (
-                  !dataLoading &&
-                  !loading &&
+                  /* !dataLoading && */
+                  /* !loading && */
                   selectedChromosome &&
                   selectedRange && (
                     // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
@@ -832,7 +986,8 @@ function GenomicRegionView() {
                       <RegionViewPlotlyPlot
                         dataset={datasetId}
                         chromosome={selectedChromosome}
-                        range={selectedRange}
+                        selectedRange={selectedRange}
+                        visibleRange={visibleRange}
                         cellTypes={availableCellTypes}
                         signalData={signalData}
                         nearbyGenes={nearbyGenes}
@@ -841,6 +996,7 @@ function GenomicRegionView() {
                         /* handleSelect={handleSelect} */
                         useWebGL={webGLSupported}
                         displayOptions={displayOptions}
+                        handlePlotUpdate={handlePlotUpdate}
                       />
                     </div>
                   )

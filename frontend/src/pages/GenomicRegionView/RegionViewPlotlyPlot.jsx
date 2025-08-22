@@ -18,13 +18,17 @@ function getDisplayOption(displayOptions, option, defaultValue) {
 const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   dataset,
   chromosome,
-  range,
+  selectedRange,
+  visibleRange,
   cellTypes,
   signalData,
   nearbyGenes,
   useWebGL,
   displayOptions,
+  handlePlotUpdate,
 }) {
+  const range = visibleRange || selectedRange;
+  console.log("range (effective)", range);
   const hasGwas = false;
   // const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
   //   snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
@@ -55,7 +59,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   // const xValues = signalList.map((snp) => snp.x);
   console.log("range", range);
   const yValues = signalList
-    .filter((snp) => snp.x >= range.start && snp.x <= range.end)
+    .filter((snp) => snp.x >= selectedRange.start && snp.x <= selectedRange.end)
     .map((snp) => snp.y)
     .filter((y) => Number.isFinite(y));
   //print first 20 in yvalues
@@ -237,7 +241,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   const jitterMap = useMemo(() => {
     const map = new Map();
     const maxAmplitude = 1.55;
-    const maxXSpacing = (range.end - range.start) * 0.02;
+    const maxXSpacing = (selectedRange.end - selectedRange.start) * 0.02;
     const minYSpacing = 0.3;
     const maxAttempts = 100;
 
@@ -285,7 +289,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       `Assigned ${assigned.length} genes with ${numFallbacks} fallbacks`,
     );
     return map;
-  }, [nearbyGenes, range.end, range.start]);
+  }, [nearbyGenes, selectedRange.end, selectedRange.start]);
 
   const geneTraces = useMemo(() => {
     const getStart = (gene) =>
@@ -563,7 +567,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   const layout = useMemo(
     () => ({
       title: {
-        text: `<b>${chromosome}:${range.start}-${range.end}</b>`,
+        text: `<b>${chromosome}:${selectedRange.start}-${selectedRange.end}</b>`,
         font: { size: 20 },
       },
       paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -585,8 +589,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       xaxis: {
         title: { text: `Genomic Position (${chromosome})` },
         range: initialXRange,
-        minallowed: initialXRange[0],
-        maxallowed: initialXRange[1],
+        // minallowed: 0,
+        // maxallowed: initialXRange[1],
         // minallowed: Math.min(nearbyGenesRange[0], xMin),
         // maxallowed: Math.max(nearbyGenesRange[1], xMax),
         autorange: false,
@@ -1022,8 +1026,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     }),
     [
       chromosome,
-      range.start,
-      range.end,
+      selectedRange.start,
+      selectedRange.end,
       totalHeight,
       cellTypes,
       hasGwas,
@@ -1042,6 +1046,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       }}
     >
       <Plot
+        onUpdate={handlePlotUpdate}
+        onInitialized={handlePlotUpdate}
         /* onClick={onClick} */
         data={[...geneTraces, ...signalTraces]}
         style={{ width: "100%", height: "100%" }}
