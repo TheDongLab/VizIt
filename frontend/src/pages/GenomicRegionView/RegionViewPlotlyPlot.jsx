@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -90,7 +90,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   // const xMax = Math.min(paddedMax, geneEnd + radius);
 
   const yPadding = 1;
-  const yMax = yValues.reduce((max, y) => Math.max(max, y), 0) + yPadding;
+  const yHeight = getDisplayOption(displayOptions, "yHeight", "");
+  const yMax =
+    yHeight !== ""
+      ? Number(yHeight)
+      : yValues.reduce((max, y) => Math.max(max, y), 0) + yPadding;
   const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
 
   // const gwasMin = hasGwas ? Math.min(...gwasData.map((s) => s.y), 0) : -2;
@@ -104,7 +108,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     [range.start, range.end],
   );
   const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
-  const initialGwasYRange = [0, 0];
+  const initialGwasYRange = useMemo(() => [-2, 2], []);
   // const initialGwasYRange = useMemo(
   //   () => [gwasMin, gwasMax],
   //   [gwasMin, gwasMax],
@@ -482,7 +486,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         customdata: binRanges,
       };
     });
-  }, [cellTypes, hasGwas, signalData, useWebGL]);
+  }, [binSize, cellTypes, hasGwas, signalData, useWebGL]);
 
   // Calculate layout dimensions
   const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 50);
@@ -988,6 +992,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       initialXRange,
       displayOptions,
       calculateDomain,
+      initialGwasYRange,
       initialYRange,
     ],
   );
@@ -1140,6 +1145,7 @@ RegionViewPlotlyPlot.propTypes = {
     showGrid: PropTypes.bool,
     trackHeight: PropTypes.number,
     gapHeight: PropTypes.number,
+    yHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }),
   handlePlotUpdate: PropTypes.func.isRequired,
 };

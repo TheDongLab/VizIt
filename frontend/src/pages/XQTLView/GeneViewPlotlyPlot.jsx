@@ -98,7 +98,11 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const xMax = Math.min(paddedMax, geneEnd + radius);
 
   const yPadding = 1;
-  const yMax = yValues.reduce((max, y) => Math.max(max, y), 2) + yPadding;
+  const yHeight = getDisplayOption(displayOptions, "yHeight", "");
+  const yMax =
+    yHeight !== ""
+      ? Number(yHeight)
+      : yValues.reduce((max, y) => Math.max(max, y), 2) + yPadding;
   const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
 
   const gwasMin = hasGwas
@@ -1171,6 +1175,7 @@ GeneViewPlotlyPlot.propTypes = {
     showGrid: PropTypes.bool,
     trackHeight: PropTypes.number,
     gapHeight: PropTypes.number,
+    yHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }),
 };
 

@@ -465,6 +465,7 @@ function XQTLView() {
     showGrid: true,
     trackHeight: 150,
     gapHeight: 20,
+    yHeight: "",
   });
   const [tempDisplayOptions, setTempDisplayOptions] = useState({
     ...displayOptions,
@@ -732,6 +733,13 @@ function XQTLView() {
                         dashedLineColor: e.target.value,
                       });
                     }}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        setDisplayOptions({
+                          ...tempDisplayOptions,
+                        });
+                      }
+                    }}
                     inputProps={{
                       style: {
                         width: "80px",
@@ -796,6 +804,13 @@ function XQTLView() {
                       trackHeight: Number(e.target.value),
                     })
                   }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }
+                  }}
                   inputProps={{
                     style: {
                       width: "80px",
@@ -837,11 +852,70 @@ function XQTLView() {
                       gapHeight: Number(e.target.value),
                     })
                   }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }
+                  }}
                   inputProps={{
                     style: {
                       width: "80px",
                       padding: "5px",
                     },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    setDisplayOptions({
+                      ...tempDisplayOptions,
+                    });
+                  }}
+                  sx={{ height: "30px" }}
+                >
+                  Save
+                </Button>
+              </Box>
+            </MenuItem>
+            <MenuItem>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body">Y-axis height:</Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={tempDisplayOptions.yHeight}
+                  onChange={(e) =>
+                    setTempDisplayOptions({
+                      ...tempDisplayOptions,
+                      yHeight:
+                        e.target.value === "" ? "" : Number(e.target.value),
+                    })
+                  }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }
+                  }}
+                  placeholder="Auto"
+                  inputProps={{
+                    style: {
+                      width: "80px",
+                      padding: "5px",
+                    },
+                    min: 0,
+                    step: 0.1,
                   }}
                 />
                 <Button

@@ -119,9 +119,12 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
   const xMax = Math.min(paddedMax, snpPosition + radius);
 
   const yPadding = 1;
-  const yMin = yValues.reduce((min, y) => Math.min(min, y, 0), Infinity);
+  const yHeight = getDisplayOption(displayOptions, "yHeight", "");
   const yMax =
-    yValues.reduce((max, y) => Math.max(max, y, 2), -Infinity) + yPadding;
+    yHeight !== ""
+      ? Number(yHeight)
+      : yValues.reduce((max, y) => Math.max(max, y, 2), -Infinity) + yPadding;
+  const yMin = yValues.reduce((min, y) => Math.min(min, y, 0), Infinity);
 
   const otherSnps = snps.filter((s) => s.snp_id !== snpName);
 
@@ -902,6 +905,7 @@ SNPViewPlotlyPlot.propTypes = {
     showGrid: PropTypes.bool,
     trackHeight: PropTypes.number,
     gapHeight: PropTypes.number,
+    yHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }),
 };
 

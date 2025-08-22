@@ -172,8 +172,10 @@ function GenomicRegionView() {
     if (
       selectedChromosome &&
       selectedRange &&
-      selectedRange.start &&
-      selectedRange.end
+      selectedRange.start !== undefined &&
+      selectedRange.start !== null &&
+      selectedRange.end !== undefined &&
+      selectedRange.end !== null
     ) {
       newParams.set(
         "region",
@@ -387,6 +389,7 @@ function GenomicRegionView() {
     showGrid: true,
     trackHeight: 50,
     gapHeight: 12,
+    yHeight: "",
   });
   const [tempDisplayOptions, setTempDisplayOptions] = useState({
     ...displayOptions,
@@ -488,7 +491,14 @@ function GenomicRegionView() {
         fetchDataForRange(visibleRange, binSize);
       }
     }
-  }, [visibleRange, selectedChromosome, datasetId]);
+  }, [
+    visibleRange,
+    selectedChromosome,
+    datasetId,
+    currentBinSize,
+    selectedRange.start,
+    selectedRange.end,
+  ]);
 
   // Separate function to fetch data for a specific range
   const fetchDataForRange = async (range, binSize) => {
@@ -781,6 +791,13 @@ function GenomicRegionView() {
                         dashedLineColor: e.target.value,
                       });
                     }}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        setDisplayOptions({
+                          ...tempDisplayOptions,
+                        });
+                      }
+                    }}
                     inputProps={{
                       style: {
                         width: "80px",
@@ -845,6 +862,13 @@ function GenomicRegionView() {
                       trackHeight: Number(e.target.value),
                     })
                   }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }
+                  }}
                   inputProps={{
                     style: {
                       width: "80px",
@@ -886,11 +910,70 @@ function GenomicRegionView() {
                       gapHeight: Number(e.target.value),
                     })
                   }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }
+                  }}
                   inputProps={{
                     style: {
                       width: "80px",
                       padding: "5px",
                     },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    setDisplayOptions({
+                      ...tempDisplayOptions,
+                    });
+                  }}
+                  sx={{ height: "30px" }}
+                >
+                  Save
+                </Button>
+              </Box>
+            </MenuItem>
+            <MenuItem>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body">Y-axis height:</Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={tempDisplayOptions.yHeight}
+                  onChange={(e) =>
+                    setTempDisplayOptions({
+                      ...tempDisplayOptions,
+                      yHeight:
+                        e.target.value === "" ? "" : Number(e.target.value),
+                    })
+                  }
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setDisplayOptions({
+                        ...tempDisplayOptions,
+                      });
+                    }
+                  }}
+                  placeholder="Auto"
+                  inputProps={{
+                    style: {
+                      width: "80px",
+                      padding: "5px",
+                    },
+                    min: 0,
+                    step: 0.1,
                   }}
                 />
                 <Button
