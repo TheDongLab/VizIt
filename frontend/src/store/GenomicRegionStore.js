@@ -3,6 +3,7 @@ import {
     getRegionSignalData,
     getCellTypeList,
     getGeneLocationsInChromosome,
+    getGwasInChromosome,
 } from "../api/signal.js";
 
 function columnToRow(data) {
@@ -145,6 +146,49 @@ const useSignalStore = create((set, get) => ({
             return genesRows;
         } catch (error) {
             console.error("Error fetching gene locations:", error);
+            throw error;
+        }
+    },
+
+    fetchGwas: async (dataset, start, end) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGwas: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+
+        const chromosome = get().selectedChromosome;
+
+        if (
+            !chromosome ||
+            start === null ||
+            start === undefined ||
+            end === null ||
+            end === undefined
+        ) {
+            set({
+                error: "fetchGwas: No chromosome or range selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const response = await getGwasInChromosome(
+                dataset,
+                chromosome,
+                start,
+                end,
+            );
+            const gwas = response.data;
+            const gwasRows = columnToRow(gwas);
+            return gwasRows;
+        } catch (error) {
+            console.error("Error fetching GWAS data:", error);
             throw error;
         }
     },

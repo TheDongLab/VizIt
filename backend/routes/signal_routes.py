@@ -8,6 +8,7 @@ from backend.funcs.get_data import (
     get_region_signal_data,
     get_celltype_list,
     get_gene_locations_in_chromosome,
+    get_gwas_in_chromosome,
 )
 
 router = APIRouter()
@@ -20,8 +21,6 @@ async def read_root():
 
 @router.get("/getregionsignaldata")
 async def getregionsignaldata(request: Request):
-    print("getregionsignaldata() called================")
-
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
     start = int(request.query_params.get("start"))
@@ -29,7 +28,7 @@ async def getregionsignaldata(request: Request):
     celltype = request.query_params.get("celltype")
     bin_size = int(request.query_params.get("binsize", 1))
 
-    print(bin_size)
+    print(f"getregionsignaldata() called with bin size {bin_size}================")
 
     response = get_region_signal_data(
         dataset_id, chromosome, start, end, celltype, bin_size
@@ -70,4 +69,22 @@ async def getgenelocationsinchromosome(request: Request):
     if "Error" in response:
         print(response)
         raise HTTPException(status_code=404, detail="Error in getting gene locations.")
+    return response
+
+
+@router.get("/getgwasinchromosome")
+async def getgwasinchromosome(request: Request):
+    print("getgwasinchromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    chromosome = request.query_params.get("chromosome")
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+
+    start = int(start) if start else None
+    end = int(end) if end else None
+
+    response = get_gwas_in_chromosome(dataset_id, chromosome, start, end)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
     return response

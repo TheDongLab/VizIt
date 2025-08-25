@@ -65,3 +65,20 @@ export const getGeneLocationsInChromosome = async (
     throw error;
   }
 };
+
+export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
+  try {
+    const response = await axios.get(`${SIGNAL_URL}/getgwasinchromosome`, {
+      params: {
+        dataset: dataset,
+        chromosome: chromosome,
+        start: start,
+        end: end,
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error("Error getGwasInChromosome:", error);
+    throw error;
+  }
+};

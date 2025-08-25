@@ -141,7 +141,13 @@ def get_gwas_in_chromosome(dataset, chromosome, start, end):
                 df = df.drop_nulls()
                 return {col: df.get_column(col).to_list() for col in df.columns}
             else:
-                return f"Error: No SNPs found in {chromosome} chromosome."
+                # return empty
+                return {
+                    "snp_id": [],
+                    "position": [],
+                    "beta_value": [],
+                    "p_value": [],
+                }
         else:
             print(chromosome_file + " not found")
             return "Error: Chromosome file not found for the specified dataset."
@@ -944,7 +950,9 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
         # No binning
         intervals = bw.intervals(chromosome, start, end)
         if not intervals:
-            return f"Error: No coverage in {chromosome}:{start}-{end} for celltype {celltype}"
+            # return f"No coverage in {chromosome}:{start}-{end} for celltype {celltype}"
+            # just return empty
+            return {"position": [], "value": []}
 
         positions, values = [], []
         for interval_start, interval_end, value in intervals:

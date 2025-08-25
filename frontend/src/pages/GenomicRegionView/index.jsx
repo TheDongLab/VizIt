@@ -98,6 +98,7 @@ function GenomicRegionView() {
     fetchCellTypes,
     fetchSignalData,
     fetchGeneLocations,
+    fetchGwas,
   } = useSignalStore();
   const { loading, error } = useSignalStore();
 
@@ -128,6 +129,7 @@ function GenomicRegionView() {
       // Update both chromosome and range in a single operation
       setSelectedChromosome(chromosome);
       setSelectedRange(start, end);
+      setVisibleRange({ start, end });
     },
     [setSelectedChromosome, setSelectedRange],
   );
@@ -193,7 +195,6 @@ function GenomicRegionView() {
     const region = parseRegionString(regionSearchText);
     if (region) {
       setRegion(region.chromosome, region.start, region.end);
-      setVisibleRange({ start: region.start, end: region.end });
 
       // try {
       //   await fetchData();
@@ -206,97 +207,86 @@ function GenomicRegionView() {
     }
   };
 
+  const [gwasData, setGwasData] = useState([]);
+  const [hasGwas, setHasGwas] = useState(false);
   const [selectionError, setSelectionError] = useState("");
 
-  const fetchData = async () => {
-    if (!datasetId) return;
+  const fetchData = async (range, binSizeOverride = null) => {
+    if (!datasetId || !selectedChromosome || !range) return;
 
-    if (!selectedRange) {
-      console.warn("Selected range is null");
+    const { start, end } = range;
+    if (start == null || end == null || start >= end) {
+      setSelectionError("Invalid region range");
       return;
     }
 
-    if (!selectedChromosome) {
-      console.warn("Selected chromosome is null");
-      return;
-    }
+    setDataLoading(true);
+    setSelectionError("");
 
-    const chromosome = selectedChromosome;
-    const { start, end } = selectedRange;
-    console.log("INSIDE FETCHDATA", chromosome, start, end);
+    try {
+      await fetchCellTypes(datasetId);
 
-    if (
-      !chromosome ||
-      start === null ||
-      start === undefined ||
-      end === null ||
-      end === undefined
-    ) {
-      console.warn("Error: Incomplete region selection");
-      return;
-    } else if (start >= end) {
-      console.warn("Error: Start position must be less than end position");
-      setSelectionError("Start position must be less than end position.");
-    } else {
-      setDataLoading(true);
-      setSelectionError("");
-      console.log(
-        "(Inside fetchData) Fetching data for:",
-        chromosome,
-        start,
-        end,
-      );
-      try {
-        await fetchCellTypes(datasetId);
-        const padding = Math.ceil(Math.abs(start - end) * 0.25);
-        const s = Math.max(0, start - padding);
-        const e = Math.max(0, end + padding);
-        const locations = await fetchGeneLocations(datasetId, s, e);
+      const locations = await fetchGeneLocations(datasetId, start, end);
+      setNearbyGenes(locations);
 
-        setNearbyGenes(locations);
-
-        // let gwas;
-        // try {
-        //   gwas = await fetchGwasForGene(datasetId, 1500000);
-        //   setHasGwas(true);
-        //   const gwasLocations = gwas.map(
-        //     ({ snp_id, p_value, beta_value, position, ...rest }) => ({
-        //       ...rest,
-        //       id: snp_id,
-        //       y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-        //       beta: beta_value,
-        //       x: position,
-        //       snp_id,
-        //       p_value,
-        //       position,
-        //     }),
-        //   );
-        //   setGwasData(gwasLocations);
-        // } catch (error) {
-        //   console.error("Error fetching GWAS data:", error);
-        //   setHasGwas(false);
-        //   setGwasData([]);
-        // }
-
-        const binSize = Math.ceil(Math.abs(end - start) * 0.002);
-        console.log(`fetchSignalData(${datasetId}, ${s}, ${e}, ${binSize})`);
-        await fetchSignalData(datasetId, s, e, binSize);
-      } catch (error) {
-        console.error("Error fetching signal data:", error);
-        setSelectionError(
-          "Error fetching data for the selected region. Please check your selection.",
-        );
-        setDataLoading(false);
-        return;
-      } finally {
-        setDataLoading(false);
+      let gwas;
+      if (hasGwas !== false) {
+        if (!(displayOptions?.showGwas ?? true)) {
+          setGwasData([]);
+          gwas = [];
+        } else {
+          try {
+            gwas = await fetchGwas(datasetId, start, end);
+            setHasGwas(true);
+            setGwasData(
+              gwas.map(
+                ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+                  ...rest,
+                  id: snp_id,
+                  y: -Math.log10(Math.max(p_value, 1e-20)),
+                  beta: beta_value,
+                  x: position,
+                  snp_id,
+                  p_value,
+                  position,
+                }),
+              ),
+            );
+            console.log(gwasData);
+          } catch (err) {
+            console.error("Error fetching GWAS data:", err);
+            setHasGwas(false);
+            setGwasData([]);
+          }
+        }
       }
+
+      const binSize =
+        binSizeOverride ?? Math.ceil(Math.abs(end - start) * 0.002);
+
+      await fetchSignalData(datasetId, start, end, binSize);
+      setCurrentBinSize(binSize);
+    } catch (err) {
+      console.error("Error fetching signal data:", err);
+      setSelectionError(
+        "Error fetching data for the selected region. Please check your selection.",
+      );
+    } finally {
+      setDataLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedRange, selectedChromosome, datasetId]);
+  // useEffect(() => {
+  //   if (
+  //     selectedRange &&
+  //     selectedChromosome &&
+  //     datasetId &&
+  //     selectedRange.start != null &&
+  //     selectedRange.end != null
+  //   ) {
+  //     fetchData(selectedRange);
+  //   }
+  // }, [selectedRange, selectedChromosome, datasetId]);
 
   const handleDatasetChange = (event, newValue) => {
     setDataset(newValue);
@@ -307,7 +297,7 @@ function GenomicRegionView() {
 
   // click the button to fetch umap data
   const handleLoadPlot = async () => {
-    await fetchData();
+    await fetchData(selectedRange);
   };
 
   // Handle clicking points
@@ -383,13 +373,11 @@ function GenomicRegionView() {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [displayOptions, setDisplayOptions] = useState({
-    showDashedLine: true,
-    crossGapDashedLine: true,
-    dashedLineColor: "#000000",
     showGrid: true,
     trackHeight: 50,
     gapHeight: 12,
     yHeight: "",
+    showGwas: true,
   });
   const [tempDisplayOptions, setTempDisplayOptions] = useState({
     ...displayOptions,
@@ -426,8 +414,8 @@ function GenomicRegionView() {
     }
   };
 
-  const [visibleRange, setVisibleRange] = useState(null);
-  const [currentBinSize, setCurrentBinSize] = useState(null);
+  const [visibleRange, setVisibleRange] = useState({ start: null, end: null });
+  const [currentBinSize, setCurrentBinSize] = useState(1000);
 
   // const debounce = (func, wait) => {
   //   let timeout;
@@ -475,7 +463,13 @@ function GenomicRegionView() {
   );
 
   useEffect(() => {
-    if (visibleRange && selectedChromosome && datasetId) {
+    if (
+      visibleRange &&
+      visibleRange.start != null &&
+      visibleRange.end != null &&
+      selectedChromosome &&
+      datasetId
+    ) {
       const binSize = Math.ceil(
         Math.abs(visibleRange.end - visibleRange.start) * 0.002,
       );
@@ -487,8 +481,7 @@ function GenomicRegionView() {
         visibleRange.start !== selectedRange.start ||
         visibleRange.end !== selectedRange.end
       ) {
-        setCurrentBinSize(binSize);
-        fetchDataForRange(visibleRange, binSize);
+        fetchData(visibleRange, binSize);
       }
     }
   }, [
@@ -496,91 +489,17 @@ function GenomicRegionView() {
     selectedChromosome,
     datasetId,
     currentBinSize,
-    selectedRange.start,
-    selectedRange.end,
+    selectedRange,
+    hasGwas,
   ]);
 
-  // Separate function to fetch data for a specific range
-  const fetchDataForRange = async (range, binSize) => {
-    if (!datasetId) return;
-
-    if (!range) {
-      console.warn("Selected range is null");
-      return;
-    }
-
-    if (!selectedChromosome) {
-      console.warn("Selected chromosome is null");
-      return;
-    }
-
-    const chromosome = selectedChromosome;
-    const { start, end } = range;
-    console.log("INSIDE FETCHDATAFORRANGE", chromosome, start, end);
-
-    if (
-      !chromosome ||
-      start === null ||
-      start === undefined ||
-      end === null ||
-      end === undefined
-    ) {
-      console.warn("Error: Incomplete region selection");
-      return;
-    } else if (start >= end) {
-      console.warn("Error: Start position must be less than end position");
-      setSelectionError("Start position must be less than end position.");
+  useEffect(() => {
+    if (displayOptions?.showGwas ?? true) {
+      setHasGwas(true);
     } else {
-      setDataLoading(true);
-      setSelectionError("");
-      console.log(
-        "(Inside fetchData) Fetching data for:",
-        chromosome,
-        start,
-        end,
-      );
-      try {
-        await fetchCellTypes(datasetId);
-        const locations = await fetchGeneLocations(datasetId, start, end);
-
-        setNearbyGenes(locations);
-
-        // let gwas;
-        // try {
-        //   gwas = await fetchGwasForGene(datasetId, 1500000);
-        //   setHasGwas(true);
-        //   const gwasLocations = gwas.map(
-        //     ({ snp_id, p_value, beta_value, position, ...rest }) => ({
-        //       ...rest,
-        //       id: snp_id,
-        //       y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-        //       beta: beta_value,
-        //       x: position,
-        //       snp_id,
-        //       p_value,
-        //       position,
-        //     }),
-        //   );
-        //   setGwasData(gwasLocations);
-        // } catch (error) {
-        //   console.error("Error fetching GWAS data:", error);
-        //   setHasGwas(false);
-        //   setGwasData([]);
-        // }
-
-        await fetchSignalData(datasetId, start, end, binSize);
-      } catch (error) {
-        console.error("Error fetching signal data:", error);
-        setSelectionError(
-          "Error fetching data for the selected region. Please check your selection.",
-        );
-        setDataLoading(false);
-        return;
-      } finally {
-        setDataLoading(false);
-      }
+      setHasGwas(null);
     }
-  };
+  }, [displayOptions.showGwas]);
 
   return (
     <div
@@ -726,111 +645,6 @@ function GenomicRegionView() {
               },
             }}
           >
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={displayOptions.showDashedLine}
-                    onChange={handleOptionChange("showDashedLine")}
-                  />
-                }
-                label="Show dashed line"
-              />
-            </MenuItem>
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={displayOptions.crossGapDashedLine}
-                    onChange={handleOptionChange("crossGapDashedLine")}
-                  />
-                }
-                label="Cross-gap dashed line"
-              />
-            </MenuItem>
-            <MenuItem>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  width: "100%",
-                }}
-              >
-                <Typography variant="body">Dashed line color:</Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <input
-                    type="color"
-                    value={
-                      /^#[0-9A-Fa-f]{6}$/.test(
-                        tempDisplayOptions.dashedLineColor,
-                      )
-                        ? tempDisplayOptions.dashedLineColor
-                        : "#000000" // fallback color for when user is typing in text box
-                    }
-                    onChange={(e) => {
-                      setTempDisplayOptions({
-                        ...tempDisplayOptions,
-                        dashedLineColor: e.target.value,
-                      });
-                    }}
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      cursor: "pointer",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                    }}
-                  />
-                  <TextField
-                    size="small"
-                    value={tempDisplayOptions.dashedLineColor}
-                    onChange={(e) => {
-                      setTempDisplayOptions({
-                        ...tempDisplayOptions,
-                        dashedLineColor: e.target.value,
-                      });
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        setDisplayOptions({
-                          ...tempDisplayOptions,
-                        });
-                      }
-                    }}
-                    inputProps={{
-                      style: {
-                        width: "80px",
-                        padding: "5px",
-                      },
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={() => {
-                      setDisplayOptions({
-                        ...tempDisplayOptions,
-                      });
-                    }}
-                    sx={{ height: "30px" }}
-                  >
-                    Save
-                  </Button>
-                </Box>
-              </Box>
-            </MenuItem>
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={displayOptions.dashedLineOnTop}
-                    onChange={handleOptionChange("dashedLineOnTop")}
-                  />
-                }
-                label="Dashed line on top"
-              />
-            </MenuItem>
             <MenuItem>
               <FormControlLabel
                 control={
@@ -990,6 +804,17 @@ function GenomicRegionView() {
                 </Button>
               </Box>
             </MenuItem>
+            <MenuItem>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={displayOptions.showGwas}
+                    onChange={handleOptionChange("showGwas")}
+                  />
+                }
+                label="Show GWAS data"
+              />
+            </MenuItem>
           </Menu>
         </div>
       </div>
@@ -1067,8 +892,10 @@ function GenomicRegionView() {
                         cellTypes={availableCellTypes}
                         signalData={signalData}
                         nearbyGenes={nearbyGenes}
-                        /* gwasData={gwasData} */
-                        /* hasGwas={hasGwas} */
+                        gwasData={gwasData}
+                        hasGwas={
+                          (displayOptions?.showGwas ?? true) ? hasGwas : false
+                        }
                         handleSelect={handleSelect}
                         useWebGL={webGLSupported}
                         displayOptions={displayOptions}
