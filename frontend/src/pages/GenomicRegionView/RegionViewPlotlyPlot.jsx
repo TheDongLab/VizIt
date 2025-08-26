@@ -617,7 +617,9 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         roworder: "top to bottom",
       },
       xaxis: {
-        title: { text: `Genomic Position (${chromosome})` },
+        title: {
+          text: `Genomic Position (${chromosome}:${Math.max(0, visibleRange.start)}-${visibleRange.end})`,
+        },
         range: initialXRange,
         // range: [range.start, range.end],
         // minallowed: 0,

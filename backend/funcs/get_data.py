@@ -83,8 +83,8 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
 
         if os.path.exists(chromosome_file):
             df = pl.read_parquet(chromosome_file).filter(
-                (pl.col("position_start") >= start)
-                & (pl.col("position_end") <= end)
+                (pl.col("position_end") >= start)
+                & (pl.col("position_start") <= end)
                 # & pl.col("gene_id").is_in(significant_genes_list)
             )
 
