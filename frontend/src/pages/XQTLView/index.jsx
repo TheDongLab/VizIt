@@ -371,7 +371,9 @@ function XQTLView() {
   };
 
   useEffect(() => {
-    fetchGeneOrSnpData();
+    if (selectedGene || selectedSnp) {
+      fetchGeneOrSnpData();
+    }
   }, [selectedGene, selectedSnp, datasetId, hasGwas]);
 
   const handleDatasetChange = (event, newValue) => {

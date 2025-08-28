@@ -434,7 +434,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
 
       const formattedData = (
         <>
-          <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong> {data[0].id}
+          <strong>{data[0].strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
+          {data[0].id}
           <br />
           <strong>Chromosome:</strong> {chromosome}
           <br />
@@ -443,7 +444,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
           <strong>End:</strong> {data[0].position_end}
           <br />
           <strong>Strand:</strong>{" "}
-          {data.strand === "-" ? "−" : data.strand === "+" ? "+" : "N/A"}
+          {data[0].strand === "-" ? "−" : data[0].strand === "+" ? "+" : "N/A"}
           <br />
           {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
           {/* <br />−<strong>log10(p):</strong> {formatNumber(data.y, 6)} */}
