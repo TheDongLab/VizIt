@@ -8,3 +8,24 @@
     font-weight:600;
 }
 
+/* Ensure proper spacing for the mobile drawer */
+.MuiDrawer-paper {
+  width: 250px;
+}
+
+/* Style for the mobile menu items */
+.MuiListItem-root {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+/* Make the title more responsive */
+.navbar-title {
+  font-size: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .navbar-title {
+    font-size: 1.1rem;
+  }
+}

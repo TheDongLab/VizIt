@@ -1,12 +1,34 @@
-import { AppBar, Toolbar, Typography, Button, Menu, MenuItem } from "@mui/material";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import {
+    AppBar,
+    Toolbar,
+    Typography,
+    Button,
+    Menu,
+    MenuItem,
+    IconButton,
+    Box,
+    Drawer,
+    List,
+    ListItem,
+    ListItemText,
+    Divider,
+    useMediaQuery,
+    useTheme
+} from "@mui/material";
+import {useState} from "react";
+import {Link} from "react-router-dom";
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 
 import "./NavBar.css";
 
 const NavBar = () => {
     const [helpMenuAnchor, setHelpMenuAnchor] = useState(null);
     const [viewsMenuAnchor, setViewsMenuAnchor] = useState(null);
+    const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const openHelpMenu = (event) => setHelpMenuAnchor(event.currentTarget);
     const openViewsMenu = (event) => setViewsMenuAnchor(event.currentTarget);
@@ -14,40 +36,96 @@ const NavBar = () => {
     const closeHelpMenu = () => setHelpMenuAnchor(null);
     const closeViewsMenu = () => setViewsMenuAnchor(null);
 
-    return (
-        <AppBar sx={{  }} position="static" className="navbar">
-            <Toolbar>
-                <Typography variant="h6" sx={{ flexGrow: 1 }} className="navbar-title">
-                    <Link to="/" style={{ textDecoration: "none", color: "white", letterSpacing: "0rem" }}>
-                        {import.meta.env.VITE_APP_TITLE}
-                    </Link>
-                </Typography>
-                <Button color="inherit" component={Link} to="/about">About</Button>
-                <Button color="inherit" component={Link} to="/datasets">Datasets</Button>
-                {/*<Button color="inherit" component={Link} to="/samples">Samples</Button>*/}
-                <Button color="inherit" component={Link} to="/views">Views</Button>
-                {/*<Button color="inherit" onClick={openViewsMenu}>Views</Button>*/}
-                {/*<Menu anchorEl={viewsMenuAnchor} open={Boolean(viewsMenuAnchor)} onClose={closeViewsMenu}>*/}
-                {/*    <MenuItem component={Link} to="/views/geneview" onClick={closeViewsMenu}>Genes</MenuItem>*/}
-                {/*    <MenuItem component={Link} to="/views/visiumview" onClick={closeViewsMenu}>Visium</MenuItem>*/}
-                {/*    <MenuItem component={Link} to="/views/celltypes" onClick={closeViewsMenu}>Celltypes</MenuItem>*/}
-                {/*    <MenuItem component={Link} to="/views/layersview" onClick={closeViewsMenu}>Layers</MenuItem>*/}
-                {/*    <MenuItem component={Link} to="/views/regionsview" onClick={closeViewsMenu}>Regions</MenuItem>*/}
-                {/*    <MenuItem divider />*/}
-                {/*    <MenuItem component={Link} to="/views/xcheck" onClick={closeViewsMenu}>XCheck</MenuItem>*/}
-                {/*</Menu>*/}
+    const toggleDrawer = (open) => (event) => {
+        if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
+            return;
+        }
+        setMobileDrawerOpen(open);
+    };
 
-                {/*<Button color="inherit" component={Link} to="/xcheck">XCheck</Button>*/}
-                <Button color="inherit" onClick={openHelpMenu}>Help</Button>
-                <Menu anchorEl={helpMenuAnchor} open={Boolean(helpMenuAnchor)} onClose={closeHelpMenu}>
-                    <MenuItem component={Link} to="/help/howtouse" onClick={closeHelpMenu}>How to Use</MenuItem>
-                    <MenuItem component={Link} to="/help/faq" onClick={closeHelpMenu}>FAQ</MenuItem>
-                    {/*<MenuItem divider />*/}
-                    {/*<MenuItem component={Link} to="/help/restapi" onClick={closeHelpMenu}>REST API</MenuItem>*/}
-                </Menu>
-                {/*<Button color="inherit" component={Link} to="/login">Login</Button>*/}
-            </Toolbar>
-        </AppBar>
+    // Drawer content for mobile view
+    const drawerContent = (
+        <Box
+            sx={{width: 250}}
+            role="presentation"
+            onClick={toggleDrawer(false)}
+            onKeyDown={toggleDrawer(false)}
+        >
+            <Box sx={{display: 'flex', justifyContent: 'flex-end', p: 1}}>
+                <IconButton onClick={toggleDrawer(false)}>
+                    <CloseIcon/>
+                </IconButton>
+            </Box>
+            <Divider/>
+            <List>
+                <ListItem button component={Link} to="/about">
+                    <ListItemText primary="About"/>
+                </ListItem>
+                <ListItem button component={Link} to="/datasets">
+                    <ListItemText primary="Datasets"/>
+                </ListItem>
+                <ListItem button component={Link} to="/views">
+                    <ListItemText primary="Views"/>
+                </ListItem>
+                <ListItem button onClick={openHelpMenu}>
+                    <ListItemText primary="Help"/>
+                </ListItem>
+            </List>
+            <Divider/>
+            <List>
+                <ListItem button component={Link} to="/help/howtouse">
+                    <ListItemText primary="How to Use"/>
+                </ListItem>
+                <ListItem button component={Link} to="/help/faq">
+                    <ListItemText primary="FAQ"/>
+                </ListItem>
+            </List>
+        </Box>
+    );
+
+    return (
+        <>
+            <AppBar position="static" className="navbar">
+                <Toolbar>
+                    <Typography variant="h6" sx={{flexGrow: 1}} className="navbar-title">
+                        <Link to="/" style={{textDecoration: "none", color: "white", letterSpacing: "0rem"}}>
+                            {import.meta.env.VITE_APP_TITLE}
+                        </Link>
+                    </Typography>
+
+                    {isMobile ? (
+                        <IconButton
+                            color="inherit"
+                            aria-label="open drawer"
+                            edge="start"
+                            onClick={toggleDrawer(true)}
+                        >
+                            <MenuIcon/>
+                        </IconButton>
+                    ) : (
+                        <>
+                            <Button color="inherit" component={Link} to="/about">About</Button>
+                            <Button color="inherit" component={Link} to="/datasets">Datasets</Button>
+                            <Button color="inherit" component={Link} to="/views">Views</Button>
+                            <Button color="inherit" onClick={openHelpMenu}>Help</Button>
+                            <Menu anchorEl={helpMenuAnchor} open={Boolean(helpMenuAnchor)} onClose={closeHelpMenu}>
+                                <MenuItem component={Link} to="/help/howtouse" onClick={closeHelpMenu}>How to
+                                    Use</MenuItem>
+                                <MenuItem component={Link} to="/help/faq" onClick={closeHelpMenu}>FAQ</MenuItem>
+                            </Menu>
+                        </>
+                    )}
+                </Toolbar>
+            </AppBar>
+
+            <Drawer
+                anchor="right"
+                open={mobileDrawerOpen}
+                onClose={toggleDrawer(false)}
+            >
+                {drawerContent}
+            </Drawer>
+        </>
     );
 };
 

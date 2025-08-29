@@ -386,9 +386,9 @@ genes = [ "SNCA",...]                    ## List of default gene names
                                 After running the pipeline, there will be a dataset folder that contains the all necessary files:
                                 <ul>
                                     <li>1. the files with names starting with <code>raw_</code> are not necessary for upload.</li>
-                                    <li>2. the file named &apos;pb_expr_matrix.csv&apos; in the folder &apos;&lt;data_name&gt;/clustermarkers&apos; is necessary for upload.</li>
-                                    <li>3. Upload the dataset folder named <b>&apos;&lt;data_name&gt;&apos;</b> to the server at <b>&apos;backend/datasets&apos;</b>.</li>
-                                    <li>4. Put the dataset configuration file named <b>&apos;dataset_info.toml&apos;</b> to your dataset folder at <b>&apos;backend/datasets/&lt;data_name&gt;&apos;</b>.</li>
+                                    <li>2. the file named &apos;pb_expr_matrix.csv&apos; in the folder &apos;&lt;dataset_name&gt;/clustermarkers&apos; is not necessary for upload.</li>
+                                    <li>3. Upload the dataset folder named <b>&apos;&lt;dataset_name&gt;&apos;</b> to the server at <b>&apos;backend/datasets&apos;</b>.</li>
+                                    <li>4. Put the dataset configuration file named <b>&apos;dataset_info.toml&apos;</b> to your dataset folder at <b>&apos;backend/datasets/&lt;dataset_name&gt;&apos;</b>.</li>
                                     <li>5. Upload <b>samplesheet file</b> to the server at <b>&apos;backend/SampleSheet&apos;</b>.</li>
                                     <li>6. Refresh the database: Go to <b>&apos;<a href="/datasetmanager?dataset=&stepidx=0">Datasets Management Page</a> &apos;</b>(DATASETS -&gt; +ADD DATASET) and click <b>&apos;REFRESH DB&apos;</b>.</li>
                                 </ul>
