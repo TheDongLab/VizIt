@@ -29,13 +29,12 @@ import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useSearchParams } from "react-router-dom";
 
-import "./XQTLView.css";
+import "./GenomicRegionView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
-import useQtlStore from "../../store/QtlStore.js";
+import useSignalStore from "../../store/GenomicRegionStore.js";
 
-import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
-import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
+import RegionViewPlotlyPlot from "./RegionViewPlotlyPlot.jsx";
 
 import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
@@ -43,8 +42,6 @@ import { supportsWebGL } from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
 console.log("WebGL supported:", webGLSupported);
-
-import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 
 function ConfirmationDialog({
   isOpen,
@@ -71,12 +68,11 @@ function ConfirmationDialog({
   );
 }
 
-function XQTLView() {
+function GenomicRegionView() {
   // Get all the pre-selected values
   const [queryParams, setQueryParams] = useSearchParams();
-  const urlGene = queryParams.get("gene") ?? "";
-  const urlSnp = queryParams.get("snp") ?? "";
   const urlDataset = queryParams.get("dataset") ?? "";
+  const urlRegion = queryParams.get("region") ?? "";
 
   const { datasetRecords, fetchDatasetList } = useDataStore();
   useEffect(() => {
@@ -84,7 +80,7 @@ function XQTLView() {
   }, []);
 
   const datasetOptions = datasetRecords
-    .filter((d) => d.assay.toLowerCase().endsWith("qtl"))
+    .filter((d) => d.assay.toLowerCase().endsWith("signal"))
     .map((d) => d.dataset_id);
 
   const [datasetId, setDatasetId] = useState(urlDataset);
@@ -92,46 +88,51 @@ function XQTLView() {
 
   const {
     setDataset,
-    selectedGene,
-    setSelectedGene,
-    selectedSnp,
-    setSelectedSnp,
-    geneList,
-    fetchGeneList,
-    snpList,
-    fetchSnpList,
-    snpData,
-    fetchSnpData,
-    geneData,
-    fetchGeneData,
-    selectedCellTypes,
-    fetchGeneCellTypes,
-    fetchSnpCellTypes,
+    dataset,
     selectedChromosome,
-    fetchGeneChromosome,
-    fetchSnpChromosome,
+    selectedRange,
+    setSelectedRange,
+    setSelectedChromosome,
+    availableCellTypes,
+    signalData,
+    fetchCellTypes,
+    fetchSignalData,
     fetchGeneLocations,
-    fetchSnpLocations,
-    fetchGwasForGene,
-    fetchGwasForSnp,
-    resetQtlState,
-  } = useQtlStore();
-  const { loading, error } = useQtlStore();
+    fetchGwas,
+  } = useSignalStore();
+  const { loading, error } = useSignalStore();
 
   const [dataLoading, setDataLoading] = useState(false);
 
-  const selectGeneOrSnp = (type, value) => {
-    if (type === "gene") {
-      setSelectedSnp("");
-      setSelectedGene(value);
-    } else if (type === "snp") {
-      setSelectedGene("");
-      setSelectedSnp(value);
-    } else if (type === "reset") {
-      setSelectedGene("");
-      setSelectedSnp("");
+  const parseRegionString = (str) => {
+    if (str === null || str === undefined || str.trim() === "") {
+      console.log("inside parseRegionString: empty string");
     }
+    // Parse formats: "chr1:1000-2000", "1:1,000-2,000", "chr1 1000 2000"
+    const match = str.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i);
+    if (match) {
+      return {
+        chromosome: match[1] ? match[1] + match[2] : "chr" + match[2],
+        start: parseInt(match[3].replace(/,/g, "")),
+        end: parseInt(match[4].replace(/,/g, "")),
+      };
+    }
+    return null;
   };
+
+  const setRegion = useCallback(
+    (chromosome, start, end) => {
+      if (!chromosome || start === null || end === null) {
+        console.warn("Invalid region parameters:", chromosome, start, end);
+        return;
+      }
+      // Update both chromosome and range in a single operation
+      setSelectedChromosome(chromosome);
+      setSelectedRange(start, end);
+      setVisibleRange({ start, end });
+    },
+    [setSelectedChromosome, setSelectedRange],
+  );
 
   useEffect(() => {
     const initialize = async () => {
@@ -139,26 +140,23 @@ function XQTLView() {
 
       try {
         await setDataset(datasetId);
-        const genes = await fetchGeneList(datasetId);
-        const snps = await fetchSnpList(datasetId);
+        await fetchCellTypes(datasetId);
 
-        if (urlGene) {
-          if (genes.includes(urlGene)) {
-            setSelectedGene(urlGene);
-          } else {
-            setSelectedGene("");
-            setSelectionError("Please enter a valid gene, peak, or SNP");
-          }
-        }
-
-        if (urlSnp) {
-          if (snps.includes(urlSnp)) {
-            setSelectedSnp(urlSnp);
-          } else {
-            setSelectedSnp("");
-            setSelectionError("Please enter a valid gene, peak, or SNP");
-          }
-        }
+        // if (urlRegion) {
+        //   const parsedRegion = parseRegionString(urlRegion);
+        //   if (parsedRegion) {
+        //     setRegion(
+        //       parsedRegion.chromosome,
+        //       parsedRegion.start,
+        //       parsedRegion.end,
+        //     );
+        //     setRegionSearchText(
+        //       `${parsedRegion.chromosome}:${parsedRegion.start}-${parsedRegion.end}`,
+        //     );
+        //   } else {
+        //     console.warn("Invalid region format in URL:", urlRegion);
+        //   }
+        // }
       } catch (error) {
         console.error("Error in data fetching:", error);
       }
@@ -167,236 +165,139 @@ function XQTLView() {
     initialize();
   }, [datasetId, setDataset]);
 
-  const [geneSearchText, setGeneSearchText] = useState("");
-  const [snpSearchText, setSnpSearchText] = useState("");
-  const [combinedSearchText, setCombinedSearchText] = useState("");
-  const [filteredGeneList, setFilteredGeneList] = useState([]);
-  const [filteredSnpList, setFilteredSnpList] = useState([]);
-  const [filteredCombinedList, setFilteredCombinedList] = useState([]);
+  const [nearbyGenes, setNearbyGenes] = useState([]);
+  const [regionSearchText, setRegionSearchText] = useState("");
 
   useEffect(() => {
     const newParams = new URLSearchParams();
-    datasetId && newParams.set("dataset", datasetId);
-    selectedGene && newParams.set("gene", selectedGene);
-    selectedSnp && newParams.set("snp", selectedSnp);
-    setQueryParams(newParams);
-  }, [datasetId, selectedGene, selectedSnp, setQueryParams]);
-
-  const combinedList = useMemo(() => {
-    return [
-      ...geneList.map((gene) => ({ type: "gene", id: gene })),
-      ...snpList.map((snp) => ({ type: "snp", id: snp })),
-    ];
-  }, [geneList, snpList]);
-
-  const listLength = 500; // Limit the list length for performance
-
-  const initialSlicedCombinedList = useMemo(() => {
-    return combinedList.slice(0, listLength);
-  }, [combinedList, listLength]);
-
-  useEffect(() => {
-    setFilteredCombinedList(initialSlicedCombinedList);
-  }, [initialSlicedCombinedList]);
-
-  const indexedList = useMemo(
-    () =>
-      combinedList.map((item) => ({
-        original: item,
-        lowercaseId: item.id.toLowerCase(),
-      })),
-    [combinedList],
-  );
-
-  const debouncedFilter = useMemo(
-    () =>
-      debounce((value, setFn) => {
-        const results = indexedList
-          .filter((item) => item.lowercaseId.includes(value.toLowerCase()))
-          .map((item) => item.original);
-        setFn(results.slice(0, listLength));
-      }, 120),
-    [indexedList],
-  );
-
-  const handleCombinedInputChange = (event, value) => {
-    setCombinedSearchText(value);
-    if (!value) {
-      setFilteredCombinedList(initialSlicedCombinedList);
-    } else {
-      debouncedFilter(value, setFilteredCombinedList);
-      // const results = combinedList.filter((item) =>
-      //   item.id.toLowerCase().includes(value.toLowerCase()),
-      // );
-      // setFilteredCombinedList(results.slice(0, listLength));
-    }
-  };
-
-  const handleCombinedAutocompleteOpen = () => {
+    if (datasetId) newParams.set("dataset", datasetId);
     if (
-      combinedSearchText === selectedGene ||
-      combinedSearchText === selectedSnp
+      selectedChromosome &&
+      selectedRange &&
+      selectedRange.start !== undefined &&
+      selectedRange.start !== null &&
+      selectedRange.end !== undefined &&
+      selectedRange.end !== null
     ) {
-      setFilteredCombinedList(initialSlicedCombinedList);
+      newParams.set(
+        "region",
+        `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+      );
+    }
+    setQueryParams(newParams);
+  }, [datasetId, selectedChromosome, selectedRange, setQueryParams]);
+
+  const handleRegionChange = (event) => {
+    setRegionSearchText(event.target.value);
+  };
+
+  const handleRegionSubmit = async () => {
+    const region = parseRegionString(regionSearchText);
+    if (region) {
+      setRegion(region.chromosome, region.start, region.end);
+
+      // try {
+      //   await fetchData();
+      // } catch (error) {
+      //   console.error("Error fetching data:", error);
+      //   setSelectionError("Failed to fetch data for this region.");
+      // }
+    } else {
+      setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
     }
   };
 
-  const [genes, setGenes] = useState([]);
-  const [snps, setSnps] = useState([]);
-  const [gwasData, setGwasData] = useState([]); // Only used for gene view
+  const [gwasData, setGwasData] = useState([]);
   const [hasGwas, setHasGwas] = useState(false);
   const [selectionError, setSelectionError] = useState("");
 
-  const fetchGeneOrSnpData = async () => {
-    if (!datasetId) return;
+  const fetchData = async (range, binSizeOverride = null) => {
+    if (!datasetId || !selectedChromosome || !range) return;
 
-    const isGene = selectedGene && selectedGene !== "";
-    const isSnp = selectedSnp && selectedSnp !== "";
-
-    if (!isGene && !isSnp) {
+    const { start, end } = range;
+    if (start == null || end == null || start >= end) {
+      setSelectionError("Invalid region range");
       return;
-    } else if (isGene && isSnp) {
-      console.warn("Error: Both gene and SNP are selected.");
-    } else if (isGene) {
-      setDataLoading(true);
-      try {
-        await fetchGeneCellTypes(datasetId);
-        await fetchGeneChromosome(datasetId);
-        const locations = await fetchGeneLocations(datasetId, 10000000);
-        const gene = await getGeneLocation(datasetId, selectedGene);
+    }
 
-        if (!locations.some((g) => g.id === gene)) {
-          locations.push({
-            gene_id: selectedGene,
-            position_start: gene.data.start,
-            position_end: gene.data.end,
-            strand: gene.data.strand,
-          });
-        }
-        setGenes(locations);
+    setDataLoading(true);
+    setSelectionError("");
 
-        let gwas;
-        if (hasGwas !== false) {
-          if (!(displayOptions?.showGwas ?? true)) {
+    try {
+      await fetchCellTypes(datasetId);
+
+      const locations = await fetchGeneLocations(datasetId, start, end);
+      setNearbyGenes(locations);
+
+      let gwas;
+      if (hasGwas !== false) {
+        if (!(displayOptions?.showGwas ?? true)) {
+          setGwasData([]);
+          gwas = [];
+        } else {
+          try {
+            gwas = await fetchGwas(datasetId, start, end);
+            setHasGwas(true);
+            setGwasData(
+              gwas.map(
+                ({ snp_id, p_value, beta_value, position, ...rest }) => ({
+                  ...rest,
+                  id: snp_id,
+                  y: -Math.log10(Math.max(p_value, 1e-20)),
+                  beta: beta_value,
+                  x: position,
+                  snp_id,
+                  p_value,
+                  position,
+                }),
+              ),
+            );
+            console.log(gwasData);
+          } catch (err) {
+            console.error("Error fetching GWAS data:", err);
+            setHasGwas(false);
             setGwasData([]);
-            gwas = [];
-          } else {
-            try {
-              gwas = await fetchGwasForGene(datasetId, 1500000);
-              setHasGwas(true);
-              const gwasLocations = gwas.map(
-                ({ snp_id, p_value, beta_value, position, ...rest }) => ({
-                  ...rest,
-                  id: snp_id,
-                  y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-                  beta: beta_value,
-                  x: position,
-                  snp_id,
-                  p_value,
-                  position,
-                }),
-              );
-              setGwasData(gwasLocations);
-            } catch (error) {
-              console.error("Error fetching GWAS data:", error);
-              setHasGwas(false);
-              setGwasData([]);
-            }
           }
         }
-
-        await fetchSnpData(datasetId);
-        setSelectionError("");
-        setDataLoading(false);
-      } catch (error) {
-        console.error("Error fetching gene data:", error);
-        setSelectionError("Please enter a valid gene, peak, or SNP");
-        setDataLoading(false);
-        return;
       }
-    } else if (isSnp) {
-      setDataLoading(true);
-      try {
-        await fetchSnpCellTypes(datasetId);
-        await fetchSnpChromosome(datasetId);
 
-        let locations;
-        if (hasGwas !== false) {
-          if (!(displayOptions?.showGwas ?? true)) {
-            locations = await fetchSnpLocations(datasetId, 1500000);
-          } else {
-            try {
-              locations = await fetchGwasForSnp(datasetId, 1500000);
-              setHasGwas(true);
-              locations = locations.map(
-                ({ snp_id, p_value, beta_value, position, ...rest }) => ({
-                  ...rest,
-                  id: snp_id,
-                  y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-                  beta: beta_value,
-                  x: position,
-                  snp_id,
-                  p_value,
-                  position,
-                }),
-              );
-            } catch (error) {
-              console.error("Error fetching GWAS data:", error);
-              locations = await fetchSnpLocations(datasetId, 1500000);
-              setHasGwas(false);
-            }
-          }
-        }
+      const binSize =
+        binSizeOverride ?? Math.ceil(Math.abs(end - start) * 0.002);
 
-        const snp = await getSnpLocation(datasetId, selectedSnp);
-
-        if (!locations.some((s) => s.id === snp)) {
-          locations.push({
-            snp_id: selectedSnp,
-            position: snp.data.position,
-          });
-        }
-        setSnps(locations);
-
-        await fetchGeneData(datasetId);
-        setSelectionError("");
-        setDataLoading(false);
-      } catch (error) {
-        console.error("Error fetching SNP data:", error);
-        setSelectionError("Please enter a valid gene, peak, or SNP");
-        setDataLoading(false);
-        return;
-      }
+      await fetchSignalData(datasetId, start, end, binSize);
+      setCurrentBinSize(binSize);
+    } catch (err) {
+      console.error("Error fetching signal data:", err);
+      setSelectionError(
+        "Error fetching data for the selected region. Please check your selection.",
+      );
+    } finally {
+      setDataLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (selectedGene || selectedSnp) {
-      fetchGeneOrSnpData();
-    }
-  }, [selectedGene, selectedSnp, datasetId, hasGwas]);
+  // useEffect(() => {
+  //   if (
+  //     selectedRange &&
+  //     selectedChromosome &&
+  //     datasetId &&
+  //     selectedRange.start != null &&
+  //     selectedRange.end != null
+  //   ) {
+  //     fetchData(selectedRange);
+  //   }
+  // }, [selectedRange, selectedChromosome, datasetId]);
 
   const handleDatasetChange = (event, newValue) => {
     setDataset(newValue);
     setDatasetId(newValue);
-    selectGeneOrSnp("reset", null);
-  };
-
-  const handleCombinedChange = async (event, newValue) => {
-    if (!newValue) {
-      selectGeneOrSnp("reset", null);
-      return;
-    }
-    if (newValue.type === "gene") {
-      selectGeneOrSnp("gene", newValue.id);
-    } else if (newValue.type === "snp") {
-      selectGeneOrSnp("snp", newValue.id);
-    }
+    // setSelectedChromosome(null);
+    // setSelectedRange(null, null );
   };
 
   // click the button to fetch umap data
   const handleLoadPlot = async () => {
-    await fetchGeneOrSnpData();
+    await fetchData(selectedRange);
   };
 
   // Handle clicking points
@@ -422,64 +323,59 @@ function XQTLView() {
     setIsDialogOpen(false);
     if (selectedPoint) {
       if (type === "gene") {
-        selectGeneOrSnp("gene", selectedPoint);
-      } else if (type === "snp") {
-        selectGeneOrSnp("snp", selectedPoint);
+        console.warn("Clicked on gene. Not implemented!");
+        return;
+      } else if (type === "signal") {
+        const parts = selectedPoint.split("–");
+        if (parts.length == 2) {
+          const start = parseInt(parts[0]);
+          const end = parseInt(parts[1]);
+          setSelectedRange(start, end);
+          setVisibleRange({ start, end });
+        }
       }
     }
   };
 
   // Set the initial selected gene and SNP from URL parameters
   useEffect(() => {
-    if (urlGene !== selectedGene) {
-      if (urlGene) {
-        setSelectedGene(urlGene);
-      } else {
-        setSelectedGene("");
-      }
-    }
-    if (urlSnp !== selectedSnp) {
-      if (urlSnp) {
-        setSelectedSnp(urlSnp);
-      } else {
-        setSelectedSnp("");
-      }
-    }
-  }, [urlGene, urlSnp]);
+    if (!urlRegion) return;
 
-  const currentValue = useMemo(() => {
-    if (selectedGene) {
-      return (
-        combinedList.find(
-          (item) => item.type === "gene" && item.id === selectedGene,
-        ) ?? null
-      );
-    }
-    if (selectedSnp) {
-      return (
-        combinedList.find(
-          (item) => item.type === "snp" && item.id === selectedSnp,
-        ) ?? null
-      );
-    }
-    return null;
-  }, [combinedList, selectedGene, selectedSnp]);
+    const parsed = parseRegionString(urlRegion);
+    if (!parsed) return;
 
-  // Clear zustand state on unmount
+    const { chromosome: urlChromosome, start: urlStart, end: urlEnd } = parsed;
+
+    if (
+      urlChromosome !== selectedChromosome ||
+      urlStart !== selectedRange.start ||
+      urlEnd !== selectedRange.end
+    ) {
+      setRegion(urlChromosome, urlStart, urlEnd);
+      setRegionSearchText(`${urlChromosome}:${urlStart}-${urlEnd}`);
+    }
+  }, [urlRegion]);
+
   useEffect(() => {
-    return () => {
-      resetQtlState();
-    };
-  }, []);
+    // when the selectedchromosome or range changes, update the region search text
+    if (selectedChromosome && selectedRange)
+      setRegionSearchText(
+        `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+      );
+  }, [selectedChromosome, selectedRange]);
+
+  // TODO Clear zustand state on unmount
+  // useEffect(() => {
+  //   return () => {
+  //     resetQtlState();
+  //   };
+  // }, []);
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [displayOptions, setDisplayOptions] = useState({
-    showDashedLine: true,
-    crossGapDashedLine: true,
-    dashedLineColor: "#000000",
     showGrid: true,
-    trackHeight: 150,
-    gapHeight: 20,
+    trackHeight: 50,
+    gapHeight: 12,
     yHeight: "",
     showGwas: true,
   });
@@ -518,6 +414,85 @@ function XQTLView() {
     }
   };
 
+  const [visibleRange, setVisibleRange] = useState({ start: null, end: null });
+  const [currentBinSize, setCurrentBinSize] = useState(1000);
+
+  // const debounce = (func, wait) => {
+  //   let timeout;
+  //   return function executedFunction(...args) {
+  //     const later = () => {
+  //       clearTimeout(timeout);
+  //       func(...args);
+  //     };
+  //     clearTimeout(timeout);
+  //     timeout = setTimeout(later, wait);
+  //   };
+  // };
+
+  // Memoize the debounced function properly
+  const debouncedUpdate = useMemo(
+    () =>
+      debounce((figure) => {
+        if (
+          figure &&
+          figure.layout &&
+          figure.layout.xaxis &&
+          figure.layout.xaxis.range
+        ) {
+          const [start, end] = figure.layout.xaxis.range;
+          const newRange = { start: Math.floor(start), end: Math.ceil(end) };
+
+          if (
+            !visibleRange ||
+            newRange.start !== visibleRange.start ||
+            newRange.end !== visibleRange.end
+          ) {
+            setVisibleRange(newRange);
+          }
+        }
+      }, 500),
+    [visibleRange, setVisibleRange],
+  );
+
+  // Handle plot updates and visible range changes
+  const handlePlotUpdate = useCallback(
+    (figure) => {
+      debouncedUpdate(figure);
+    },
+    [debouncedUpdate],
+  );
+
+  useEffect(() => {
+    if (
+      visibleRange &&
+      visibleRange.start != null &&
+      visibleRange.end != null &&
+      selectedChromosome &&
+      datasetId
+    ) {
+      const binSize = Math.ceil(
+        Math.abs(visibleRange.end - visibleRange.start) * 0.002,
+      );
+
+      // Only fetch if the bin size changed significantly or was panned
+      if (
+        !currentBinSize ||
+        binSize !== currentBinSize ||
+        visibleRange.start !== selectedRange.start ||
+        visibleRange.end !== selectedRange.end
+      ) {
+        fetchData(visibleRange, binSize);
+      }
+    }
+  }, [
+    visibleRange,
+    selectedChromosome,
+    datasetId,
+    currentBinSize,
+    selectedRange,
+    hasGwas,
+  ]);
+
   useEffect(() => {
     if (displayOptions?.showGwas ?? true) {
       setHasGwas(true);
@@ -533,7 +508,7 @@ function XQTLView() {
     >
       {/* Title Row */}
       <Box className="title-row">
-        <Typography variant="h6">xQTL View</Typography>
+        <Typography variant="h6">Genomic Region View</Typography>
       </Box>
       <Divider />
       <div className="selection-row">
@@ -583,42 +558,20 @@ function XQTLView() {
         <div className="control-group">
           {/* <label>Select Gene or SNP:</label> */}
           {/* Gene Selection */}
-          <Autocomplete
-            /* multiple */
+          <TextField
             sx={{ width: "400px" }}
-            disableListWrap
             size="small"
-            options={filteredCombinedList}
-            value={currentValue}
-            onChange={handleCombinedChange}
-            onOpen={handleCombinedAutocompleteOpen}
-            inputValue={combinedSearchText}
-            onInputChange={handleCombinedInputChange}
-            /* isOptionEqualToValue={(option, value) => option.id === value.id} */
-            slots={{
-              popper: StyledPopper,
+            value={regionSearchText}
+            onChange={handleRegionChange}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                handleRegionSubmit();
+              }
             }}
-            slotProps={{
-              listbox: {
-                component: ListboxComponent,
-              },
-            }}
-            getOptionLabel={(option) => option.id || ""}
-            renderOption={(props, option) => {
-              const { key, ...rest } = props;
-              return (
-                <li key={key} {...rest}>
-                  {option.id}
-                </li>
-              );
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search by gene symbol, gene ID, SNP rsID"
-                variant="standard"
-              />
-            )}
+            placeholder="chr1:1000000-2000000 or chr1 1000000 2000000"
+            label="Enter genomic region"
+            variant="standard"
+            /* helperText="Format: chromosome:start-end or chromosome start end" */
           />
 
           {/* SNP Selection */}
@@ -692,111 +645,6 @@ function XQTLView() {
               },
             }}
           >
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={displayOptions.showDashedLine}
-                    onChange={handleOptionChange("showDashedLine")}
-                  />
-                }
-                label="Show dashed line"
-              />
-            </MenuItem>
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={displayOptions.crossGapDashedLine}
-                    onChange={handleOptionChange("crossGapDashedLine")}
-                  />
-                }
-                label="Cross-gap dashed line"
-              />
-            </MenuItem>
-            <MenuItem>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  width: "100%",
-                }}
-              >
-                <Typography variant="body">Dashed line color:</Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <input
-                    type="color"
-                    value={
-                      /^#[0-9A-Fa-f]{6}$/.test(
-                        tempDisplayOptions.dashedLineColor,
-                      )
-                        ? tempDisplayOptions.dashedLineColor
-                        : "#000000" // fallback color for when user is typing in text box
-                    }
-                    onChange={(e) => {
-                      setTempDisplayOptions({
-                        ...tempDisplayOptions,
-                        dashedLineColor: e.target.value,
-                      });
-                    }}
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      cursor: "pointer",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                    }}
-                  />
-                  <TextField
-                    size="small"
-                    value={tempDisplayOptions.dashedLineColor}
-                    onChange={(e) => {
-                      setTempDisplayOptions({
-                        ...tempDisplayOptions,
-                        dashedLineColor: e.target.value,
-                      });
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        setDisplayOptions({
-                          ...tempDisplayOptions,
-                        });
-                      }
-                    }}
-                    inputProps={{
-                      style: {
-                        width: "80px",
-                        padding: "5px",
-                      },
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={() => {
-                      setDisplayOptions({
-                        ...tempDisplayOptions,
-                      });
-                    }}
-                    sx={{ height: "30px" }}
-                  >
-                    Save
-                  </Button>
-                </Box>
-              </Box>
-            </MenuItem>
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={displayOptions.dashedLineOnTop}
-                    onChange={handleOptionChange("dashedLineOnTop")}
-                  />
-                }
-                label="Dashed line on top"
-              />
-            </MenuItem>
             <MenuItem>
               <FormControlLabel
                 control={
@@ -1003,16 +851,13 @@ function XQTLView() {
           ) : (
             <div className="qtl-container">
               {/* Plot Container */}
-              <div
-                key={`${selectedGene || selectedSnp || "plot"}-view`}
-                className={`view-container`}
-              >
-                {!selectedGene && !selectedSnp && !selectionError ? (
+              <div key={"signal-view"} className={`view-container`}>
+                {!selectedChromosome && !selectedRange && !selectionError ? (
                   <Typography
                     sx={{ color: "text.secondary", paddingTop: "100px" }}
                     variant="h5"
                   >
-                    No gene or SNP selected for exploration
+                    No genomic region selected for exploration
                   </Typography>
                 ) : selectionError ? (
                   <Typography
@@ -1022,55 +867,40 @@ function XQTLView() {
                   >
                     {selectionError}
                   </Typography>
-                ) : selectedCellTypes.length === 0 ? (
+                ) : availableCellTypes.length === 0 ? (
                   <Typography
                     sx={{ color: "text.secondary", paddingTop: "100px" }}
                     variant="h5"
                   >
                     No cell types available
                   </Typography>
-                ) : selectedGene ? (
-                  !dataLoading &&
-                  !loading &&
-                  selectedChromosome && (
+                ) : (
+                  /* !dataLoading && */
+                  /* !loading && */
+                  selectedChromosome &&
+                  selectedRange && (
                     // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
-                    <div key={`${selectedGene}-plot`} className="gene-plot">
-                      <GeneViewPlotlyPlot
+                    <div
+                      key={`${selectedChromosome}-${selectedRange.start}-${selectedRange.end}-plot`}
+                      className="region-plot"
+                    >
+                      <RegionViewPlotlyPlot
                         dataset={datasetId}
-                        geneName={selectedGene}
-                        genes={genes}
+                        chromosome={selectedChromosome}
+                        selectedRange={selectedRange}
+                        visibleRange={visibleRange}
+                        cellTypes={availableCellTypes}
+                        signalData={signalData}
+                        nearbyGenes={nearbyGenes}
                         gwasData={gwasData}
                         hasGwas={
                           (displayOptions?.showGwas ?? true) ? hasGwas : false
                         }
-                        snpData={snpData}
-                        chromosome={selectedChromosome}
-                        cellTypes={selectedCellTypes}
                         handleSelect={handleSelect}
                         useWebGL={webGLSupported}
                         displayOptions={displayOptions}
-                      />
-                    </div>
-                  )
-                ) : (
-                  selectedSnp &&
-                  !dataLoading &&
-                  !loading &&
-                  selectedChromosome && (
-                    <div key={`${selectedSnp}-plot`} className="snp-plot">
-                      <SNPViewPlotlyPlot
-                        dataset={datasetId}
-                        snpName={selectedSnp}
-                        snps={snps}
-                        hasGwas={
-                          (displayOptions?.showGwas ?? true) ? hasGwas : false
-                        }
-                        geneData={geneData}
-                        chromosome={selectedChromosome}
-                        cellTypes={selectedCellTypes}
-                        handleSelect={handleSelect}
-                        useWebGL={webGLSupported}
-                        displayOptions={displayOptions}
+                        handlePlotUpdate={handlePlotUpdate}
+                        binSize={currentBinSize}
                       />
                     </div>
                   )
@@ -1093,4 +923,4 @@ ConfirmationDialog.propTypes = {
     .isRequired,
 };
 
-export default XQTLView;
+export default GenomicRegionView;

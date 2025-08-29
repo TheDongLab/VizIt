@@ -73,11 +73,17 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const xValues = combinedSnpList.map((snp) => snp.x);
   const yValues = combinedSnpList.map((snp) => snp.y);
   const betaValues = combinedSnpList.map((snp) => snp.beta);
-  const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
-  const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
+  const maxBetaMagnitude = betaValues.reduce(
+    (max, b) => Math.max(max, Math.abs(b)),
+    0,
+  );
+  const minBetaMagnitude = betaValues.reduce(
+    (min, b) => Math.min(min, Math.abs(b)),
+    Infinity,
+  );
 
-  const snpMin = Math.min(...xValues);
-  const snpMax = Math.max(...xValues);
+  const snpMin = xValues.reduce((min, x) => Math.min(min, x), Infinity);
+  const snpMax = xValues.reduce((max, x) => Math.max(max, x), -Infinity);
 
   const combinedMin = Math.min(snpMin, geneStart);
   const combinedMax = Math.max(snpMax, geneEnd);
@@ -92,12 +98,18 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const xMax = Math.min(paddedMax, geneEnd + radius);
 
   const yPadding = 1;
-  const yMin = Math.min(...yValues, 0);
-  const yMax = Math.max(...yValues, 2) + yPadding;
+  const yHeight = getDisplayOption(displayOptions, "yHeight", "");
+  const yMax =
+    yHeight !== ""
+      ? Number(yHeight)
+      : yValues.reduce((max, y) => Math.max(max, y), 2) + yPadding;
+  const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
 
-  const gwasMin = hasGwas ? Math.min(...gwasData.map((s) => s.y), 0) : -2;
+  const gwasMin = hasGwas
+    ? gwasData.reduce((min, s) => Math.min(min, s.y), 0)
+    : -2;
   const gwasMax = hasGwas
-    ? Math.max(...gwasData.map((s) => s.y), 2) + yPadding
+    ? gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding
     : 2;
 
   const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
@@ -113,8 +125,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   );
 
   const nearbyGenesRange = useMemo(() => {
-    const nearbyMin = Math.min(...nearbyXValues);
-    const nearbyMax = Math.max(...nearbyXValues);
+    const nearbyMin = nearbyXValues.reduce(
+      (min, x) => Math.min(min, x),
+      Infinity,
+    );
+    const nearbyMax = nearbyXValues.reduce(
+      (max, x) => Math.max(max, x),
+      -Infinity,
+    );
     const nearbyPadding =
       Math.round(((nearbyMax - nearbyMin) * 0.05) / 1000) * 1000; // 5% padding
     return [
@@ -446,6 +464,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             (View in GWAS Catalog)
           </a>
           <br />
+          <strong>Chromosome:</strong> {chromosome}
+          <br />
           <strong>Position:</strong> {data[0].x}
           <br />
           {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
@@ -492,6 +512,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
           <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
           {data.gene_id}
           <br />
+          <strong>Chromosome:</strong> {chromosome}
+          <br />
           <strong>Start:</strong> {data.position_start}
           <br />
           <strong>End:</strong> {data.position_end}
@@ -507,8 +529,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   };
 
   // Calculate layout dimensions
-  const pixelsPerTrack = 150;
-  const pixelsPerGap = 20;
+  const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 150);
+  const pixelsPerGap = getDisplayOption(displayOptions, "gapHeight", 20);
   const marginTop = 80;
   const marginBottom = 80;
   const marginLeft = 80;
@@ -530,7 +552,10 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
   const calculateDomain = useCallback(
     (trackIndex) => {
       const start = trackIndex * (trackDomainHeight + gapDomainHeight);
-      return [start, start + trackDomainHeight];
+      const end = start + trackDomainHeight;
+
+      // Prevent floating point precision errors from exceeding 1.0
+      return [start, Math.min(end, 1.0)];
     },
     [trackDomainHeight, gapDomainHeight],
   );
@@ -1148,6 +1173,9 @@ GeneViewPlotlyPlot.propTypes = {
     crossGapDashedLine: PropTypes.bool,
     dashedLineColor: PropTypes.string,
     showGrid: PropTypes.bool,
+    trackHeight: PropTypes.number,
+    gapHeight: PropTypes.number,
+    yHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }),
 };
 

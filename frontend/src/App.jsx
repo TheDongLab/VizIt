@@ -17,6 +17,7 @@ import {Bounce, ToastContainer} from "react-toastify";
 import GeneView from "./pages/GeneView/index.jsx";
 import VisiumView from "./pages/VisiumView";
 import XQTLView from "./pages/XQTLView";
+import GenomicRegionView from "./pages/GenomicRegionView";
 import XDatasetsView from "./pages/XDatasets";
 import CellTypesView from "./pages/CellTypesView";
 import ViewsHome from "./pages/ViewsHome";
@@ -71,6 +72,7 @@ function App() {
                       <Route path="/views/geneview" element={<GeneView />} />
                       <Route path="/views/visiumview" element={<VisiumView />} />
                       <Route path="/views/xqtlview" element={<XQTLView />} />
+                      <Route path="/views/genomicregionview" element={<GenomicRegionView />} />
                       <Route path="/views/clusters" element={<ClustersView />} />
                       <Route path="/views/celltypes" element={<CellTypesView />} />
                       <Route path="/views/layersview" element={<LayerView />} />

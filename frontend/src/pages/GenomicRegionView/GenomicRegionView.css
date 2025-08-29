@@ -83,7 +83,7 @@
     align-items: center;
 }
 
-.gene-plot {
+.region-plot {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -94,23 +94,7 @@
     overflow: hidden;
 }
 
-.gene-plot > div {
-    flex: 1;
-    height: 100%;
-}
-
-.snp-plot {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    width: 90%;
-    min-width: 500px;
-    max-width: 100vw;
-    margin-bottom: 20px;
-    overflow: hidden;
-}
-
-.snp-plot > div {
+.region-plot > div {
     flex: 1;
     height: 100%;
 }

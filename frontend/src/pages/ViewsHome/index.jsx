@@ -1,6 +1,6 @@
 import {Link} from "react-router-dom"
 import {Container, Typography, Grid, Card, CardContent, CardActions, Button, Box, Paper} from "@mui/material"
-import {Dna, Layers, Grid3X3, ScanSearch, GitCompare} from "lucide-react"
+import {Dna, Layers, Grid3X3, ScanSearch, GitCompare, ScanLine} from "lucide-react"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faHexagonNodes } from '@fortawesome/free-solid-svg-icons'
 
@@ -25,6 +25,12 @@ export default function HomePage() {
             description: "Investigate quantitative trait loci associated with gene expression and regulatory mechanisms.",
             icon: <ScanSearch size={48} style={{color: "#06b6d4"}}/>,
             href: "xqtlview",
+        },
+        {
+            title: "Genomic Region View",
+            description: "Explore genomic intervals, coverage, and signals across selected regions.",
+            icon: <ScanLine size={48} style={{color: "#06b6d4"}} />,
+            href: "genomicregionview",
         },
         {
             title: "Cluster View",
