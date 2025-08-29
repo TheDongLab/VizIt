@@ -46,15 +46,13 @@ const HeatmapPlot = ({diffExpGenes, selectedCellTypes}) => {
         const condition2 = compareMatch ? compareMatch[2] : "Condition2"
 
         // Get top 10 up and top 10 down genes
-        const upGenes = cellTypeData
-        .filter((gene) => gene.avg_log2FC > 0)
+        const upGenes = (cellTypeData?.filter?.(gene => gene.avg_log2FC > 0) || [])
         .sort((a, b) => b.avg_log2FC - a.avg_log2FC)
-        .slice(0, 10)
+        .slice(0, 10);
 
-        const downGenes = cellTypeData
-        .filter((gene) => gene.avg_log2FC < 0)
+        const downGenes = (cellTypeData?.filter?.(gene => gene.avg_log2FC < 0) || [])
         .sort((a, b) => a.avg_log2FC - b.avg_log2FC)
-        .slice(0, 10)
+        .slice(0, 10);
 
         // Combine genes for the heatmap
         const genes = [...upGenes, ...downGenes]
