@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+    getBWDataExists,
     getRegionSignalData,
     getCellTypeList,
     getGeneLocationsInChromosome,
@@ -22,8 +23,19 @@ function columnToRow(data) {
     return rows;
 }
 
+export const checkBWDataExists = async (dataset) => {
+    try {
+        const response = await getBWDataExists(dataset);
+        const hasBWData = response.data.hasBWData;
+        return hasBWData;
+    } catch (error) {
+        console.error("Error checking BW data exists:", error);
+    }
+}
+
 const useSignalStore = create((set, get) => ({
     dataset: null,
+    hasBWData: false,
     selectedChromosome: null,
     selectedRange: null,
     availableCellTypes: [],
@@ -41,6 +53,31 @@ const useSignalStore = create((set, get) => ({
 
     setSelectedRange: (start, end) => {
         set({ selectedRange: { start: start, end: end } });
+    },
+
+    setHasBWData: (hasBWData) => {
+        set({ hasBWData: hasBWData });
+    },
+
+    fetchBWDataExists: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchBWDataExists: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const response = await getBWDataExists(dataset);
+            const hasBWData = response.data.hasBWData;
+            set({ hasBWData: hasBWData, loading: false });
+        } catch (error) {
+            console.error("Error fetching BW data exists:", error);
+            throw error;
+        }
     },
 
     fetchCellTypes: async (dataset) => {
@@ -88,6 +125,7 @@ const useSignalStore = create((set, get) => ({
         ) {
             set({
                 error: "fetchSignalData: No chromosome or range selected",
+                hasBWData: false,
                 loading: false,
             });
             return;
@@ -95,9 +133,9 @@ const useSignalStore = create((set, get) => ({
         set({ loading: true, snpData: {} });
 
         const promises = get().availableCellTypes.map(async (c) => {
-            console.log(
-                `Fetching signal data for ${dataset}, chromosome ${chromosome}, range ${start}-${end}, cell type ${c}, bin size ${binSize}`,
-            );
+            // console.log(
+            //     `Fetching signal data for ${dataset}, chromosome ${chromosome}, range ${start}-${end}, cell type ${c}, bin size ${binSize}`,
+            // );
 
             const response = await getRegionSignalData(
                 dataset,
@@ -107,7 +145,12 @@ const useSignalStore = create((set, get) => ({
                 c,
                 binSize,
             );
-            const signalData = response.data;
+            const hasBWData = response.data.hasBWData;
+            set({ hasBWData: hasBWData });
+            if (!hasBWData) {
+                return [c, []];
+            }
+            const signalData = response.data.data;
             const signalDataRows = columnToRow(signalData);
             return [c, signalDataRows];
         });

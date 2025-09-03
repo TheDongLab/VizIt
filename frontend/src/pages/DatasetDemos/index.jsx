@@ -172,7 +172,7 @@ const DatasetDemosPage = () => {
             <div className="resource-item">
               <h4>Github scource code</h4>
               <p>Explore the source code for BrainDataPortal</p>
-              <a href="https://github.com/huruifeng/BrainDataPortal" className="resource-link">
+              <a href="https://github.com/TheDongLab/BrainDataPortal_Dev" className="resource-link">
                 View Github
               </a>
             </div>
