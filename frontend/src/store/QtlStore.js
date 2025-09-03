@@ -348,7 +348,11 @@ const useQtlStore = create((set, get) => ({
                 startPosition - radius,
                 endPosition + radius,
             );
-            const gwas = response.data;
+            const hasGwas = response.data.hasGwas;
+            if (!hasGwas) {
+                return [];
+            }
+            const gwas = response.data.data;
             const gwasRows = columnToRow(gwas);
             return gwasRows;
         } catch (error) {
@@ -381,7 +385,11 @@ const useQtlStore = create((set, get) => ({
                 position - radius,
                 position + radius,
             );
-            const gwas = response.data;
+            const hasGwas = response.data.hasGwas;
+            if (!hasGwas) {
+                return [];
+            }
+            const gwas = response.data.data;
             const gwasRows = columnToRow(gwas);
             return gwasRows;
         } catch (error) {

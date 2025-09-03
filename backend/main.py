@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db import create_db_and_tables
-from backend.routes import db_routes, api_routes, visium_routes, qtl_routes, dm_routes, signal_routes
+from backend.routes import db_routes, api_routes, visium_routes, qtl_routes, dm_routes,signal_routes
 
 from backend.settings import settings
 

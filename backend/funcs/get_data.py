@@ -292,7 +292,7 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         return "Error: Dataset is not specified."
     else:
         celltype_mapping_file = os.path.join(
-            "backend", "datasets", dataset, "celltype_mapping.json"
+            "backend", "datasets", dataset, "celltypes","celltype_parquet.json"
         )
 
         if os.path.exists(celltype_mapping_file):
@@ -340,7 +340,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         return "Error: Dataset is not specified."
     else:
         celltype_mapping_file = os.path.join(
-            "backend", "datasets", dataset, "celltype_mapping.json"
+            "backend", "datasets", dataset,"celltypes", "celltype_parquet.json"
         )
         if os.path.exists(celltype_mapping_file):
             with open(celltype_mapping_file, "r") as f:
@@ -875,12 +875,22 @@ def get_visium_defaults(dataset):
         return f"Error: visium_defaults file not found."
 
 
+def get_bw_data_exists(dataset):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+
+    bw_folder = os.path.join("backend", "datasets", dataset,"bigwig")
+    if not os.path.exists(bw_folder):
+        return False
+    return True
+
 @lru_cache(maxsize=128)  # bump cache size since you’ll open more small files
 def get_cached_bigwig_handle(dataset, celltype):
     celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset, "celltype_mapping.json"
+        "backend", "datasets", dataset,"bigwig","celltype_bigwig.json"
     )
     if not os.path.exists(celltype_mapping_file):
+        print(celltype_mapping_file + " not found")
         return None
 
     with open(celltype_mapping_file, "r") as f:
@@ -892,7 +902,7 @@ def get_cached_bigwig_handle(dataset, celltype):
         "backend",
         "datasets",
         dataset,
-        "celltypes",
+        "bigwig",
         celltype_file,
     )
 
@@ -917,6 +927,10 @@ def format_signal_value(value, sig_figs=5):
 def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_size=1):
     if dataset == "all":
         return "Error: Dataset is not specified."
+
+    ## check if bigwig is available
+    if not get_bw_data_exists(dataset):
+        return f"Error: BigWig folder not found for {dataset}"
 
     try:
         bw = get_cached_bigwig_handle(dataset, celltype)
@@ -972,7 +986,7 @@ def get_celltype_list(dataset):
         return "Error: Dataset is not specified."
 
     celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset, "celltype_mapping.json"
+        "backend", "datasets", dataset,'celltypes', "celltype_parquet.json"
     )
     if not os.path.exists(celltype_mapping_file):
         print(celltype_mapping_file + " not found")

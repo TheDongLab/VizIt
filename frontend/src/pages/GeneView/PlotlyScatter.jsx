@@ -14,48 +14,48 @@ const PlotlyScatterPlot = React.memo(function PlotlyScatterPlot({
     if (umapData.length === 0) return "UMAP data is loading...";
 
     // Add this new check
-    if (gene === "all" && isMetaDataLoading) {
-        // Show a basic plot without coloring when metadata is still loading
-        const plotData = umapData.map((item) => ({
-            x: item[1],
-            y: item[2],
-        }));
-        return (
-            <Plot data={[
-                {
-                    x: plotData.map((p) => p["x"]),
-                    y: plotData.map((p) => p["y"]),
-                    mode: 'markers',
-                    type: 'scattergl',  // WebGL version,for large datasets (>10k points):
-                    marker: {
-                        color: "#CCCCCCFF",
-                        size: 3,
-                        symbol: 'circle',
-                        opacity: 0.8,
-                    },
-                    hoverinfo: 'text',
-                    hovertext: plotData?.map((item) =>
-                        `Sample: ${item.cs_id}`
-                    )
-                }
-            ]}
-                  layout={{
-                      title: {
-                          text: "UMAP (Metadata loading...)",
-                          font: {size: 18, weight: 'regular'},
-                          pad: {t: 10, b: 10},
-                          automargin: true
-                      },
-                      xaxis: {title: "UMAP_1", zeroline: true, showgrid: false, visible: false},
-                      yaxis: {title: "UMAP_2", zeroline: true, showgrid: false, visible: false},
-                      plot_bgcolor: '#f5f5f5',
-                      paper_bgcolor: '#f5f5f5',
-                  }}
-                  config={{displaylogo: false}}
-                  style={{width: "100%", height: "100%"}}
-            />
-        );
-    }
+    // if (gene === "all" && isMetaDataLoading) {
+    //     // Show a basic plot without coloring when metadata is still loading
+    //     const plotData = umapData.map((item) => ({
+    //         x: item[1],
+    //         y: item[2],
+    //     }));
+    //     return (
+    //         <Plot data={[
+    //             {
+    //                 x: plotData.map((p) => p["x"]),
+    //                 y: plotData.map((p) => p["y"]),
+    //                 mode: 'markers',
+    //                 type: 'scattergl',  // WebGL version,for large datasets (>10k points):
+    //                 marker: {
+    //                     color: "#CCCCCCFF",
+    //                     size: 3,
+    //                     symbol: 'circle',
+    //                     opacity: 0.8,
+    //                 },
+    //                 hoverinfo: 'text',
+    //                 hovertext: plotData?.map((item) =>
+    //                     `Sample: ${item.cs_id}`
+    //                 )
+    //             }
+    //         ]}
+    //               layout={{
+    //                   title: {
+    //                       text: "UMAP (Metadata loading...)",
+    //                       font: {size: 18, weight: 'regular'},
+    //                       pad: {t: 10, b: 10},
+    //                       automargin: true
+    //                   },
+    //                   xaxis: {title: "UMAP_1", zeroline: true, showgrid: false, visible: false},
+    //                   yaxis: {title: "UMAP_2", zeroline: true, showgrid: false, visible: false},
+    //                   plot_bgcolor: '#f5f5f5',
+    //                   paper_bgcolor: '#f5f5f5',
+    //               }}
+    //               config={{displaylogo: false}}
+    //               style={{width: "100%", height: "100%"}}
+    //         />
+    //     );
+    // }
 
     if (sampleList.length >= 1 && !sampleList.includes("all")) {
         umapData = umapData.filter((point) => sampleList.includes(point[0].split(/_[cs]\d+$/)[0]));
@@ -182,7 +182,7 @@ const PlotlyScatterPlot = React.memo(function PlotlyScatterPlot({
     // Layout configuration
     const layout = {
         title: {
-            text: gene === "all" ? `UMAP Plot for ${group}` : `${gene}`,
+            text: gene === "all" ? (isMetaDataLoading ? "UMAP (Metadata loading...)" : `UMAP Plot for ${group}`) : `${gene}`,
             font: {size: 18, weight: 'regular'},
             pad: {t: 10, b: 10},
             automargin: true

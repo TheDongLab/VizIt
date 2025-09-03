@@ -104,8 +104,10 @@ async def getgwasinchromosome(request: Request):
     response = get_gwas_in_chromosome(dataset_id, chromosome, start, end)
 
     if "Error" in response:
-        raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
-    return response
+        if "Chromosome file not found" in response:
+            return {"hasGwas": False, "data": []}
+        # raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
+    return {"hasGwas": True, "data": response}
 
 
 @router.get("/getgenechromosome")

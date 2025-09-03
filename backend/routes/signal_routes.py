@@ -5,6 +5,7 @@ from fastapi import Request
 # from backend.funcs.get_data import *
 
 from backend.funcs.get_data import (
+    get_bw_data_exists,
     get_region_signal_data,
     get_celltype_list,
     get_gene_locations_in_chromosome,
@@ -18,6 +19,12 @@ router = APIRouter()
 async def read_root():
     return {"Message": "Hello Signal."}
 
+
+@router.get("/getbwdataexists")
+async def getbwdataexists(request: Request):
+    dataset_id = request.query_params.get("dataset")
+    exists = get_bw_data_exists(dataset_id)
+    return {"hasBWData": exists}
 
 @router.get("/getregionsignaldata")
 async def getregionsignaldata(request: Request):
@@ -36,8 +43,10 @@ async def getregionsignaldata(request: Request):
 
     if "Error" in response:
         print(response)
+        if "BigWig folder not found" in response:
+            return {"hasBWData": False, "message": response}
         raise HTTPException(status_code=404, detail="Error in getting signal data")
-    return response
+    return {"hasBWData": True, "data": response}
 
 
 @router.get("/getcelltypelist")

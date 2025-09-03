@@ -208,8 +208,7 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                 {displayedData.map((record) => (
                                     <TableRow key={record.dataset_id}>
                                         <TableCell>
-                                            {record.sample_sheet === "None" || record.sample_sheet === null || record.sample_sheet.trim() === "" ?
-                                                record.dataset_id :
+                                            {record.sample_sheet === "None" || record.sample_sheet === null || record.sample_sheet.trim() === "" ? record.dataset_id :
                                                 <Link to={`/samples/${record.dataset_id}`}>{record.dataset_id}</Link>}
                                         </TableCell>
                                         <TableCell>{record.PI_full_name}</TableCell>
@@ -219,14 +218,17 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                         <TableCell>{record.assay}</TableCell>
                                         <TableCell>
                                             <Box sx={{display: "flex", gap: "10px"}}>
-                                                {["scrnaseq","snrnaseq","visiumst"].includes(record.assay.toLowerCase()) && (<Link to={`/views/geneview?dataset=${record.dataset_id}&sample=all`}>UMAP</Link>)}
+                                                {["scrnaseq", "snrnaseq", "visiumst"].includes(record.assay.toLowerCase()) && (
+                                                    <Link to={`/views/geneview?dataset=${record.dataset_id}&sample=all`}>UMAP</Link>)}
                                                 {/*{["visiumst","visium"].includes(record.assay.toLowerCase()) && (<Link to={`/views/visiumview?dataset=${record.dataset_id}`}>Visium</Link>)}*/}
-                                                {["eqtl","caqtl"].includes(record.assay.toLowerCase()) && (<Link to={`/views/xqtlview?dataset=${record.dataset_id}`}>xQTL</Link>)}
+                                                {["eqtl", "caqtl"].includes(record.assay.toLowerCase()) && (<Link to={`/views/xqtlview?dataset=${record.dataset_id}`}>xQTL</Link>)}
+                                                {record.has_bw && (<Link to={`/views/genomicregionview?dataset=${record.dataset_id}&region=chr1:1000000-2000000`}>Peaks</Link>)}
                                             </Box>
                                         </TableCell>
                                         {deleteMode && (
                                             <TableCell>
-                                                <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteDataset(record.dataset_id)}>
+                                                <Button variant="outlined" color="error" size="small"
+                                                        onClick={() => handleDeleteDataset(record.dataset_id)}>
                                                     Delete
                                                 </Button>
                                             </TableCell>
@@ -261,9 +263,11 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                     </Box>
                                 </Box>
                                 <Box sx={{fontSize: "14px", padding: "8px 0", display: "flex", gap: "8px"}}>
-                                    {["scrnaseq","snrnaseq","visiumst"].includes(record.assay.toLowerCase()) && (<Link to={`/views/geneview?dataset=${record.dataset_id}&sample=all`}>UMAP</Link>)}
+                                    {["scrnaseq", "snrnaseq", "visiumst"].includes(record.assay.toLowerCase()) && (<Link
+                                        to={`/views/geneview?dataset=${record.dataset_id}&sample=all`}>UMAP</Link>)}
                                     {/*{["visiumst","visium"].includes(record.assay.toLowerCase()) && (<Link to={`/views/visiumview?dataset=${record.dataset_id}`}>Visium</Link>)}*/}
-                                    {["eqtl","caqtl"].includes(record.assay.toLowerCase()) && (<Link to={`/views/xqtlview?dataset=${record.dataset_id}`}>xQTL</Link>)}
+                                    {["eqtl", "caqtl"].includes(record.assay.toLowerCase()) && (
+                                        <Link to={`/views/xqtlview?dataset=${record.dataset_id}`}>xQTL</Link>)}
                                 </Box>
                                 <Box sx={{fontSize: "14px", display: "flex", gap: "8px", justifyContent: "flex-end"}}>
                                     {deleteMode && (
