@@ -1,7 +1,7 @@
 # VizIt
 
 ## Installation and running
-The Documentation for installation and running the app is available at <a href="https://huruifeng.github.io/VizIt/" target="_blank">VizIt Docs</a>.
+The Documentation for installation and running the app is available at <a href="https://thedonglab.github.io/VizIt/" target="_blank">VizIt Docs</a>.
 
 ### NOTES:
 - 1. Load all the meta data when first load the page, separate the meta data into cell level and sample level
@@ -71,7 +71,7 @@ The Documentation for installation and running the app is available at <a href="
     |   `-- ...
     `-- README.md
 
-## Example pages
+## Implement VizIt as BrainDataPortal
 #### Home Page
 <img src="docs/screenshots/home.png" width="800">
 
