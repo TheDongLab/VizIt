@@ -37,9 +37,9 @@ def get_gene_location(dataset, gene):
                     "strand": strand,
                 }
             else:
-                return f"Error: Gene {gene} does not have valid position data in {dataset} dataset."
+                return f"Error: Gene does not have valid position data in dataset."
         else:
-            return f"Error: Gene {gene} not found in {dataset} dataset."
+            return f"Error: Gene not found in dataset."
     else:
         print(genes_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
@@ -93,7 +93,7 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
 
                 return {col: df.get_column(col).to_list() for col in df.columns}
             else:
-                return f"No genes found in {chromosome} chromosome ({start}-{end})."
+                return f"No genes found in the region."
         else:
             print(chromosome_file + " not found")
             return "Error: Chromosome file not found for the specified dataset."
@@ -118,7 +118,7 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
                 df = df.drop_nulls()
                 return {col: df.get_column(col).to_list() for col in df.columns}
             else:
-                return f"No SNPs found in {chromosome} ({start}-{end})."
+                return f"No SNPs found in the region."
         else:
             print(chromosome_file + " not found")
             return "Error: Chromosome file not found for the specified dataset."
@@ -261,7 +261,7 @@ def get_gene_celltypes(dataset, gene):
         if data:
             return data["celltypes"]
         else:
-            return f"Error: Gene {gene} not found in {dataset} dataset."
+            return f"Error: Gene not found in dataset."
     else:
         print(genes_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
@@ -281,7 +281,7 @@ def get_snp_celltypes(dataset, snp):
         if data:
             return data["celltypes"]
         else:
-            return f"Error: SNP {snp} not found in {dataset} dataset."
+            return f"Error: SNP not found in dataset."
     else:
         print(snps_file + " not found")
         return "Error: SNP list file not found for the specified dataset."
@@ -359,7 +359,7 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
         snp_df = df.drop("snp_id")
 
         if snp_df.is_empty():
-            return f"Error: SNP {snp} not found in {celltype or 'file'} cell type."
+            return f"Error: SNP not found in cell type file."
 
         def get_start(gene_id):
             loc = get_gene_location(dataset, gene_id)
@@ -777,6 +777,7 @@ def get_all_metadata(dataset, cols=["all"], rows=["all"]):
             data_df = pd.read_csv(meta_file, index_col=0, header=0)
 
             if cols and cols[0] != "all" and cols[0] != "":
+                cols = [i for i in cols if i in data_df.columns]
                 data_df = data_df.loc[:, cols]
 
             if rows and rows[0] == "umap":
@@ -930,21 +931,21 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
 
     ## check if bigwig is available
     if not get_bw_data_exists(dataset):
-        return f"Error: BigWig folder not found for {dataset}"
+        return f"Error: BigWig folder not found"
 
     try:
         bw = get_cached_bigwig_handle(dataset, celltype)
         if bw is None:
-            return f"Error: BigWig file not found for {celltype} in dataset {dataset}"
+            return f"Error: BigWig file not found for the celltype"
 
         chrom_len = bw.chroms().get(chromosome)
         if chrom_len is None:
-            return f"Error: Chromosome {chromosome} not found in {celltype}/{dataset}"
+            return f"Error: Chromosome not found in the dataset/celltype"
 
         start = max(0, start)
         end = min(end, chrom_len)
         if start >= end:
-            return f"Error: Invalid range {chromosome}:{start}-{end}"
+            return f"Error: Invalid range input"
 
         # Binning
         if bin_size > 1:
@@ -990,9 +991,10 @@ def get_celltype_list(dataset):
     )
     if not os.path.exists(celltype_mapping_file):
         print(celltype_mapping_file + " not found")
-        return f"Error: Celltype mapping file not found for dataset {dataset}"
+        return f"Error: Celltype mapping file not found for the dataset"
 
     with open(celltype_mapping_file, "r") as f:
         celltype_mapping = json.load(f)
 
     return list(celltype_mapping.keys())
+

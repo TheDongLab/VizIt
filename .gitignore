@@ -1,3 +1,4 @@
+
 .DS_Store
 *.pyc
 
@@ -21,8 +22,11 @@
 /backend/DatasetFiles/
 /backend/datasets/
 
-/frontend/public/Demos/notebooks/sc/example_data/**
-!/frontend/public/Demos/notebooks/sc/example_data/dataset_info.toml
+/frontend/public/demos/notebooks/sc/example_data/**
+!/frontend/public/demos/notebooks/sc/example_data/dataset_info.toml
 
-/frontend/public/Demos/notebooks/visiumst/example_data/**
-!/frontend/public/Demos/notebooks/visiumst/example_data/dataset_info.toml
+/frontend/public/demos/notebooks/visiumst/example_data/**
+!/frontend/public/demos/notebooks/visiumst/example_data/dataset_info.toml
+
+/frontend/public/demos/notebooks/xqtl/example_data/**
+!/frontend/public/demos/notebooks/xqtl/example_data/dataset_info.toml

@@ -10,3 +10,10 @@ cd ..
 
 ## pid: 600619
 
+## Nginx restart
+# sudo nginx reload
+#sudo systemctl restart nginx
+
+## Apache restart
+# sudo systemctl restart apache2
+

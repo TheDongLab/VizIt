@@ -66,8 +66,7 @@ const faqData = [
     id: "6",
     category: "security",
     question: "Is my data secure?",
-    answer:
-      "Yes, we implement enterprise-grade security measures including data encryption at rest and in transit, secure user authentication, role-based access controls, and regular security audits. Your data privacy is our top priority.",
+    answer: "You will install this software on your own computer/server. We do not store any data on our servers."
   },
   {
     id: "7",

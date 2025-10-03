@@ -137,9 +137,9 @@ const DatasetsPage = () => {
                 </Typography>
                 {/* Right-side Add Button */}
                 <Box sx={{display: 'flex', gap: 2}}>
-                    <Button variant="contained" color="error" onClick={toggleDeleteMode}>
-                        {deleteMode ? "Cancel Delete" : "- Delete Dataset"}
-                    </Button>
+                    {/*<Button variant="contained" color="error" onClick={toggleDeleteMode}>*/}
+                    {/*    {deleteMode ? "Cancel Delete" : "- Delete Dataset"}*/}
+                    {/*</Button>*/}
 
                     <Button variant="contained" color="primary">
                         <Link href="/datasetmanager" color="inherit" underline="hover">+ Add Dataset</Link>
