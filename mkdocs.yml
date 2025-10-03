@@ -1,11 +1,11 @@
-site_name: BrainDataPortal Docs
-site_url: https://huruifeng.github.io/BrainDataPortal/
+site_name: VizIt Docs
+site_url: https://thedonglab.github.io/VizIt/
 site_author: Ruifeng Hu
 site_description: >-
-  BrainDataPortal is a platform for brian multi-modal data exploration and visualization.
+  VizIt is a platform for brian multi-modal data exploration and visualization.
 
-repo_name: huruifeng/BrainDataPortal
-repo_url: https://github.com/huruifeng/BrainDataPortal
+repo_name: TheDongLab/VizIt
+repo_url: https://github.com/TheDongLab/VizIt
 
 copyright: Copyright &copy; 2024 Ruifeng Hu
 
