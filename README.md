@@ -77,23 +77,23 @@ The Documentation for installation and running the app is available at <a href="
 #### Video demo: [VizIt Video Demo - BrainDataPortal](https://thedonglab.github.io/VizIt/#video-demo)
 
 #### Home Page
-<img src="docs/screenshots/home.png" width="400">
+<img src="docs/screenshots/home.png" width="800">
 
 #### Dataset selection
-<img src="docs/screenshots/dataset.png" width="400">
+<img src="docs/screenshots/dataset.png" width="800">
 
 #### Single Cell UMAP clustering & gene expression
-<img src="docs/screenshots/sc_page.png" width="400">
-<img src="docs/screenshots/gene_view.png" width="400">
+<img src="docs/screenshots/sc_page.png" width="800">
+<img src="docs/screenshots/gene_view.png" width="800">
 
 #### Cluster analysis
-<img src="docs/screenshots/cluster1.png" width="400">
-<img src="docs/screenshots/cluster2.png" width="400">
+<img src="docs/screenshots/cluster1.png" width="800">
+<img src="docs/screenshots/cluster2.png" width="800">
 
 #### Spatial Transcriptomics
-<img src="docs/screenshots/Visium_page.png" width="400">
+<img src="docs/screenshots/Visium_page.png" width="800">
 
 #### XQTL analysis & Peak signals
-<img src="docs/screenshots/xqtl.png" width="400">
-<img src="docs/screenshots/peaksignal.png" width="400">
+<img src="docs/screenshots/xqtl.png" width="800">
+<img src="docs/screenshots/peaksignal.png" width="800">
 
