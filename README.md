@@ -73,12 +73,24 @@ The Documentation for installation and running the app is available at <a href="
 
 ## Example pages
 #### Home Page
-![Home Page](docs/screenshots/home.png)
+<img src="docs/screenshots/home.png" width="800">
 
-#### Single Cell UMAP clustering
-![UMAP Page](docs/screenshots/sc_page.png)
+#### Dataset selection
+<img src="docs/screenshots/dataset.png" width="800">
+
+#### Single Cell UMAP clustering & gene expression
+<img src="docs/screenshots/sc_page.png" width="800">
+<img src="docs/screenshots/gene_view.png" width="800">
+
+#### Cluster analysis
+<img src="docs/screenshots/cluster1.png" width="800">
+<img src="docs/screenshots/cluster2.png" width="800">
 
 #### Spatial Transcriptomics
-![VisiumST Page](docs/screenshots/Visium_page.png)
+<img src="docs/screenshots/Visium_page.png" width="800">
 
-## Video examples is avaiable here: [BrainDataPortal Video Demo(https://huruifeng.github.io/BrainDataPortal/#video-demo)
+#### XQTL analysis & Peak signals
+<img src="docs/screenshots/xqtl.png" width="800">
+<img src="docs/screenshots/peaksignal.png" width="800">
+
+### Video examples are available here: [BrainDataPortal Video Demo](https://huruifeng.github.io/BrainDataPortal/#video-demo)
