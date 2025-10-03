@@ -82,4 +82,4 @@ The Documentation for installation and running the app is available at <a href="
 ![VisiumST Page](docs/screenshots/Visium_page.png)
 
 ## Video
-[![UMAP Gene View]](docs/screenshots/BDP_UMAP_2x.mp4)
+[![UMAP Gene View](docs/screenshots/sc_page.png)](docs/screenshots/BDP_UMAP_2x.mp4)
