@@ -1,6 +1,11 @@
-# Welcome to BrainDataPortal Docs!
-BrainDataPortal is a comprehensive platform for single-cell, spatial transcriptomics, and other omics data visualization and exploration. 
+# Welcome to VizIt Docs!
+VizIt is a comprehensive framework for single-cell, spatial transcriptomics, and other omics data visualization and exploration. 
 This documentation will guide you through the installation and data preparation processes.
+
+- **VizIt is a general framework for multi-modal data visualization and exploration. You can implement it and customize it for your own data and topic.**
+    - Customized the home page
+    - Define your own App Name
+- **In this tutorial, we will guide you to implement the BrainDataPortal based on VizIt.**
 
 ## Overview
 * This is project designed for the brain multi-modal data visualization and exploration.
@@ -11,7 +16,7 @@ This documentation will guide you through the installation and data preparation 
 * Use zustand for state management, and Material UI for web page layout design
 
 ## Directory structure
-    BrainDataPortal/
+    VizIt/
     |-- Backend/
     |   |-- main.py                         ## The main entry of the backend
     |   |-- db.py                           ## The database connection and management
@@ -63,5 +68,17 @@ This documentation will guide you through the installation and data preparation 
     |   |   `-- ...
     |   `-- ...
     `-- README.md
+## Video demo
+### Gene view UMAP
+<video width="800" controls>
+  <source src="screenshots/BDP_UMAP_2x.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+### VisiumST view
+<video width="800" controls>
+  <source src="screenshots/BDP_VisiumST_4_2x.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
  <a href="install/" title="Start to learn" class="md-button md-button--primary">Get Started</a>

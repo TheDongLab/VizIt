@@ -131,11 +131,11 @@ export default function Home_HM() {
                 <Grid item xs={12} textAlign="center">
                     <Typography variant="h3" component="h1" gutterBottom
                                 sx={{color: "primary.main", fontWeight: "bold"}}>
-                        {/*{import.meta.env.VITE_APP_TITLE}*/}
-                        MODE: Multi-Omics Data Exploration
+                        {import.meta.env.VITE_APP_TITLE}
+                        {/*MODE: Multi-Omics Data Exploration*/}
                     </Typography>
                     <Typography variant="h6" sx={{color: "text.secondary", opacity: 0.9}}>
-                        Single-cell, Spatial Transcriptomics and Multi-omics Data Analysis Platform
+                        {import.meta.env.VITE_APP_SUBTITLE}
                     </Typography>
                 </Grid>
 

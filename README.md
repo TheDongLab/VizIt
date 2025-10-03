@@ -4,8 +4,10 @@
 The Documentation for installation and running the app is available at <a href="https://thedonglab.github.io/VizIt/" target="_blank">VizIt Docs</a>.
 
 ### NOTES:
-- 1. Load all the meta data when first load the page, separate the meta data into cell level and sample level
-- 2. To reduce the size of the meta data file, meta file only save an index/key of the meta string. And the actual metadata is stored in a JSON file (Dict).
+- **VizIt is a general framework for multi-modal data visualization and exploration. You can implement it and customize it for your own data.**
+  - Change the home page
+  - Rename VizIt to your own App Name
+- **At the bottom part you can see we build the BrainDataPortal based on VizIt.**
 
 
 ## Overview
@@ -72,25 +74,26 @@ The Documentation for installation and running the app is available at <a href="
     `-- README.md
 
 ## Implement VizIt as BrainDataPortal
+#### Video demo: [VizIt Video Demo - BrainDataPortal](https://thedonglab.github.io/VizIt/#video-demo)
+
 #### Home Page
-<img src="docs/screenshots/home.png" width="800">
+<img src="docs/screenshots/home.png" width="400">
 
 #### Dataset selection
-<img src="docs/screenshots/dataset.png" width="800">
+<img src="docs/screenshots/dataset.png" width="400">
 
 #### Single Cell UMAP clustering & gene expression
-<img src="docs/screenshots/sc_page.png" width="800">
-<img src="docs/screenshots/gene_view.png" width="800">
+<img src="docs/screenshots/sc_page.png" width="400">
+<img src="docs/screenshots/gene_view.png" width="400">
 
 #### Cluster analysis
-<img src="docs/screenshots/cluster1.png" width="800">
-<img src="docs/screenshots/cluster2.png" width="800">
+<img src="docs/screenshots/cluster1.png" width="400">
+<img src="docs/screenshots/cluster2.png" width="400">
 
 #### Spatial Transcriptomics
-<img src="docs/screenshots/Visium_page.png" width="800">
+<img src="docs/screenshots/Visium_page.png" width="400">
 
 #### XQTL analysis & Peak signals
-<img src="docs/screenshots/xqtl.png" width="800">
-<img src="docs/screenshots/peaksignal.png" width="800">
+<img src="docs/screenshots/xqtl.png" width="400">
+<img src="docs/screenshots/peaksignal.png" width="400">
 
-### Video examples are available here: [VizIt Video Demo](https://thedonglab.github.io/VizIt/#video-demo)

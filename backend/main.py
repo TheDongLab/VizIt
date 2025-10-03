@@ -22,7 +22,7 @@ app.add_event_handler("startup", create_db_and_tables)
 
 @app.get("/")
 async def root():
-    return "Hello, Welcome to BrainDataPortal!"
+    return "Hello, Welcome to VizIt!"
 
 app.include_router(db_routes.router, prefix="/db")
 app.include_router(api_routes.router, prefix="/api")
