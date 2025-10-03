@@ -1,7 +1,7 @@
-# BrainDataPortal
+# VizIt
 
 ## Installation and running
-The Documentation for installation and running the app is available at <a href="https://huruifeng.github.io/BrainDataPortal/" target="_blank">BrainDataPortal Docs</a>.
+The Documentation for installation and running the app is available at <a href="https://huruifeng.github.io/VizIt/" target="_blank">VizIt Docs</a>.
 
 ### NOTES:
 - 1. Load all the meta data when first load the page, separate the meta data into cell level and sample level
@@ -18,7 +18,7 @@ The Documentation for installation and running the app is available at <a href="
 
 ## Directory structure:
 
-    BrainDataPortal/
+    VizIt/
     |-- Backend/
     |   |-- main.py                         ## The main entry of the backend
     |   |-- db.py                           ## The database connection and management
@@ -93,4 +93,4 @@ The Documentation for installation and running the app is available at <a href="
 <img src="docs/screenshots/xqtl.png" width="800">
 <img src="docs/screenshots/peaksignal.png" width="800">
 
-### Video examples are available here: [BrainDataPortal Video Demo](https://huruifeng.github.io/BrainDataPortal/#video-demo)
+### Video examples are available here: [VizIt Video Demo](https://huruifeng.github.io/VizIt/#video-demo)
