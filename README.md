@@ -80,3 +80,7 @@ The Documentation for installation and running the app is available at <a href="
 
 #### Spatial Transcriptomics
 ![VisiumST Page](docs/screenshots/Visium_page.png)
+
+## Video
+![UMAP](docs/screenshots/BDP_UMAP_2x.mp4)
+![VisiumST](docs/screenshots/BDP_VisiumST_4_2x.mp4)
