@@ -1,5 +1,5 @@
 # Development guide
-This is an open souce project, you can find the source code on [GitHub](https://github.com/huruifeng/BrainDataPortal).
+This is an open souce project, you can find the source code on [GitHub](https://github.com/TheDongLab/VizIt).
 
 The home page can be customized to be fit for your own use case. 
 

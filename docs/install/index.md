@@ -13,9 +13,9 @@ Before you begin, ensure you have the following installed on your system:
 ## 2. Get codes
 1. Clone the repository. 
    ```bash
-   git clone https://github.com/huruifeng/BrainDataPortal.git
+   git clone https://github.com/TheDongLab/VizIt.git
    ```
-   Or, download the zipped repository from [https://github.com/huruifeng/BrainDataPortal](https://github.com/huruifeng/BrainDataPortal)
+   Or, download the zipped repository from [https://github.com/TheDongLab/VizIt](https://github.com/TheDongLab/VizIt)
 2. Setup backend environment.
     - [Optional] Create a virtual environment.
     ```bash

@@ -5,7 +5,7 @@ The Documentation for installation and running the app is available at <a href="
 
 ### NOTES:
 - 1. Load all the meta data when first load the page, separate the meta data into cell level and sample level
-- 2. To reduce the size of the meta data file, meta file only save an index/key of the meta string. And the actual meta data is stored in a JSON file (Dict).
+- 2. To reduce the size of the meta data file, meta file only save an index/key of the meta string. And the actual metadata is stored in a JSON file (Dict).
 
 
 ## Overview
@@ -93,4 +93,4 @@ The Documentation for installation and running the app is available at <a href="
 <img src="docs/screenshots/xqtl.png" width="800">
 <img src="docs/screenshots/peaksignal.png" width="800">
 
-### Video examples are available here: [VizIt Video Demo](https://huruifeng.github.io/VizIt/#video-demo)
+### Video examples are available here: [VizIt Video Demo](https://thedonglab.github.io/VizIt/#video-demo)

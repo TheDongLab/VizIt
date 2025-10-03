@@ -16,8 +16,8 @@ We will use a Visium ST dataset from human brain.
 This dataset contains 10 subjects, approximately 40,000 spots from brain middle temporal gyrus region.
 
 * Demo dataset and scripts:
-> 1. Seurat object: [VisiumST_MTG_10samples.rds](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/seurat_object.rds)
-> 2. Sample metadata sheet: [Sample_VisiumST_MTG_10samples.csv](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/Sample_snRNAseq.csv)
+> 1. Seurat object: [VisiumST_MTG_10samples.rds](https://github.com/TheDongLab/VizIt/blob/main/demo_data/seurat_object.rds)
+> 2. Sample metadata sheet: [Sample_VisiumST_MTG_10samples.csv](https://github.com/TheDongLab/VizIt/blob/main/demo_data/Sample_snRNAseq.csv)
 > 3. Dataset configuration file: [dataset_info.toml](../demos/notebooks/visiumst/dataset_info.toml)
 > 4. Processing script: [visiumst_script.zip](../demos/scripts/visiumst.zip)
 

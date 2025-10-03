@@ -381,13 +381,13 @@ export default function HelpPage() {
                                             <CodeBlock>
                                                 <div>
                                                     <span className="comment"># Clone the repository or Download the Zipped repository</span><br/>
-                                                    git clone https://github.com/huruifeng/BrainDataPortal.git<br/>
+                                                    git clone https://github.com/TheDongLab/VizIt.git<br/>
 
                                                     <br/>
                                                     <span className="comment"># Or</span><br/>
                                                     (Download the zipped repository from <a
-                                                    href="https://github.com/huruifeng/BrainDataPortal" target="_blank"
-                                                    style={{color: "#2196f3"}}>https://github.com/huruifeng/BrainDataPortal</a>)
+                                                    href="https://github.com/TheDongLab/VizIt" target="_blank"
+                                                    style={{color: "#2196f3"}}>https://github.com/TheDongLab/VizIt</a>)
                                                 </div>
                                             </CodeBlock>
                                             <br/>

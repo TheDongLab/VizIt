@@ -3,7 +3,7 @@ This App is open source and welcomes contributions from the community.
 
 If you have any questions or suggestions, please feel free to open an issue or submit a pull request.
 
-The repository is hosted on GitHub at [huruifeng/BrainDataPortal](https://github.com/huruifeng/BrainDataPortal).
+The repository is hosted on GitHub at [TheDongLab/VizIt](https://github.com/TheDongLab/VizIt).
 
 ## Make a pull request
 1. Fork the repository

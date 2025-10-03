@@ -16,8 +16,8 @@ We will use a single-cell dataset from human brain.
 This dataset contains 10 subjects, approximately 50,000 cells from brain middle temporal gyrus region.
 
 * Demo dataset and scripts:
-> 1. Seurat object: [snRNAseq_MTG_10samples.rds](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/seurat_object.rds)
-> 2. Sample metadata sheet: [Sample_snRNAseq_MTG_10samples.csv](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/Sample_snRNAseq.csv)
+> 1. Seurat object: [snRNAseq_MTG_10samples.rds](https://github.com/TheDongLab/VizIt/blob/main/demo_data/seurat_object.rds)
+> 2. Sample metadata sheet: [Sample_snRNAseq_MTG_10samples.csv](https://github.com/TheDongLab/VizIt/blob/main/demo_data/Sample_snRNAseq.csv)
 > 3. Dataset configuration file: [dataset_info.toml](../demos/notebooks/sc/dataset_info.toml)
 > 4. Processing script: [sc_script.zip](../demos/scripts/sc.zip)
 

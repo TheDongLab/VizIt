@@ -15,10 +15,10 @@ We will use a single-cell dataset from human brain.
 This demo dataset contains several cell types from human brain middle brain region.
 
 * Demo dataset and scripts:
-> 1. Seurat object: [xQTL_Demo.zip](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/seurat_object.rds)
-> 2. Gene location file: [gene_annotations.tsv](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/gene_annotation.zip)
-> 3. SNP location file: [snp_annotations.tsv](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/snp_location.zip)
-> 4. GWAS summary file: [PD_GWAS.tab](https://github.com/huruifeng/BrainDataPortal/blob/main/demo_data/GWAS_summary.zip)
+> 1. Seurat object: [xQTL_Demo.zip](https://github.com/TheDongLab/VizIt/blob/main/demo_data/seurat_object.rds)
+> 2. Gene location file: [gene_annotations.tsv](https://github.com/TheDongLab/VizIt/blob/main/demo_data/gene_annotation.zip)
+> 3. SNP location file: [snp_annotations.tsv](https://github.com/TheDongLab/VizIt/blob/main/demo_data/snp_location.zip)
+> 4. GWAS summary file: [PD_GWAS.tab](https://github.com/TheDongLab/VizIt/blob/main/demo_data/GWAS_summary.zip)
 > 5. Dataset configuration file: [dataset_info.toml](../demos/notebooks/xqtl/dataset_info.toml)
 > 6. Processing script: [xqtl_script.zip](../demos/scripts/xqtl_script.zip)
 
