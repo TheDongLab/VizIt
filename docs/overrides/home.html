@@ -1,0 +1,47 @@
+{% extends "main.html" %}
+{% block tabs %}
+{{ super() }}
+<style>
+    .md-header{position:initial}
+    .md-main__inner{margin:0}
+    .md-content{display:none}
+    .mdx-hero{
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+    @media screen and (min-width: 60em) {
+        .md-sidebar--primary{display:none}
+        .md-sidebar--secondary{display:none}
+        .md-sidebar--secondary:not([hidden]){display:none}
+    }
+    @media screen and (min-width:76.25em){
+        .md-sidebar--primary{display:none}
+        .md-sidebar--secondary{display:none}
+        .md-sidebar--secondary:not([hidden]){display:none}
+    }
+</style>
+<section class="mdx-container">
+    <div class="md-grid md-typeset">
+    <div class="mdx-hero">
+        <div class="mdx-hero__image">
+        <img src="assets/logo_by_maxicons.png" alt="" draggable="false">
+        </div>
+        <div class="mdx-hero__content">
+        <h1>Step-by-Step Learning of Machine Learning and Deep Learning.</h1>
+        <p>Here, I share knowledge about machine learning, starting from the simplest concepts and progressing from the basics to applications.</p>
+        <p>The primary programming language for machine learning and deep learning is <code>Python</code>. Learning machine learning inevitably begins with Python, followed by a gradual exploration of machine learning and deep learning concepts.</p>
+        <p>This is my personal learning experience, and I hope it helps you in your journey to mastering machine learning and deep learning.</p>
+        <p style="margin: 0 0 2.25em">My learning notes will be compiled here and <b>continuously updated...</b></p>
+        <a href="{{ 'python' | url }}" title="Start to learn" class="md-button md-button--primary">
+            Quick Start
+        </a>
+        <!-- <a href="{{ 'setup/' | url }}" title="" class="md-button">
+            Configuration
+        </a> -->
+        </div>
+    </div>
+    </div>
+</section>
+{% endblock %}
+{% block content %}{% endblock %}
+{% block footer %}{% endblock %}

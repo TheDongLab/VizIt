@@ -14,6 +14,12 @@ export default function HomePage() {
             href: "geneview",
         },
         {
+            title: "Cluster View",
+            description: "Visualize and compare different clusters (cell types, layers, etc.), their markers, and distribution across samples.",
+            icon: <FontAwesomeIcon icon={faHexagonNodes} style={{color: "#3b82f6"}} size={"3x"} />,
+            href: "clusters",
+        },
+        {
             title: "Visium ST View",
             description:
                 "Analyze spatial transcriptomics data with Visium technology for tissue-wide gene expression patterns.",
@@ -32,12 +38,7 @@ export default function HomePage() {
             icon: <ScanLine size={48} style={{color: "#06b6d4"}} />,
             href: "genomicregionview",
         },
-        {
-            title: "Cluster View",
-            description: "Visualize and compare different clusters (cell types, layers, etc.), their markers, and distribution across samples.",
-            icon: <FontAwesomeIcon icon={faHexagonNodes} style={{color: "#3b82f6"}} size={"3x"} />,
-            href: "clusters",
-        },
+
         // {
         //     title: "Layer View",
         //     description:
@@ -96,25 +97,25 @@ export default function HomePage() {
                                         {option.description}
                                     </Typography>
                                 </CardContent>
-                                {/*<CardActions sx={{p: 2, pt: 0}}>*/}
-                                {/*    <Button*/}
-                                {/*        component={Link}*/}
-                                {/*        to={option.href}*/}
-                                {/*        variant="contained"*/}
-                                {/*        fullWidth*/}
-                                {/*        size="medium"*/}
-                                {/*        style={{backgroundColor: "#2f2f2f", color: "#fff"}}*/}
-                                {/*        sx={{*/}
-                                {/*            borderRadius: 1,*/}
-                                {/*            py: 1,*/}
-                                {/*            textTransform: "none",*/}
-                                {/*            fontSize: "1rem",*/}
-                                {/*            fontWeight: 500,*/}
-                                {/*        }}*/}
-                                {/*    >*/}
-                                {/*        Explore {option.title}*/}
-                                {/*    </Button>*/}
-                                {/*</CardActions>*/}
+                                <CardActions sx={{p: 2, pt: 0}}>
+                                    <Button
+                                        component={Link}
+                                        to={option.href}
+                                        variant="contained"
+                                        fullWidth
+                                        size="medium"
+                                        style={{backgroundColor: "#2f2f2f", color: "#fff"}}
+                                        sx={{
+                                            borderRadius: 1,
+                                            py: 1,
+                                            textTransform: "none",
+                                            fontSize: "1rem",
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        Explore {option.title}
+                                    </Button>
+                                </CardActions>
                             </Card>
                         </Grid>
                     ))}

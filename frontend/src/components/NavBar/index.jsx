@@ -109,8 +109,8 @@ const NavBar = () => {
                             <Button color="inherit" component={Link} to="/views">Views</Button>
                             <Button color="inherit" onClick={openHelpMenu}>Help</Button>
                             <Menu anchorEl={helpMenuAnchor} open={Boolean(helpMenuAnchor)} onClose={closeHelpMenu}>
-                                <MenuItem component={Link} to="/help/howtouse" onClick={closeHelpMenu}>How to
-                                    Use</MenuItem>
+                                <MenuItem component={Link} to="/help/howtouse" onClick={closeHelpMenu}>How to Use</MenuItem>
+                                {/*<MenuItem component={Link} to="https://huruifeng.github.io/BrainDataPortal/" onClick={closeHelpMenu} target="_blank">Documentation</MenuItem>*/}
                                 <MenuItem component={Link} to="/help/faq" onClick={closeHelpMenu}>FAQ</MenuItem>
                             </Menu>
                         </>

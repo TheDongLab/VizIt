@@ -957,14 +957,14 @@ function XQTLView() {
                                 </Button>
                             </Box>
                         </MenuItem>
-                        {hasGwas && <MenuItem>
+                        <MenuItem>
                             <FormControlLabel
                                 control={
                                     <Switch checked={displayOptions.showGwas} onChange={handleOptionChange("showGwas")}/>
                                 }
                                 label="Show GWAS data"
                             />
-                        </MenuItem>}
+                        </MenuItem>
                     </Menu>
                 </div>
             </div>

@@ -210,7 +210,7 @@ function GenomicRegionView() {
     };
 
     const [gwasData, setGwasData] = useState([]);
-    const [hasGwas, setHasGwas] = useState(false);
+    const [hasGwas, setHasGwas] = useState(true);
     const [selectionError, setSelectionError] = useState("");
 
     const fetchData = async (range, binSizeOverride = null) => {

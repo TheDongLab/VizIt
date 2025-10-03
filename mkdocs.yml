@@ -1,0 +1,113 @@
+site_name: BrainDataPortal Docs
+site_url: https://huruifeng.github.io/BrainDataPortal/
+site_author: Ruifeng Hu
+site_description: >-
+  BrainDataPortal is a platform for brian multi-modal data exploration and visualization.
+
+repo_name: huruifeng/BrainDataPortal
+repo_url: https://github.com/huruifeng/BrainDataPortal
+
+copyright: Copyright &copy; 2024 Ruifeng Hu
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Switch to system preference
+  features:
+    # - navigation.instant
+    - navigation.indexes
+    - navigation.instant.progress
+    - navigation.tracking
+    # - navigation.tabs
+    - navigation.sections
+    # - navigation.sections  # expand all sections
+    - navigation.path
+    # - navigation.prune
+    - navigation.top
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/huruifeng
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/ruifeng-hu-702b9383/
+    - icon: fontawesome/solid/envelope
+      link: mailto:huruifeng.cn@hotmail.com
+
+extra_css:
+  - assets/css/style.css
+
+extra_javascript:
+  - assets/js/myscript.js
+
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+
+    # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.snippets
+
+
+plugins:
+  - search
+
+
+nav:
+  - Home: index.md
+  - Install:
+    - install/index.md
+  - Prepare dataset:
+    - prepare_dataset/index.md
+    - scRNAseq dataset: prepare_dataset/scrnaseq.md
+    - VisiumST dataset: prepare_dataset/visiumst.md
+    - xQTL dataset: prepare_dataset/xqtl.md
+  - Development:
+    - development/index.md
+    - Customize Home: development/customize_home.md
+    - Add view: development/add_view.md
+  - Contribute:
+    - contribute/index.md
