@@ -81,13 +81,4 @@ The Documentation for installation and running the app is available at <a href="
 #### Spatial Transcriptomics
 ![VisiumST Page](docs/screenshots/Visium_page.png)
 
-## Video
-<video width="800" controls>
-  <source src="docs/screenshots/BDP_UMAP_2x.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
-
-<video width="800" controls>
-  <source src="docs/screenshots/BDP_VisiumST_4_2x.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+## Video examples is avaiable here: [BrainDataPortal Video Demo(http://0.0.0.0:2000/BrainDataPortal/#video-demo)
