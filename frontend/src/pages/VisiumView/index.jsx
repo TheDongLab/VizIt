@@ -342,9 +342,6 @@ function VisiumView() {
                                     <div key={`${sample_i}-label`} className="sample-label">
                                         <Box display="flex" alignItems="center" justifyContent="center" sx={{mb: 1}}>
                                             <Typography variant="subtitle1">Sample: {sample_i}</Typography>
-                                            <div>&nbsp;&nbsp;</div>
-                                            (<Link href={`/gsMAP/${sample_i}_PD_gsMap_Report.html`} target="_blank"
-                                                   rel="noopener" underline="hover">View gsMAP</Link>)
                                         </Box>
                                     </div>
 

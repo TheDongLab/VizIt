@@ -20,4 +20,4 @@ The repository is hosted on GitHub at [TheDongLab/VizIt](https://github.com/TheD
 ## Development team
 - Xianjun Dong (Lab PI), Email: [Xianjun.Dong@Yale](mailto:xianjun.dong@yale.edu)
 - Ruifeng Hu (Lead Developer), Email: [Ruifeng.Hu@Hotmail](mailto:huruifeng.cn@hotmail.com)
-- Christopher Zhang (Main contributor), Email: [ChristopherZhangGmail](mailto:christopherzhang4956@gmail.com)
+- Christopher Zhang (Main contributor), Email: [Christopher.Zhang@Gmail](mailto:christopherzhang4956@gmail.com)
