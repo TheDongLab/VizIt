@@ -16,8 +16,8 @@ We will use a single-cell dataset from human brain.
 This dataset contains 10 subjects, approximately 50,000 cells from brain middle temporal gyrus region.
 
 * Demo dataset and scripts:
-> 1. Seurat object: [snRNAseq_MTG_10samples.rds](https://github.com/TheDongLab/VizIt/blob/main/demo_data/seurat_object.rds)
-> 2. Sample metadata sheet: [Sample_snRNAseq_MTG_10samples.csv](https://github.com/TheDongLab/VizIt/blob/main/demo_data/Sample_snRNAseq.csv)
+> 1. Seurat object: [snRNAseq_MTG_10samples.rds](https://pd5d.yale.edu/demos/notebooks/sc/example_data/snRNAseq_MTG_10samples.rds)
+> 2. Sample metadata sheet: [Sample_snRNAseq_MTG_10samples.csv](https://pd5d.yale.edu/demos/notebooks/sc/example_data/Sample_snRNAseq_10Samples.csv)
 > 3. Dataset configuration file: [dataset_info.toml](../demos/notebooks/sc/dataset_info.toml)
 > 4. Processing script: [sc_script.zip](../demos/scripts/sc.zip)
 
@@ -214,7 +214,7 @@ top_genes = (
 This step generates a sample sheet file for the dataset.
 It includes information about the samples, such as condition, sex, and other relevant metadata.
 
-Download the demo sample sheet file: [Sample_snRNAseq_MTG_10samples.csv](../demos/notebooks/sc/Sample_snRNAseq_MTG_10samples.csv)
+Download the demo sample sheet file: [Sample_snRNAseq_MTG_10samples.csv](https://pd5d.yale.edu/demos/notebooks/sc/example_data/Sample_snRNAseq_10Samples.csv)
 !!! danger "Important Note"
     PLEASE KEEP ALL THE COLUMN NAMES AND ORDER AS IS, JUST FILL IN YOUR DATA.
 

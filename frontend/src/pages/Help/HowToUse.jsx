@@ -416,8 +416,7 @@ export default function HelpPage() {
                                                                 </div>
                                                             </CodeBlock>
                                                             <br/>
-                                                            <Typography variant="h6"
-                                                                        className="env-title env-title--secondary">
+                                                            <Typography variant="h6" className="env-title env-title--secondary">
                                                                 2.2 Start the backend server
                                                             </Typography>
                                                             <CodeBlock>
@@ -1004,9 +1003,9 @@ genes = [ "SNCA",...]                    ## List of default gene names
                                     <Alert severity="primary" icon={<CheckCircle color="primary"/>} className="requirements-alert">
                                         <AlertTitle className="alert-title" variant="h6">Data processing scripts were provided:</AlertTitle>
                                         <List dense>
-                                            <ListItem>Single-cell RNA-seq data: <a href='https://github.com/BrainDataPortal/BrainDataPortal_DatasetProcessing'>BrainDataPortal_DatasetProcessing</a></ListItem>
-                                            <ListItem>Spatial transcriptomics data: <a href='https://github.com/BrainDataPortal/BrainDataPortal_DatasetProcessing'>BrainDataPortal_DatasetProcessing</a></ListItem>
-                                            <ListItem>xQTL data: <a href='https://github.com/BrainDataPortal/BrainDataPortal_xQTLProcessing'>BrainDataPortal_xQTLProcessing </a></ListItem>
+                                            <ListItem>Single-cell RNA-seq data: <a href='/demos/scripts/sc.zip'>BrainDataPortal_DatasetProcessing</a></ListItem>
+                                            <ListItem>Spatial transcriptomics data: <a href='/demos/scripts/visiumst.zip'>BrainDataPortal_DatasetProcessing</a></ListItem>
+                                            <ListItem>xQTL data: <a href="/demos/scripts/xqtl_script.zip">BrainDataPortal_xQTLProcessing </a></ListItem>
                                         </List>
                                     </Alert>
                                      <Typography variant="h5" className="data-requirements-title">
