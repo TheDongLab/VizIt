@@ -8,7 +8,7 @@ import {
     TextField,
     LinearProgress,
     CircularProgress,
-    Autocomplete, Link,
+    Autocomplete, Link, Switch, FormControlLabel, Menu, MenuItem,
 } from "@mui/material";
 import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import {useSearchParams} from "react-router-dom";
@@ -18,10 +18,8 @@ import "./VisiumView.css";
 import useSampleGeneMetaStore from "../../store/SampleGeneMetaStore.js";
 import useDataStore from "../../store/DatatableStore.js";
 
-import EChartFeaturePlot from "./VisiumEChartPlot.jsx";
-import CanvasFeaturePlot from "./VisiumCanvasPlot.jsx";
-import PlotlyFeaturePlot from "./VisiumPlotlyPlot.jsx";
 import useVisiumStore from "../../store/VisiumStore.jsx";
+import FeaturePlot from "./FeaturePlot.jsx";
 
 function VisiumView() {
 
@@ -32,21 +30,32 @@ function VisiumView() {
     const urlMetas = queryParams.getAll("meta") ?? [];
     const urlDataset = queryParams.get("dataset") ?? "";
 
+    const [settingOptions, setSettingOptions] = useState({
+        showImage: true,
+    });
+
     const {datasetRecords, fetchDatasetList} = useDataStore()
     useEffect(() => {
         fetchDatasetList()
+        setDatasetId(urlDataset)
     }, [])
 
     const datasetOptions = []
     datasetRecords.map((d) => {
-        if (d.assay.toLowerCase() === "visiumst") {
+        if (d.assay.toLowerCase() === "visiumst" || d.assay.toLowerCase() === "merfish") {
             datasetOptions.push(d.dataset_id)
         }
     })
 
+    //function to get assay type
+    const getAssayType = (dataset) => {
+        const record = datasetRecords.find(d => d.dataset_id === dataset);
+        return record ? record.assay : "";
+    }
+
+
     const [datasetId, setDatasetId] = useState(urlDataset)
     const [datasetSearchText, setDatasetSearchText] = useState("")
-
 
     // Prepare all the  data
     const {
@@ -56,61 +65,61 @@ function VisiumView() {
         metaList, fetchMetaList,
     } = useSampleGeneMetaStore();
     const {selectedSamples, setSelectedSamples, selectedGenes, setSelectedGenes} = useSampleGeneMetaStore();
+
     const {
         exprDataDict, fetchExprData,
         sampleMetaDict, fetchMetaDataOfSample,
         imageDataDict, fetchImageData
     } = useSampleGeneMetaStore();
     const {loading, error} = useSampleGeneMetaStore();
-    const {fetchVisiumDefaults}  = useVisiumStore()
+    const {fetchVisiumDefaults} = useVisiumStore()
 
     const [selectedMetaFeatures, setSelectedMetaFeatures] = useState(urlMetas);
 
+    const fetchPrimaryData = async () => {
+        if (!datasetId) {
+            setSelectedSamples([]);
+            setSelectedGenes([]);
+            setSelectedMetaFeatures([]);
+            useSampleGeneMetaStore.setState({
+                exprDataDict: {},
+                sampleMetaDict: {},
+                imageDataDict: {}
+            });
+            updateQueryParams("", [], [], []);
+            return;
+        }
 
-     const fetchPrimaryData = async () => {
-          setDataset(datasetId);
+        setDataset(datasetId);
+
         await fetchSampleList(datasetId);
         await fetchGeneList(datasetId);
         await fetchMetaList(datasetId, "cell_level");
         await fetchVisiumDefaults(datasetId);
 
-         if (!datasetId) {
-            // Clear everything if no dataset is selected
-            setSelectedSamples([]);
-            setSelectedGenes([]);
-            setSelectedMetaFeatures([]);
-            useSampleGeneMetaStore.setState({exprDataDict: {}});
-            updateQueryParams("", [], [], []);
-            return;
-        }
-
-        // Get the current state after fetching defaults
-        const { defaultSamples, defaultGenes, defaultFeatures } = useVisiumStore.getState();
+        const {defaultSamples, defaultGenes, defaultFeatures} = useVisiumStore.getState();
 
         const initialSelectedSamples = urlSamples.length ? urlSamples : defaultSamples;
         const initialSelectedGenes = urlGenes.length ? urlGenes : defaultGenes;
         const initialMetas = urlMetas.length ? urlMetas : defaultFeatures;
 
+        // 使用 setState 确保状态同步更新
         useSampleGeneMetaStore.setState({
             selectedSamples: initialSelectedSamples,
             selectedGenes: initialSelectedGenes,
         });
         setSelectedMetaFeatures(initialMetas);
 
-        // 清空旧数据，并重新获取 exprData
-        useSampleGeneMetaStore.setState({exprDataDict: {}}); // 先清空
         await fetchExprData(datasetId);
-
         await fetchImageData();
         await fetchMetaDataOfSample();
 
-        // Update URL params with the initial values
         updateQueryParams(datasetId, initialSelectedGenes, initialSelectedSamples, initialMetas);
     }
 
     useEffect(() => {
         fetchPrimaryData();
-    }, [datasetId]);
+    }, []);
 
     const excludedKeys = new Set(["cs_id", "sample_id", "Cell", "Spot", "UMAP_1", "UMAP_2"]);
     const metaOptions = metaList ? metaList.filter(option => !excludedKeys.has(option)) : [];
@@ -131,38 +140,98 @@ function VisiumView() {
         setQueryParams(newParams);
     };
 
-    const handleDatasetChange = (event, newValue) => {
-        setDataset(newValue)
-        setDatasetId(newValue)
-        updateQueryParams(newValue, selectedGenes, selectedSamples)
+    const handleDatasetChange = async (event, newValue) => {
+        if (newValue === datasetId) return;
+
+        // 先完全重置 store 状态
+        useSampleGeneMetaStore.setState({
+            dataSet: null,
+            geneList: [],
+            sampleList: [],
+            metaList: [],
+            selectedSamples: [],
+            selectedGenes: [],
+            exprDataDict: {},
+            sampleMetaDict: {},
+            imageDataDict: {},
+            loading: false,
+            error: null
+        });
+
+        // 清理本地状态
+        setSelectedMetaFeatures([]);
+
+        // 设置新的 dataset
+        setDatasetId(newValue);
+
+        // 立即更新URL参数（清空状态）
+        updateQueryParams(newValue, [], [], []);
+
+        // 如果选择了新 dataset，则获取数据
+        if (newValue) {
+            // 设置 dataset
+            useSampleGeneMetaStore.getState().setDataset(newValue);
+
+            // 先获取基础列表数据
+            await useSampleGeneMetaStore.getState().fetchSampleList(newValue);
+            await useSampleGeneMetaStore.getState().fetchGeneList(newValue);
+            await useSampleGeneMetaStore.getState().fetchMetaList(newValue, "cell_level");
+            await fetchVisiumDefaults(newValue);
+
+            // 获取新 dataset 的默认值
+            const {defaultSamples, defaultGenes, defaultFeatures} = useVisiumStore.getState();
+
+            // 直接设置 store 状态
+            useSampleGeneMetaStore.setState({
+                selectedSamples: defaultSamples,
+                selectedGenes: defaultGenes,
+            });
+
+            // 更新本地状态
+            setSelectedMetaFeatures(defaultFeatures);
+
+            // 使用显式参数调用数据获取函数
+            await useSampleGeneMetaStore.getState().fetchExprData(newValue, defaultGenes);
+            await useSampleGeneMetaStore.getState().fetchImageData(newValue, defaultSamples);
+            await useSampleGeneMetaStore.getState().fetchMetaDataOfSample(newValue, defaultSamples);
+
+            // 更新URL参数包含新 dataset 的默认值
+            updateQueryParams(newValue, defaultGenes, defaultSamples, defaultFeatures);
+        }
     }
 
-    /** Handles sample selection change */
+
+    // 修改 handleSampleChange 和 handleGeneChange，确保同时更新 store
     const handleSampleChange = (event, newValue) => {
+        // 更新 store 状态
         setSelectedSamples(newValue);
-        updateQueryParams(datasetId, selectedGenes, newValue);
-        fetchImageData();
-        fetchMetaDataOfSample();
+        // 更新 URL 参数
+        updateQueryParams(datasetId, selectedGenes, newValue, selectedMetaFeatures);
+        fetchImageData(datasetId, newValue);
+        fetchMetaDataOfSample(datasetId, newValue);
     };
 
-    /** Handles gene selection change */
     const handleGeneChange = (event, newValue) => {
+        // 更新 store 状态
         setSelectedGenes(newValue);
-        updateQueryParams(datasetId, newValue, selectedSamples);
-        fetchExprData();
+        // 更新 URL 参数
+        updateQueryParams(datasetId, newValue, selectedSamples, selectedMetaFeatures);
+        fetchExprData(datasetId, newValue);
     };
 
     const handleGeneDelete = (delGene) => {
         const newGenes = selectedGenes.filter(g => g !== delGene);
+        // 更新 store 状态
         setSelectedGenes(newGenes);
-        updateQueryParams(datasetId, newGenes, selectedSamples);
-        fetchExprData();
+        updateQueryParams(datasetId, newGenes, selectedSamples, selectedMetaFeatures);
+        fetchExprData(datasetId, newGenes);
     }
 
     const handleMetaFeatureChange = (event, newValue) => {
         setSelectedMetaFeatures(newValue);
         updateQueryParams(datasetId, selectedGenes, selectedSamples, newValue);
     }
+
     const handleMetaDelete = (delMeta) => {
         const newMetas = selectedMetaFeatures.filter(m => m !== delMeta);
         setSelectedMetaFeatures(newMetas);
@@ -170,25 +239,34 @@ function VisiumView() {
     }
 
     // click the button to fetch umap data
+    // 修改 fetch 函数的调用，传递显式参数
     const handleLoadPlot = () => {
         setDataset(datasetId)
-        fetchExprData();
-        fetchImageData();
-        fetchMetaDataOfSample();
+        fetchExprData(datasetId, selectedGenes);
+        fetchImageData(datasetId, selectedSamples);
+        fetchMetaDataOfSample(datasetId, selectedSamples);
     }
+
+    const handleOptionChange = (option) => (event) => {
+        // Update immediately for switches
+        setSettingOptions({
+            ...settingOptions,
+            [option]: event.target.checked,
+        });
+    };
+
     const selectedFeatures = [...new Set([...selectedGenes, ...selectedMetaFeatures])];
-    console.log("selectedFeatures:", selectedFeatures);
+
     const plotClass = Object.keys(selectedFeatures).length <= 1
         ? "single-plot" : Object.keys(selectedFeatures).length === 2
             ? "two-plots" : Object.keys(selectedFeatures).length === 3
                 ? "three-plots" : "four-plots";
 
-    // console.log("sampleMetaDict:", sampleMetaDict);
     return (
         <div className="plot-page-container" style={{display: 'flex', flexDirection: 'column', flex: 1}}>
             {/* Title Row */}
             <Box className="title-row">
-                <Typography variant="h6">Exploration of VisiumST Data Features</Typography>
+                <Typography variant="h6">Exploration of Spatial Tx Data Features</Typography>
             </Box>
             <Divider/>
             <div className="plot-content">
@@ -230,7 +308,7 @@ function VisiumView() {
                                         onDelete={() => {
                                             const newSamples = selectedSamples.filter(s => s !== option);
                                             setSelectedSamples(newSamples);
-                                            updateQueryParams(datasetId, selectedGenes, newSamples);
+                                            updateQueryParams(datasetId, selectedGenes, newSamples, selectedMetaFeatures);
                                             fetchImageData();
                                             fetchMetaDataOfSample();
                                         }}
@@ -302,9 +380,21 @@ function VisiumView() {
                                                             variant="standard"/>}
                     />
 
+                    {/*<Divider sx={{marginTop: "50px"}}/>*/}
+                    <Typography sx={{marginTop: "30px"}} variant="subtitle1">Settings:</Typography>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={settingOptions.showImage}
+                                onChange={handleOptionChange("showImage")}
+                            />
+                        }
+                        label="Show H&E image"
+                    />
+                    <Divider />
 
                     {/* a button to fetch data and a loading indicator*/}
-                    <Box sx={{display: "flex", justifyContent: "center", margin: "20px 0px"}}>
+                    <Box sx={{display: "flex", justifyContent: "center", margin: "50px 0px"}}>
                         <Button variant="outlined" endIcon={<ScatterPlotIcon/>} disabled={loading}
                                 onClick={handleLoadPlot}>
                             {loading ? "Loading plots..." : "Refresh Plots"}
@@ -317,9 +407,14 @@ function VisiumView() {
                     {loading && datasetId ? (
                         <>
                             <Box sx={{width: '100%'}}><LinearProgress/></Box>
-                            <Box sx={{display: "flex", justifyContent: "center", paddingTop: "100px"}}><CircularProgress/></Box>
+                            <Box sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                paddingTop: "100px"
+                            }}><CircularProgress/></Box>
                             <Box sx={{display: "flex", justifyContent: "center", paddingTop: "10px"}}>
-                                <Typography sx={{marginLeft: "10px", color: "text.secondary"}} variant="h5">Loading sample list and metadata...</Typography>
+                                <Typography sx={{marginLeft: "10px", color: "text.secondary"}} variant="h5">Loading
+                                    sample list and metadata...</Typography>
                             </Box>
                         </>
                     ) : !datasetId ? (
@@ -342,6 +437,9 @@ function VisiumView() {
                                     <div key={`${sample_i}-label`} className="sample-label">
                                         <Box display="flex" alignItems="center" justifyContent="center" sx={{mb: 1}}>
                                             <Typography variant="subtitle1">Sample: {sample_i}</Typography>
+                                            <div>&nbsp;&nbsp;</div>
+                                            (<Link href={`/gsMAP/${sample_i}_PD_gsMap_Report.html`} target="_blank"
+                                                   rel="noopener" underline="hover">View gsMAP</Link>)
                                         </Box>
                                     </div>
 
@@ -349,19 +447,21 @@ function VisiumView() {
                                     <div key={`${sample_i}-features`} className={`features-container ${plotClass}`}>
                                         {selectedFeatures.length > 0 ? (
                                             selectedFeatures.map(feature => (
-                                                <>
-                                                    <div key={`${sample_i}-${feature}-chart`}
-                                                         className="feature-plot-echart">
-                                                        {sampleMetaDict[sample_i] &&
-                                                            <PlotlyFeaturePlot visiumData={visiumData_i}
-                                                                               geneData={exprDataDict}
-                                                                               metaData={sampleMetaDict[sample_i] || {}}
-                                                                               feature={feature}/>}
-                                                        <Typography variant="caption" display="block" align="center">
-                                                            {feature}
-                                                        </Typography>
-                                                    </div>
-                                                </>
+                                                <div key={`${sample_i}-${feature}-div`} className="feature-plot-div">
+                                                    {sampleMetaDict[sample_i] &&
+                                                        <FeaturePlot
+                                                            assayType={getAssayType(datasetId)}
+                                                            visiumData={visiumData_i}
+                                                            geneData={exprDataDict}
+                                                            metaData={sampleMetaDict[sample_i] || {}}
+                                                            feature={feature}
+                                                            showImage={settingOptions.showImage}
+                                                        />
+                                                    }
+                                                    <Typography variant="caption" display="block" align="center">
+                                                        {feature}
+                                                    </Typography>
+                                                </div>
                                             ))
                                         ) : (
                                             <Box className="no-feature">

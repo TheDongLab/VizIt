@@ -49,7 +49,7 @@ main_cluster_column = "smoothed_label_s5"
 condition_column = "diagnosis"
 
 
-[visium_defaults]
+[spatial_defaults]
 samples = [ "BN2023", "BN1076",]
 features = [ "smoothed_label_s5"]
 genes = ["SNCA"]

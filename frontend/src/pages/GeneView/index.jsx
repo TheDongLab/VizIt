@@ -151,6 +151,8 @@ function GeneView() {
     const handleDatasetChange = (event, newValue) => {
         setDataset(newValue)
         setDatasetId(newValue)
+        setSelectedGenes([])
+        setSelectedSamples(["all"])
         updateQueryParams(newValue, selectedGenes, selectedSamples)
     }
 

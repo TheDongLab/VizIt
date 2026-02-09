@@ -56,17 +56,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   binSize,
 }) {
   const range = visibleRange || selectedRange;
-  // const combinedSnpList = Object.entries(snpData).flatMap(([celltype, snps]) =>
-  //   snps.map(({ snp_id, p_value, beta_value, position, ...rest }) => ({
-  //     ...rest,
-  //     id: snp_id,
-  //     y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-  //     beta: beta_value,
-  //     x: position,
-  //     p_value,
-  //     celltype,
-  //   })),
-  // );
   const signalList = Object.entries(signalData).flatMap(([celltype, signals]) =>
     signals.map(({ position, value, ...rest }) => ({
       ...rest,
@@ -76,43 +65,10 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     })),
   );
 
-  // const gene = genes.find((g) => g.gene_id === geneName);
-  // const geneStart = gene ? gene.position_start : 0;
-  // const geneEnd = gene ? gene.position_end : 0;
-
-  // Calculate X and Y ranges
-  // const radius = 1_000_000;
-  // const xValues = signalList.map((snp) => snp.x);
   const yValues = signalList
     .filter((snp) => snp.x >= visibleRange.start && snp.x <= visibleRange.end)
     .map((snp) => snp.y)
     .filter((y) => Number.isFinite(y));
-
-  // const maxSignal = signalList.reduce(
-  //   (max, current) => {
-  //     return current.y > max.y ? current : max;
-  //   },
-  //   { y: -Infinity, x: 0 },
-  // );
-
-  // // const betaValues = signalList.map((snp) => snp.beta);
-  // // const maxBetaMagnitude = Math.max(...betaValues.map((b) => Math.abs(b)));
-  // // const minBetaMagnitude = Math.min(...betaValues.map((b) => Math.abs(b)));
-
-  // const signalMin = Math.min(...xValues);
-  // const signalMax = Math.max(...xValues);
-
-  // // const combinedMin = Math.min(snpMin, geneStart);
-  // // const combinedMax = Math.max(snpMax, geneEnd);
-  // const signalRange = signalMax - signalMin;
-
-  // const xPadding = Math.round((signalRange * 0.05) / 1000) * 1000; // 5% of range
-
-  // const paddedMin = signalMin - xPadding;
-  // const paddedMax = signalMax + xPadding;
-
-  // const xMin = Math.max(paddedMin, geneStart - radius);
-  // const xMax = Math.min(paddedMax, geneEnd + radius);
 
   const yPadding = 1;
   const yHeight = getDisplayOption(displayOptions, "yHeight", "");
@@ -136,83 +92,12 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     [gwasMin, gwasMax],
   );
 
-  // const nearbyXValues = useMemo(
-  //   () => genes.flatMap((gene) => [gene.position_start, gene.position_end]),
-  //   [genes],
-  // );
-
-  // const nearbyGenesRange = useMemo(() => {
-  //   const nearbyMin = Math.min(...nearbyXValues);
-  //   const nearbyMax = Math.max(...nearbyXValues);
-  //   const nearbyPadding =
-  //     Math.round(((nearbyMax - nearbyMin) * 0.05) / 1000) * 1000; // 5% padding
-  //   return [
-  //     Math.max(nearbyMin - nearbyPadding),
-  //     Math.min(nearbyMax + nearbyPadding),
-  //   ];
-  // }, [nearbyXValues]);
-
   const formatNumber = (num, precision) => {
     const rounded = round(num, precision);
     return rounded < 0 // Just in case there's a hyphen in there somehow
       ? rounded.toString().replace("-", "−")
       : rounded.toString();
   };
-
-  // const snpTraces = useMemo(() => {
-  //   return cellTypes.flatMap((celltype, i) => {
-  //     const cellSnps = snpData[celltype] || [];
-  //     const snpList = cellSnps.map(
-  //       ({ snp_id, p_value, beta_value, position, ...rest }) => ({
-  //         ...rest,
-  //         id: snp_id,
-  //         y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-  //         beta: beta_value,
-  //         x: position,
-  //         p_value,
-  //       }),
-  //     );
-
-  //     return [
-  //       {
-  //         name: celltype,
-  //         x: snpList.map((snp) => snp.x),
-  //         y: snpList.map((snp) => snp.y),
-  //         xaxis: "x",
-  //         yaxis: `y${i + (hasGwas ? 3 : 2)}`,
-  //         type: useWebGL ? "scattergl" : "scatter",
-  //         mode: "markers",
-  //         marker: {
-  //           color: snpList.map((snp) =>
-  //             dataToRGB(snp, minBetaMagnitude, maxBetaMagnitude),
-  //           ),
-  //           opacity: 1,
-  //           size: snpList.map((snp) => (Math.abs(snp.y) < 2 ? 6 : 8)),
-  //           line: {
-  //             width: 0,
-  //           },
-  //         },
-  //         customdata: snpList.map((snp) => snp.id),
-  //         hoverinfo: "text",
-  //         text: snpList.map(
-  //           (snp) =>
-  //             `<b>SNP:</b> ${snp.id}<br>` +
-  //             `<b>Position:</b> ${snp.x}<br>` +
-  //             `<b>β:</b> ${formatNumber(snp.beta, 3)}<br>` +
-  //             `<b>−log10(p):</b> ${formatNumber(snp.y, 3)}`,
-  //         ),
-  //         pointType: "snp",
-  //       },
-  //     ];
-  //   });
-  // }, [
-  //   cellTypes,
-  //   snpData,
-  //   hasGwas,
-  //   useWebGL,
-  //   minBetaMagnitude,
-  //   maxBetaMagnitude,
-  // ]);
 
   const gwasTrace = useMemo(() => {
     return [
@@ -225,7 +110,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         mode: "markers",
         marker: {
           color: gwasData.map((s) =>
-            s.beta > 0 ? "rgb(230, 120, 120)" : "rgb(120, 120, 230)",
+            s.beta > 0 ? "rgb(230, 80, 80)" : "rgb(80, 80, 230)",
           ),
           // color: gwasData.map((s) =>
           //   dataToRGB(s, minBetaMagnitude, maxBetaMagnitude),
@@ -248,7 +133,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         ),
       },
     ];
-  }, [hasGwas, gwasData, useWebGL]);
+  }, [gwasData, useWebGL]);
 
   const jitterMap = useMemo(() => {
     const map = new Map();
@@ -318,22 +203,31 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       showlegend: false,
     };
 
-    // const otherLabels = {
-    //   x: nearbyGenes.flatMap((gene) => [(getStart(gene) + getEnd(gene)) / 2]),
-    //   y: nearbyGenes.flatMap((gene) => [jitterMap.get(gene.gene_id) - 0.2]),
-    //   type: "scatter",
-    //   mode: "text",
-    //   text: nearbyGenes.map((gene) => gene.gene_id),
-    //   textposition: "bottom center",
-    //   showlegend: false,
-    //   hoverinfo: "skip",
-    //   textfont: {
-    //     size: 10,
-    //     color: "rgb(161,161,161)",
-    //   },
-    // };
+    // Gene labels trace
+    const geneLabels = {
+      x: nearbyGenes.map(gene => (getEnd(gene) + getStart(gene)) / 2), // 在基因终点显示名称
+      y: nearbyGenes.map(gene => {
+        const jitter = jitterMap.get(gene.gene_id);
+        return jitter;
+      }),
+      xaxis: "x",
+      yaxis: "y",
+      type: "scatter",
+      mode: "text", // 只显示文本
+      text: nearbyGenes.map(gene => gene.gene_id),
+      textposition: "top center",
+      textfont: {
+        family: "Arial",
+        size: 11,
+        color: "rgb(60,60,60)"
+      },
+      marker: { opacity: 0 }, // 隐藏标记点
+      hoverinfo: "none", // 禁用悬停（避免与主trace冲突）
+      name: "Gene Names",
+      showlegend: false,
+    };
 
-    return [others];
+    return [others,geneLabels];
   }, [jitterMap, nearbyGenes]);
 
   // Handle clicking points
@@ -401,48 +295,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         </>
       );
 
-      // const formattedData = (
-      //   <>
-      //     <strong>SNP:</strong> {data[0].id}{" "}
-      //     <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
-      //       (View in GWAS Catalog)
-      //     </a>
-      //     <br />
-      //     <strong>Position:</strong> {data[0].x}
-      //     <br />
-      //     <strong>β:</strong> {formatNumber(data.beta, 6)}
-      //     <br />−<strong>log10(p):</strong>{" "}
-      //     {formatNumber(data.y * Math.sign(data.beta), 6)}
-      //     Group each cell‑type’s stats on the same row
-      //     <table
-      //       style={{
-      //         marginTop: "0.75em",
-      //         borderCollapse: "collapse",
-      //         width: "100%",
-      //       }}
-      //     >
-      //       <thead>
-      //         <tr>
-      //           <th style={{ textAlign: "left" }}>Cell Type</th>
-      //           <th style={{ textAlign: "right" }}>β</th>
-      //           <th style={{ textAlign: "right" }}>−log10(p)</th>
-      //         </tr>
-      //       </thead>
-      //       <tbody>
-      //         {data.map((d, idx) => (
-      //           <tr key={idx}>
-      //             <td>{d.celltype}</td>
-      //             <td style={{ textAlign: "right" }}>
-      //               {formatNumber(d.beta, 3)}
-      //             </td>
-      //             <td style={{ textAlign: "right" }}>{formatNumber(d.y, 3)}</td>
-      //           </tr>
-      //         ))}
-      //       </tbody>
-      //     </table>
-      //   </>
-      // );
-
       handleSelect(name, formattedData, "signal");
       return;
     } else if (pointType === "gene") {
@@ -487,33 +339,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
           <br />
           <strong>−log10(p):</strong>{" "}
           {formatNumber(data.y * Math.sign(data.beta), 6)}
-          {/* Group each cell‑type’s stats on the same row */}
-          {/* <table */}
-          {/*   style={{ */}
-          {/*     marginTop: "0.75em", */}
-          {/*     borderCollapse: "collapse", */}
-          {/*     width: "100%", */}
-          {/*   }} */}
-          {/* > */}
-          {/*   <thead> */}
-          {/*     <tr> */}
-          {/*       <th style={{ textAlign: "left" }}>Cell Type</th> */}
-          {/*       <th style={{ textAlign: "right" }}>β</th> */}
-          {/*       <th style={{ textAlign: "right" }}>−log10(p)</th> */}
-          {/*     </tr> */}
-          {/*   </thead> */}
-          {/*   <tbody> */}
-          {/*     {data.map((d, idx) => ( */}
-          {/*       <tr key={idx}> */}
-          {/*         <td>{d.celltype}</td> */}
-          {/*         <td style={{ textAlign: "right" }}> */}
-          {/*           {formatNumber(d.beta, 3)} */}
-          {/*         </td> */}
-          {/*         <td style={{ textAlign: "right" }}>{formatNumber(d.y, 3)}</td> */}
-          {/*       </tr> */}
-          {/*     ))} */}
-          {/*   </tbody> */}
-          {/* </table> */}
         </>
       );
 
@@ -562,7 +387,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   }, [binSize, cellTypes, hasGwas, signalData, useWebGL]);
 
   // Calculate layout dimensions
-  const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 50);
+  const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 120);
   const pixelsPerGap = getDisplayOption(displayOptions, "gapHeight", 10);
   const marginTop = 80;
   const marginBottom = 80;
@@ -718,291 +543,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
           layer: "below",
           line: { width: 0 },
         },
-        // ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
-        //   ? getDisplayOption(displayOptions, "crossGapDashedLine", true)
-        //     ? [
-        //         // Cross-gap mode (single line spanning all tracks)
-        //         {
-        //           type: "line",
-        //           xref: "x",
-        //           yref: "paper",
-        //           x0:
-        //             gene.strand === "-"
-        //               ? gene.position_end
-        //               : gene.strand === "+"
-        //                 ? gene.position_start
-        //                 : (gene.position_start + gene.position_end) / 2,
-        //           x1:
-        //             gene.strand === "-"
-        //               ? gene.position_end
-        //               : gene.strand === "+"
-        //                 ? gene.position_start
-        //                 : (gene.position_start + gene.position_end) / 2,
-        //           y0: 0,
-        //           y1: 1,
-        //           line: {
-        //             color: getDisplayOption(
-        //               displayOptions,
-        //               "dashedLineColor",
-        //               "#000000",
-        //             ),
-        //             width: 1,
-        //             dash: "dash",
-        //           },
-        //           layer: getDisplayOption(
-        //             displayOptions,
-        //             "dashedLineOnTop",
-        //             false,
-        //           )
-        //             ? "above"
-        //             : "below",
-        //         },
-        //       ]
-        //     : [
-        //         // Track-only mode (separate lines per track)
-        //         // Gene track
-        //         {
-        //           type: "line",
-        //           xref: "x",
-        //           yref: "y",
-        //           x0:
-        //             gene.strand === "-"
-        //               ? gene.position_end
-        //               : gene.strand === "+"
-        //                 ? gene.position_start
-        //                 : (gene.position_start + gene.position_end) / 2,
-        //           x1:
-        //             gene.strand === "-"
-        //               ? gene.position_end
-        //               : gene.strand === "+"
-        //                 ? gene.position_start
-        //                 : (gene.position_start + gene.position_end) / 2,
-        //           y0: -2,
-        //           y1: 2,
-        //           line: {
-        //             color: getDisplayOption(
-        //               displayOptions,
-        //               "dashedLineColor",
-        //               "#000000",
-        //             ),
-        //             width: 1,
-        //             dash: "dash",
-        //           },
-        //           layer: getDisplayOption(
-        //             displayOptions,
-        //             "dashedLineOnTop",
-        //             false,
-        //           )
-        //             ? "above"
-        //             : "below",
-        //         },
-        //         // GWAS track
-        //         ...(hasGwas
-        //           ? [
-        //               {
-        //                 type: "line",
-        //                 xref: "x",
-        //                 yref: "y2",
-        //                 x0:
-        //                   gene.strand === "-"
-        //                     ? gene.position_end
-        //                     : gene.strand === "+"
-        //                       ? gene.position_start
-        //                       : (gene.position_start + gene.position_end) / 2,
-        //                 x1:
-        //                   gene.strand === "-"
-        //                     ? gene.position_end
-        //                     : gene.strand === "+"
-        //                       ? gene.position_start
-        //                       : (gene.position_start + gene.position_end) / 2,
-        //                 y0: initialGwasYRange[0],
-        //                 y1: initialGwasYRange[1],
-        //                 line: {
-        //                   color: getDisplayOption(
-        //                     displayOptions,
-        //                     "dashedLineColor",
-        //                     "#000000",
-        //                   ),
-        //                   width: 1,
-        //                   dash: "dash",
-        //                 },
-        //                 layer: getDisplayOption(
-        //                   displayOptions,
-        //                   "dashedLineOnTop",
-        //                   false,
-        //                 )
-        //                   ? "above"
-        //                   : "below",
-        //               },
-        //             ]
-        //           : []),
-        //       // Celltype tracks
-        //       ...cellTypes.map((celltype, i) => ({
-        //         type: "line",
-        //         xref: "x",
-        //         yref: `y${i + (hasGwas ? 3 : 2)}`,
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: initialYRange[0],
-        //         y1: initialYRange[1],
-        //         line: {
-        //           color: getDisplayOption(
-        //             displayOptions,
-        //             "dashedLineColor",
-        //             "#000000",
-        //           ),
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: getDisplayOption(
-        //           displayOptions,
-        //           "dashedLineOnTop",
-        //           false,
-        //         )
-        //           ? "above"
-        //           : "below",
-        //       })),
-        //     ]
-        // : []),
-        // ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
-        //   ? [
-        //       {
-        //         type: "line",
-        //         xref: "x",
-        //         yref: "paper",
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: 0,
-        //         y1: 1,
-        //         line: {
-        //           color: "#dcdcdc",
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: "below",
-        //       },
-        //     ]
-        //   : []),
-        // ...(gene
-        //   ? [
-        //       {
-        //         type: "line",
-        //         xref: "x",
-        //         yref: "y",
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: -2,
-        //         y1: 2,
-        //         line: {
-        //           color: "rgb(220, 220, 220)",
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: "below",
-        //       },
-        //     ]
-        //   : []),
-        // ...(hasGwas && gene
-        //   ? [
-        //       {
-        //         type: "line",
-        //         xref: "x",
-        //         yref: "y2",
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: initialGwasYRange[0],
-        //         y1: initialGwasYRange[1],
-        //         line: {
-        //           color: "rgb(220, 220, 220)",
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: "below",
-        //       },
-        //     ]
-        //   : []),
-        // ...cellTypes.map((celltype, i) => ({
-        //   type: "line",
-        //   xref: "x",
-        //   yref: `y${i + (hasGwas ? 3 : 2)}`,
-        //   x0: gene
-        //     ? gene.strand === "-"
-        //       ? gene.position_end
-        //       : gene.strand === "+"
-        //         ? gene.position_start
-        //         : (gene.position_start + gene.position_end) / 2
-        //     : 0,
-        //   x1: gene
-        //     ? gene.strand === "-"
-        //       ? gene.position_end
-        //       : gene.strand === "+"
-        //         ? gene.position_start
-        //         : (gene.position_start + gene.position_end) / 2
-        //     : 0,
-        //   y0: initialYRange[0],
-        //   y1: initialYRange[1],
-        //   line: {
-        //     color: "rgb(220, 220, 220)",
-        //     width: 1,
-        //     dash: "dash",
-        //   },
-        //   layer: "below",
-        // })),
-        // ...cellTypes.flatMap((celltype, i) => [
-        //   {
-        //     type: "rect",
-        //     xref: "paper",
-        //     yref: `y${i + (hasGwas ? 3 : 2)}`,
-        //     x0: 0,
-        //     x1: 1,
-        //     y0: -2,
-        //     y1: 2,
-        //     fillcolor: "lightgray",
-        //     opacity: 0.3,
-        //     // layer: "below",
-        //     line: { width: 0 },
-        //   },
-        // ]),
+       
         ...(hasGwas
           ? [
               {
@@ -1062,6 +603,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       chromosome,
       selectedRange.start,
       selectedRange.end,
+      visibleRange.start,
+      visibleRange.end,
       totalHeight,
       cellTypes,
       hasGwas,
@@ -1225,51 +768,5 @@ RegionViewPlotlyPlot.propTypes = {
   }),
   handlePlotUpdate: PropTypes.func.isRequired,
 };
-
-// RegionViewPlotlyPlot.propTypes = {
-//   dataset: PropTypes.string.isRequired,
-//   geneName: PropTypes.string.isRequired,
-//   genes: PropTypes.arrayOf(
-//     PropTypes.shape({
-//       gene_id: PropTypes.string.isRequired,
-//       position_start: PropTypes.number.isRequired,
-//       position_end: PropTypes.number.isRequired,
-//       strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
-//     }),
-//   ).isRequired,
-//   gwasData: PropTypes.arrayOf(
-//     PropTypes.shape({
-//       id: PropTypes.string.isRequired,
-//       snp_id: PropTypes.string.isRequired,
-//       position: PropTypes.number.isRequired,
-//       x: PropTypes.number.isRequired,
-//       y: PropTypes.number.isRequired,
-//       beta: PropTypes.number.isRequired,
-//     }),
-//   ).isRequired,
-//   hasGwas: PropTypes.bool.isRequired,
-//   snpData: PropTypes.objectOf(
-//     PropTypes.arrayOf(
-//       PropTypes.shape({
-//         snp_id: PropTypes.string.isRequired,
-//         p_value: PropTypes.number.isRequired,
-//         beta_value: PropTypes.number.isRequired,
-//         position: PropTypes.number.isRequired,
-//       }),
-//     ),
-//   ).isRequired,
-//   chromosome: PropTypes.string.isRequired,
-//   cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
-//   handleSelect: PropTypes.func.isRequired,
-//   useWebGL: PropTypes.bool,
-//   displayOptions: PropTypes.shape({
-//     showDashedLine: PropTypes.bool,
-//     crossGapDashedLine: PropTypes.bool,
-//     dashedLineColor: PropTypes.string,
-//     showGrid: PropTypes.bool,
-//     trackHeight: PropTypes.number,
-//     gapHeight: PropTypes.number,
-//   }),
-// };
 
 export default RegionViewPlotlyPlot;

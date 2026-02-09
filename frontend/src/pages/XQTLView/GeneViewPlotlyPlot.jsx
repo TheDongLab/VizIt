@@ -12,6 +12,12 @@ function dataToRGB({ beta, y }, min = 2, max = 3) {
   const absBeta = Math.abs(beta);
   let intensity;
 
+  // Calculated intensity based on absBeta within [min, max] 
+  //这部分将 beta 的绝对值映射到 [0, 1] 区间的强度值：
+  // absBeta < min → intensity = 0（最浅色）
+  // absBeta > max → intensity = 1（最深色）
+  // 在 min 和 max 之间 → 线性插值
+
   if (min >= max) {
     intensity = absBeta >= max ? 1 : 0; // Treat min/max as single threshold
   } else {
@@ -20,7 +26,8 @@ function dataToRGB({ beta, y }, min = 2, max = 3) {
     else intensity = (absBeta - min) / (max - min); // Normalize to [0,1]
   }
 
-  const channelValue = Math.round(maxLevel * (1 - intensity));
+  // const channelValue = Math.round(maxLevel * (1 - intensity));
+  const channelValue = 80;
 
   return beta > 0
     ? `rgb(${maxLevel}, ${channelValue}, ${channelValue})`
@@ -834,120 +841,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 })),
               ]
           : []),
-        // ...(gene && getDisplayOption(displayOptions, "showDashedLine", true)
-        //   ? [
-        //       {
-        //         type: "line",
-        //         xref: "x",
-        //         yref: "paper",
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: 0,
-        //         y1: 1,
-        //         line: {
-        //           color: "#dcdcdc",
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: "below",
-        //       },
-        //     ]
-        //   : []),
-        // ...(gene
-        //   ? [
-        //       {
-        //         type: "line",
-        //         xref: "x",
-        //         yref: "y",
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: -2,
-        //         y1: 2,
-        //         line: {
-        //           color: "rgb(220, 220, 220)",
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: "below",
-        //       },
-        //     ]
-        //   : []),
-        // ...(hasGwas && gene
-        //   ? [
-        //       {
-        //         type: "line",
-        //         xref: "x",
-        //         yref: "y2",
-        //         x0:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         x1:
-        //           gene.strand === "-"
-        //             ? gene.position_end
-        //             : gene.strand === "+"
-        //               ? gene.position_start
-        //               : (gene.position_start + gene.position_end) / 2,
-        //         y0: initialGwasYRange[0],
-        //         y1: initialGwasYRange[1],
-        //         line: {
-        //           color: "rgb(220, 220, 220)",
-        //           width: 1,
-        //           dash: "dash",
-        //         },
-        //         layer: "below",
-        //       },
-        //     ]
-        //   : []),
-        // ...cellTypes.map((celltype, i) => ({
-        //   type: "line",
-        //   xref: "x",
-        //   yref: `y${i + (hasGwas ? 3 : 2)}`,
-        //   x0: gene
-        //     ? gene.strand === "-"
-        //       ? gene.position_end
-        //       : gene.strand === "+"
-        //         ? gene.position_start
-        //         : (gene.position_start + gene.position_end) / 2
-        //     : 0,
-        //   x1: gene
-        //     ? gene.strand === "-"
-        //       ? gene.position_end
-        //       : gene.strand === "+"
-        //         ? gene.position_start
-        //         : (gene.position_start + gene.position_end) / 2
-        //     : 0,
-        //   y0: initialYRange[0],
-        //   y1: initialYRange[1],
-        //   line: {
-        //     color: "rgb(220, 220, 220)",
-        //     width: 1,
-        //     dash: "dash",
-        //   },
-        //   layer: "below",
-        // })),
         ...cellTypes.flatMap((celltype, i) => [
           {
             type: "rect",

@@ -38,10 +38,12 @@ import RegionViewPlotlyPlot from "./RegionViewPlotlyPlot.jsx";
 
 import {ListboxComponent, StyledPopper} from "../../components/Listbox";
 
+import {getGeneLocation, getSnpLocation} from "../../api/qtl.js";
+
 import {supportsWebGL} from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
-console.log("WebGL supported:", webGLSupported);
+// console.log("WebGL supported:", webGLSupported);
 
 function ConfirmationDialog({
                                 isOpen,
@@ -106,10 +108,11 @@ function GenomicRegionView() {
 
     const [dataLoading, setDataLoading] = useState(false);
 
-    const parseRegionString = (str) => {
+    const parseRegionString = async (str) => {
         if (str === null || str === undefined || str.trim() === "") {
             console.log("inside parseRegionString: empty string");
         }
+
         // Parse formats: "chr1:1000-2000", "1:1,000-2,000", "chr1 1000 2000"
         const match = str.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i);
         if (match) {
@@ -118,8 +121,36 @@ function GenomicRegionView() {
                 start: parseInt(match[3].replace(/,/g, "")),
                 end: parseInt(match[4].replace(/,/g, "")),
             };
-        }
-        return null;
+        }else if (str.toLowerCase().startsWith("rs")) {
+            // If the string doesn't match the expected format, check if it's a SNP and try to resolve it to a region
+            try {
+                const snp = await getSnpLocation(datasetId, str);
+                if(snp && snp.data){
+                    return {
+                        chromosome: snp.data.chromosome,
+                        start: snp.data.position - 50000,
+                        end: snp.data.position + 50000,
+                    }
+                }
+            } catch (error) {
+                console.warn("SNP not found:", str, error);
+            }
+        } else {
+            // if it doesn't match the expected format, check if it's a gene symbol and try to resolve it to a region
+            try {
+                const gene = await getGeneLocation(datasetId, str);
+                if(gene && gene.data){
+                    return {
+                        chromosome: gene.data.chromosome,
+                        start: gene.data.start - 50000,
+                        end: gene.data.end + 50000,
+                    }
+                }
+            } catch (error) {
+                console.warn("Gene not found:", str, error);
+            }
+        }   
+        return null;  
     };
 
     const setRegion = useCallback(
@@ -194,18 +225,27 @@ function GenomicRegionView() {
     };
 
     const handleRegionSubmit = async () => {
-        const region = parseRegionString(regionSearchText);
+        const region = await parseRegionString(regionSearchText);
         if (region) {
+            setSelectionError("");
             setRegion(region.chromosome, region.start, region.end);
-
-            // try {
-            //   await fetchData();
-            // } catch (error) {
-            //   console.error("Error fetching data:", error);
-            //   setSelectionError("Failed to fetch data for this region.");
-            // }
         } else {
-            setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
+            // Clear existing plot data
+            setSelectedChromosome(null);
+            setSelectedRange(null, null);
+            setNearbyGenes([]);
+            setGwasData([]);
+            setVisibleRange({start: null, end: null});
+
+            // Show descriptive error message
+            const input = regionSearchText.trim();
+            if (input.toLowerCase().startsWith("rs")) {
+                setSelectionError(`SNP "${input}" not found in this dataset.`);
+            } else if (input.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i)) {
+                setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
+            } else {
+                setSelectionError(`Gene "${input}" not found in this dataset.`);
+            }
         }
     };
 
@@ -254,7 +294,7 @@ function GenomicRegionView() {
                                 }),
                             ),
                         );
-                        console.log(gwasData);
+                        // console.log(gwasData);
                     } catch (err) {
                         console.error("Error fetching GWAS data:", err);
                         setHasGwas(false);
@@ -343,19 +383,22 @@ function GenomicRegionView() {
     useEffect(() => {
         if (!urlRegion) return;
 
-        const parsed = parseRegionString(urlRegion);
-        if (!parsed) return;
+        const init = async () => {
+            const parsed = await parseRegionString(urlRegion);
+            if (!parsed) return;
 
-        const {chromosome: urlChromosome, start: urlStart, end: urlEnd} = parsed;
+            const {chromosome: urlChromosome, start: urlStart, end: urlEnd} = parsed;
 
-        if (
-            urlChromosome !== selectedChromosome ||
-            urlStart !== selectedRange.start ||
-            urlEnd !== selectedRange.end
-        ) {
-            setRegion(urlChromosome, urlStart, urlEnd);
-            setRegionSearchText(`${urlChromosome}:${urlStart}-${urlEnd}`);
-        }
+            if (
+                urlChromosome !== selectedChromosome ||
+                urlStart !== selectedRange?.start ||
+                urlEnd !== selectedRange?.end
+            ) {
+                setRegion(urlChromosome, urlStart, urlEnd);
+                setRegionSearchText(`${urlChromosome}:${urlStart}-${urlEnd}`);
+            }
+        };
+        init();
     }, [urlRegion]);
 
     useEffect(() => {
@@ -376,8 +419,8 @@ function GenomicRegionView() {
     const [anchorEl, setAnchorEl] = useState(null);
     const [displayOptions, setDisplayOptions] = useState({
         showGrid: true,
-        trackHeight: 50,
-        gapHeight: 12,
+        trackHeight: 120,
+        gapHeight: 10,
         yHeight: "",
         showGwas: true,
     });
@@ -570,8 +613,8 @@ function GenomicRegionView() {
                                 handleRegionSubmit();
                             }
                         }}
-                        placeholder="chr1:1000000-2000000 or chr1 1000000 2000000"
-                        label="Enter genomic region"
+                        placeholder="chr1:1000000-2000000 or SNCA"
+                        label="Enter genomic region or gene symbol"
                         variant="standard"
                         /* helperText="Format: chromosome:start-end or chromosome start end" */
                     />
