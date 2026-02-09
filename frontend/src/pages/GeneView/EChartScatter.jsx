@@ -84,7 +84,7 @@ const EChartScatterPlot = ({
 
     if (sampleList.length >= 1 && !sampleList.includes("all")) {
         umapData = umapData.filter((point) => {
-            const sample_id = point[0].split(/_[cs]\d+$/)[0];
+            const sample_id = point[0].split(/_(?:c|s|cs)\d+$/)[0];
             return sampleList.includes(sample_id)
         })
     }
@@ -233,7 +233,7 @@ const EChartScatterPlot = ({
         } else {
             updatedCellMetaData = Object.fromEntries(
                 Object.entries(cellMetaData).map(([cs_id, csObj]) => {
-                    const sample_id = cs_id.split(/_[cs]\d+$/)[0];
+                    const sample_id = cs_id.split(/_(?:c|s|cs)\d+$/)[0];
                     const newSubObj = {...csObj};  // shallow copy of inner object
                     newSubObj[group] = sampleMetaData[sample_id][group];
                     return [cs_id, newSubObj];

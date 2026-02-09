@@ -366,7 +366,7 @@ sample_id_column = "sample_name"        ## Sample ID column in Seurat object met
 major_cluster_column = "CellType"       ## Major cluster column in Seurat object metadata
 condition_column = "diagnosis"          ## Condition column in Seurat object metadata        
 
-[visium_defaults]
+[spatial_defaults]
 samples = [ "BN2023", "BN1076",]         ## List of sample names
 features = [ "smoothed_label_s5",...]    ## List of default feature names
 genes = [ "SNCA",...]                    ## List of default gene names

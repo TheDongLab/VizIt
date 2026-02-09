@@ -4,58 +4,93 @@ import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
 import {calculateMinMax, isCategorical, sortObjectByKey} from "../../utils/funcs.js";
 
-const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, geneData, metaData, feature}) {
+const PlotlyFeaturePlotVisium = React.memo(function PlotlyFeaturePlot({
+                                                                          visiumData,
+                                                                          geneData,
+                                                                          metaData,
+                                                                          feature,
+                                                                          showImage = true
+                                                                      }) {
 
     const containerRef = useRef(null);
+    const plotRef = useRef(null);
     const [imageUrl, setImageUrl] = useState("");
     const [naturalDimensions, setNaturalDimensions] = useState({width: 0, height: 0});
-    const [displayScale, setDisplayScale] = useState(1);
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const [currentLayout, setCurrentLayout] = useState(null);
+    const baseMarkerSize = 6;
 
     // Destructure visium data
     const {coordinates, scales, image} = visiumData;
-    const {lowres} = scales; // only use lowres value
+    const {lowres} = scales;
     const {cell_metadata, cell_metadata_mapping, sample_metadata} = metaData
     const cell_level_meta = Object.keys(cell_metadata_mapping);
 
-    // Load image and extract dimensions
+    // Load image and extract dimensions - FIXED: Properly use showImage prop
     useEffect(() => {
-        if (!image) return;
-        const url = URL.createObjectURL(image);
-        setImageUrl(url);
+        // Check if image should be shown
+        if (!showImage) {
+            setImageUrl("");
+            setNaturalDimensions({width: 0, height: 0});
+            return;
+        }
 
-        const img = new Image();
-        img.onload = () => {
-            setNaturalDimensions({width: img.naturalWidth, height: img.naturalHeight});
-        };
-        img.src = url;
+        // More robust image availability check
+        if (!image || ("success" in image && !image.success)) {
+            setImageUrl("");
+            setNaturalDimensions({width: 0, height: 0});
+            return;
+        }
 
-        return () => URL.revokeObjectURL(url);
-    }, [image]);
+        // Handle case where image might be a string URL
+        if (typeof image === "string") {
+            setImageUrl(image);
+            const img = new Image();
+            img.onload = () => {
+                setNaturalDimensions({width: img.naturalWidth, height: img.naturalHeight});
+            };
+            img.onerror = () => {
+                setImageUrl("");
+                setNaturalDimensions({width: 0, height: 0});
+            };
+            img.src = image;
+            return;
+        }
 
-    // Handle resize
-    const updateScale = useCallback(() => {
-        if (!containerRef.current || !naturalDimensions.width) return;
-        const containerWidth = containerRef.current.offsetWidth;
-        const scale = containerWidth / naturalDimensions.width;
-        setDisplayScale(scale);
-    }, [naturalDimensions.width]);
+        // Handle Blob case
+        try {
+            const url = URL.createObjectURL(image);
+            setImageUrl(url);
 
-    useEffect(() => {
-        if (!containerRef.current) return;
-        const resizeObserver = new ResizeObserver(updateScale);
-        resizeObserver.observe(containerRef.current);
-        return () => resizeObserver.disconnect();
-    }, [updateScale]);
+            const img = new Image();
+            img.onload = () => {
+                setNaturalDimensions({width: img.naturalWidth, height: img.naturalHeight});
+            };
+            img.onerror = () => {
+                setImageUrl("");
+                setNaturalDimensions({width: 0, height: 0});
+                URL.revokeObjectURL(url);
+            };
+            img.src = url;
+
+            return () => URL.revokeObjectURL(url);
+        } catch (error) {
+            console.warn('Error loading image:', error);
+            setImageUrl("");
+            setNaturalDimensions({width: 0, height: 0});
+        }
+    }, [image, showImage]); // Added showImage to dependency array
+
 
     // Extract feature data
     const featuredData = useMemo(() => {
         if (geneData[feature]) return geneData[feature];
         const data = {};
         Object.entries(cell_metadata || {}).forEach(([id, item]) => {
-            if(cell_level_meta.includes(feature)){
+            if (cell_level_meta.includes(feature)) {
                 data[id] = cell_metadata_mapping[feature][item[feature]][0];
-            } else{
-                const sample_id = id.split("_")[0]
+            } else {
+                const sample_id = id.split('_').slice(0, -1).join('_')
                 data[id] = sample_metadata[sample_id][feature];
             }
         });
@@ -76,21 +111,63 @@ const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, gen
     // Prepare scatter plot data
     const scatterData = useMemo(() => {
         return Object.entries(coordinates).map(([id, item]) => ({
-            x: item.imagecol * lowres,  // X coordinate
-            y: item.imagerow * lowres,  // Y coordinate
+            x: item.imagecol * lowres,
+            y: item.imagerow * lowres,
             value: featuredData[id] ?? (isCat ? "Other" : 0)
         }));
     }, [coordinates, lowres, featuredData]);
 
+    // Calculate coordinate ranges from object format - ENHANCED
+    const coordinateRanges = useMemo(() => {
+        if (!coordinates || Object.keys(coordinates).length === 0) {
+            return {xRange: [0, 1], yRange: [0, 1], dataWidth: 1, dataHeight: 1};
+        }
+
+        const xValues = Object.values(coordinates).map(coord => coord.imagecol * lowres);
+        const yValues = Object.values(coordinates).map(coord => coord.imagerow * lowres);
+
+        const xMin = Math.min(...xValues);
+        const xMax = Math.max(...xValues);
+        const yMin = Math.min(...yValues);
+        const yMax = Math.max(...yValues);
+
+        const xPadding = (xMax - xMin) * 0.2;
+        const yPadding = (yMax - yMin) * 0.2;
+
+        // Use natural dimensions if available and showImage is true, otherwise use data bounds
+        const effectiveWidth = (showImage && naturalDimensions.width > 0) ? naturalDimensions.width : xMax + xPadding;
+        const effectiveHeight = (showImage && naturalDimensions.height > 0) ? naturalDimensions.height : yMax + yPadding;
+
+        return {
+            xRange: [Math.max(0, xMin - xPadding), Math.max(effectiveWidth, xMax + xPadding)],
+            yRange: [Math.max(effectiveHeight, yMax + yPadding), Math.max(0, yMin - yPadding)],
+            dataWidth: Math.max(1, xMax - xMin),
+            dataHeight: Math.max(1, yMax - yMin)
+        };
+    }, [coordinates, lowres, naturalDimensions, showImage]); // Added showImage to dependency array
+
     const colorPalette = [
-        "#A7D16B", "#ADD9E9", "#A84D9D","#F68D40","#0A71B1","#016B62","#BFAFD4","#6BAED6","#7BCCC4",
-        // "#ff7f0e", "#1f77b4", "#2ca02c", "#da6f70", "#9467bd", "#8c564b", "#e377c2",
-        // "#0d1dd1", "#bcbd22", "#17becf", "#ff0000", "#00ff00", "#0000ff", "#ff00ff",
-        // "#00ffff", "#ffff00", "#9bed56", "#8000ff", "#0080ff", "#80ff00"
-    ]; // Up to 20 unique colors
+        "#A7D16B", "#ADD9E9", "#A84D9D", "#F68D40", "#0A71B1", "#016B62", "#BFAFD4", "#6BAED6", "#7BCCC4",
+    ];
+
+    // Calculate current marker size based on zoom level
+    const calculateMarkerSize = useCallback((currentZoomLevel = zoomLevel) => {
+        if (!currentZoomLevel || isNaN(currentZoomLevel) || currentZoomLevel <= 0) {
+            return baseMarkerSize;
+        }
+        const dynamicSize = baseMarkerSize * Math.abs(currentZoomLevel);
+        return Math.max(1, Math.min(100, dynamicSize));
+    }, [baseMarkerSize, zoomLevel]);
+
+    // Current marker size based on zoom level
+    const currentMarkerSize = useMemo(() => {
+        return calculateMarkerSize();
+    }, [calculateMarkerSize]);
 
     // Prepare trace data for Plotly
     const traces = useMemo(() => {
+        if (!scatterData.length) return [];
+
         if (isCat) {
             let groups = {};
             scatterData.forEach((p) => {
@@ -107,7 +184,8 @@ const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, gen
                 mode: "markers",
                 type: "scatter",
                 name: `${group}`,
-                marker: {size: 6 * displayScale, color: colorPalette[i % colorPalette.length]}
+                marker: {size: currentMarkerSize, color: colorPalette[i % colorPalette.length]},
+                hovertemplate: `${feature}: ${group}<br><extra></extra>`
             }));
         } else {
             return [{
@@ -117,51 +195,149 @@ const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, gen
                 mode: "markers",
                 type: "scatter",
                 marker: {
-                    size: 6 * displayScale,
+                    size: currentMarkerSize,
                     color: scatterData.map(p => p.value),
                     colorscale: [
-                        ['0.000000000000', 'rgb(49,54,149)'],
-                        ['0.111111111111', 'rgb(69,117,180)'],
-                        ['0.222222222222', 'rgb(116,173,209)'],
-                        ['0.333333333333', 'rgb(171,217,233)'],
-                        ['0.444444444444', 'rgb(224,243,248)'],
-                        ['0.555555555556', 'rgb(254,224,144)'],
-                        ['0.666666666667', 'rgb(253,174,97)'],
-                        ['0.777777777778', 'rgb(244,109,67)'],
-                        ['0.888888888889', 'rgb(215,48,39)'],
-                        ['1.000000000000', 'rgb(165,0,38)']
+                        ['0.0000', 'rgb(49,54,149)'],
+                        ['0.1111', 'rgb(69,117,180)'],
+                        ['0.2222', 'rgb(116,173,209)'],
+                        ['0.3333', 'rgb(171,217,233)'],
+                        ['0.4444', 'rgb(224,243,248)'],
+                        ['0.5556', 'rgb(254,224,144)'],
+                        ['0.6667', 'rgb(253,174,97)'],
+                        ['0.7778', 'rgb(244,109,67)'],
+                        ['0.8889', 'rgb(215,48,39)'],
+                        ['1.0000', 'rgb(165,0,38)']
                     ],
                     colorbar: {titleside: 'right', len: 0.4, thickness: 20, x: 0.85, y: 0.5},
                     cmin: minFeature,
-                    cmax: maxFeature
-                }
+                    cmax: maxFeature,
+                },
+                hovertemplate: `${feature}: %{text}<br><extra></extra>`
             }];
         }
-    }, [scatterData, isCat, displayScale]);
+    }, [scatterData, isCat, currentMarkerSize, feature, minFeature, maxFeature]);
 
-    // Plotly layout
-    const layout = useMemo(() => ({
-        title: feature,
-        showlegend: isCat,
-        // automrgin: true,
-        autosize: true,
-        scrollZoom: true,
-        xaxis: {showgrid: false, zeroline: false, visible: false, range: [0, naturalDimensions.width], autorange: false},
-        yaxis: {showgrid: false, zeroline: false, visible: false, range: [naturalDimensions.height, 0], autorange: false},
-        images: imageUrl ? [{
-            source: imageUrl,
-            x: 0, y: 0,
-            xref: "x", yref: "y",
-            sizex: naturalDimensions.width, sizey: naturalDimensions.height,
-            layer: "below",
-            sizing: 'stretch',
-        }] : [],
-        margin: {l: 0, r: 0, t: 0, b: 0},
-        legend: {orientation: "v", x: 0.85, y: 0.8, itemsizing: "constant",bgcolor: "rgba(0,0,0,0)"},
-    }), [imageUrl, naturalDimensions, feature]);
+    // Handle zoom and layout changes
+    const handlePlotUpdate = useCallback((data) => {
+        if (!data || !plotRef.current) return;
 
+        try {
+            const layout = data.layout;
+            if (!layout) return;
+
+            const xRange = layout.xaxis && layout.xaxis.range;
+            const yRange = layout.yaxis && layout.yaxis.range;
+
+            if (xRange && yRange) {
+                setCurrentLayout(layout);
+
+                const viewWidth = Math.abs(xRange[1] - xRange[0]);
+                const viewHeight = Math.abs(yRange[1] - yRange[0]);
+
+                // Prevent division by zero and invalid calculations
+                if (viewWidth <= 0 || viewHeight <= 0 ||
+                    coordinateRanges.dataWidth <= 0 || coordinateRanges.dataHeight <= 0) {
+                    setZoomLevel(1);
+                    return;
+                }
+
+                const zoomX = coordinateRanges.dataWidth / viewWidth;
+                const zoomY = coordinateRanges.dataHeight / viewHeight;
+                const newZoomLevel = Math.max(0.1, (zoomX + zoomY) / 2);
+
+                if (!isNaN(newZoomLevel) && isFinite(newZoomLevel)) {
+                    setZoomLevel(newZoomLevel);
+                } else {
+                    setZoomLevel(1);
+                }
+            }
+        } catch (error) {
+            console.warn('Error handling plot update:', error);
+            setZoomLevel(1);
+        }
+    }, [coordinateRanges]);
+
+    // Use useEffect to listen for layout changes
+    useEffect(() => {
+        if (!currentLayout) return;
+
+        const xRange = currentLayout.xaxis && currentLayout.xaxis.range;
+        const yRange = currentLayout.yaxis && currentLayout.yaxis.range;
+
+        if (xRange && yRange) {
+            const viewWidth = Math.abs(xRange[1] - xRange[0]);
+            const viewHeight = Math.abs(yRange[1] - yRange[0]);
+
+            // Prevent division by zero and invalid calculations
+            if (viewWidth <= 0 || viewHeight <= 0 ||
+                coordinateRanges.dataWidth <= 0 || coordinateRanges.dataHeight <= 0) {
+                setZoomLevel(1);
+                return;
+            }
+
+            const zoomX = coordinateRanges.dataWidth / viewWidth;
+            const zoomY = coordinateRanges.dataHeight / viewHeight;
+            const newZoomLevel = Math.max(1, (zoomX + zoomY) / 2);
+
+            if (!isNaN(newZoomLevel) && isFinite(newZoomLevel)) {
+                setZoomLevel(newZoomLevel);
+            } else {
+                setZoomLevel(1);
+            }
+        }
+    }, [currentLayout, coordinateRanges]);
+
+    // Plotly layout - FIXED: Conditionally add image based on showImage
+    const layout = useMemo(() => {
+        const baseLayout = {
+            title: feature,
+            showlegend: isCat,
+            autosize: true,
+            scrollZoom: true,
+            xaxis: {
+                showgrid: false,
+                zeroline: false,
+                visible: false,
+                range: coordinateRanges.xRange,
+                autorange: false
+            },
+            yaxis: {
+                showgrid: false,
+                zeroline: false,
+                visible: false,
+                range: coordinateRanges.yRange,
+                autorange: false
+            },
+            margin: {l: 0, r: 0, t: 0, b: 0},
+            legend: {
+                orientation: "v",
+                x: 0.85,
+                y: 0.8,
+                itemsizing: "constant",
+                bgcolor: "rgba(0,0,0,0)"
+            },
+        };
+
+        // Only add image if available AND showImage is true
+        if (showImage && imageUrl && naturalDimensions.width > 0 && naturalDimensions.height > 0) {
+            baseLayout.images = [{
+                source: imageUrl,
+                x: 0, y: 0,
+                xref: "x", yref: "y",
+                sizex: naturalDimensions.width,
+                sizey: naturalDimensions.height,
+                layer: "below",
+                sizing: 'stretch',
+            }];
+        }
+
+        return baseLayout;
+    }, [imageUrl, naturalDimensions, feature, isCat, coordinateRanges, showImage]); // Added showImage to dependency array
+
+    // Improved reset zoom function
     const resetZoom = (gd) => {
-         // Get the container size
+        // Get the container size
         const containerWidth = containerRef.current.offsetWidth;
         const containerHeight = containerRef.current.offsetHeight;
 
@@ -169,48 +345,46 @@ const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, gen
         const xRange = [0, containerWidth];
         const yRange = [containerHeight, 0];
 
-        // const { width, height } = naturalDimensions;
-        // console.log("Container size:",containerWidth, containerHeight);
-        // console.log("Natural dimensions:",width, height);
-        //
-        // console.log(displayScale)
-
         // Apply new range with relayout
         Plotly.relayout(gd, {
             'xaxis.range': xRange,
             'yaxis.range': yRange,
-            // 'images[0].sizex': containerWidth,
-            // 'images[0].sizey': containerHeight
         });
-
     };
 
     return (
         <div ref={containerRef} style={{
             width: "100%",
             position: "relative",
-            aspectRatio: naturalDimensions.width > 0 ? `${naturalDimensions.width / naturalDimensions.height}` : "1"
+            aspectRatio: (showImage && naturalDimensions.width > 0 && naturalDimensions.height > 0)
+                ? `${naturalDimensions.width / naturalDimensions.height}`
+                : "1",
+            backgroundColor: (showImage && imageUrl) ? "transparent" : "#f5f5f5",
+            border: (showImage && imageUrl) ? "none" : "1px solid #e0e0e0",
+            borderRadius: "4px"
         }}>
             <Plot
+                ref={plotRef}
                 data={traces}
                 layout={layout}
                 useResizeHandler
                 style={{width: "100%", height: "100%"}}
+                onUpdate={handlePlotUpdate}
                 config={{
-                    responsive: true,  // Makes it adapt to screen size
-                    displaylogo: false, // Removes the Plotly logo
+                    responsive: true,
+                    displaylogo: false,
                     doubleClick: false,
                     toImageButtonOptions: {
                         name: "Save as PNG",
-                        format: 'png', // one of png, svg, jpeg, webp
+                        format: 'png',
                         filename: `BDP_png-${feature}`,
-                        scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
+                        scale: 1
                     },
                     modeBarButtonsToRemove: [
-                        "autoScale2d", // Remove auto scale
-                        "resetScale2d", // Remove reset axis
-                        "select2d", // Remove 2D selection
-                        "lasso2d", // Remove Lasso selection
+                        "autoScale2d",
+                        "resetScale2d",
+                        "select2d",
+                        "lasso2d",
                     ],
                     modeBarButtonsToAdd: [
                         [
@@ -223,9 +397,9 @@ const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, gen
                             },
                             {
                                 name: "Reset View",
-                                icon: Plotly.Icons.home,
+                                icon: Plotly.Icons.autoscale,
                                 click: function (gd) {
-                                    resetZoom(gd); // Reset the zoom and fit to container size
+                                    resetZoom(gd);
                                 },
                             },
                         ],
@@ -236,15 +410,16 @@ const PlotlyFeaturePlot = React.memo(function PlotlyFeaturePlot({visiumData, gen
     );
 });
 
-PlotlyFeaturePlot.propTypes = {
+PlotlyFeaturePlotVisium.propTypes = {
     visiumData: PropTypes.shape({
         coordinates: PropTypes.object.isRequired,
         scales: PropTypes.object.isRequired,
-        image: PropTypes.instanceOf(Blob).isRequired
+        image: PropTypes.oneOfType([PropTypes.instanceOf(Blob), PropTypes.object])
     }).isRequired,
     geneData: PropTypes.object.isRequired,
     metaData: PropTypes.object.isRequired,
-    feature: PropTypes.string.isRequired
+    feature: PropTypes.string.isRequired,
+    showImage: PropTypes.bool.isRequired
 };
 
-export default PlotlyFeaturePlot;
+export default PlotlyFeaturePlotVisium;

@@ -111,20 +111,7 @@
     justify-content: center;
 }
 
-
-.feature-plot {
-    position: relative;
-    width: 100%;
-    min-width: 320px;
-    max-width: 660px;
-    /*aspect-ratio: 1/1; !* Maintain square aspect ratio *!*/
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 1px;
-    overflow: hidden;
-}
-
-.feature-plot-echart {
+.feature-plot-div {
     width: 100%;
     min-width: 320px;
     max-width: 600px;

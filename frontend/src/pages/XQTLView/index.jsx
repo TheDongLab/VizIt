@@ -265,7 +265,7 @@ function XQTLView() {
                 const locations = await fetchGeneLocations(datasetId, 10000000);
                 const gene = await getGeneLocation(datasetId, selectedGene);
 
-                if (!locations.some((g) => g.id === gene)) {
+                if (locations.some((g) => g.id === selectedGene)) {
                     locations.push({
                         gene_id: selectedGene,
                         position_start: gene.data.start,
@@ -350,7 +350,7 @@ function XQTLView() {
 
                 const snp = await getSnpLocation(datasetId, selectedSnp);
 
-                if (!locations.some((s) => s.id === snp)) {
+                if (locations.some((s) => s.id === selectedSnp)) {
                     locations.push({
                         snp_id: selectedSnp,
                         position: snp.data.position,

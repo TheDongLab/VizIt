@@ -18,8 +18,8 @@ const BarPlot = ({cellCounts, selectedClusters}) => {
     let ConditionSet = new Set()
     let SexSet = new Set()
     for (const cluster in cellCounts) {
-        cellCounts[cluster].forEach((item) => ConditionSet.add(item.condition))
-        cellCounts[cluster].forEach((item) => SexSet.add(item.sex))
+        cellCounts[cluster].forEach((item) => ConditionSet.add(item.condition || "NA"))
+        cellCounts[cluster].forEach((item) => SexSet.add(item.sex || "NA"))
     }
     ConditionSet = [...ConditionSet]
     SexSet = [...SexSet]
@@ -191,7 +191,7 @@ const BarPlot = ({cellCounts, selectedClusters}) => {
             barmode: "group",
             bargap: 0.1, // Minimal gap between different cell types
             bargroupgap: 0.05, // Minimal gap between bars within the same cell type
-            legend: {orientation: "h", y: 1.25},
+            legend: {orientation: "h", y: 1.1},
             margin: {
                 l: 50,
                 r: 50,
@@ -228,10 +228,10 @@ const BarPlot = ({cellCounts, selectedClusters}) => {
                     size="small"
                 >
                     <MenuItem value="conditions">Conditions</MenuItem>
-                    <MenuItem value="sex">Sex</MenuItem>
-                    <MenuItem value="conditions_sex">Conditions x Sex</MenuItem>
-                    <MenuItem value={`conditions_${SexSet[0]}`}>Conditions (Within {SexSet[0]})</MenuItem>
-                    <MenuItem value={`conditions_${SexSet[1]}`}>Conditions (Within {SexSet[1]})</MenuItem>
+                    {SexSet[0]!='NA' && <MenuItem value="sex">Sex</MenuItem> }
+                    {SexSet[0]!='NA' && <MenuItem value="conditions_sex">Conditions x Sex</MenuItem>}
+                    {SexSet[0]!='NA' && <MenuItem value={`conditions_${SexSet[0]}`}>Conditions (Within {SexSet[0]})</MenuItem>}
+                    {SexSet[0]!='NA' && SexSet[1]!=undefined && <MenuItem value={`conditions_${SexSet[1]}`}>Conditions (Within {SexSet[1]})</MenuItem>}
                 </Select>
             </FormControl>
             <div ref={plotRef} style={{width: "100%", height: "400px", minHeight: "400px"}}/>

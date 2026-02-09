@@ -128,7 +128,8 @@ const SamplesDisplay = ({ dataRecords}) => {
                                         <TableCell>{record.assay}</TableCell>
                                         <TableCell>
                                             <Link to={`/views/geneview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>UMAP</Link> &nbsp;&nbsp;
-                                            {record.assay === "VisiumST" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>VisiumST</Link>}
+                                            {record.assay.toLowerCase() === "visiumst" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>VisiumST</Link>}
+                                            {record.assay.toLowerCase() === "merfish" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>MERFISH</Link>}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -149,8 +150,9 @@ const SamplesDisplay = ({ dataRecords}) => {
                                     <Box><b>Assay type:</b> {record.assay}</Box>
                                   </Box>
                                   <Box sx={{fontSize: "14px", padding: "8px 0"}}>
-                                    <Link to={`/views/geneview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>View UMAP</Link>
-                                      {record.assay === "VisiumST" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&gene=SNCA&sample=${record.sample_id}&meta=smoothed_label_s5`}>VisiumST</Link>}
+                                    <Link to={`/views/geneview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>View UMAP</Link> &nbsp;&nbsp;
+                                      {record.assay.toLowerCase() === "visiumst" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>VisiumST</Link>}&nbsp;&nbsp;
+                                      {record.assay.toLowerCase() === "merfish" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>MERFISH</Link>}&nbsp;&nbsp;
                                   </Box>
                                 </Typography>
                             </Box>

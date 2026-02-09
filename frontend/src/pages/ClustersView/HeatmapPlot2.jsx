@@ -40,8 +40,9 @@ const HeatmapPlot2 = ({diffExpGenes, selectedClusters}) => {
 
         const clusterData = diffExpGenes[selectedCluster][selectedCompare]
 
-        // Extract conditions from the comparison string (format: "Cond1vsCond2")
-        const compareMatch = selectedCompare.match(/(.+)vs(.+)/)
+        // Extract conditions from the comparison string
+        // Handles: Cond1vsCond2, Cond1_vs_Cond2, Cond1-VS-Cond2, etc.
+        const compareMatch = selectedCompare.match(/(.+?)\s*[_\s-]?\s*vs[_\s-]?\s*(.+)/i)
         const condition1 = compareMatch ? compareMatch[1] : "Condition1"
         const condition2 = compareMatch ? compareMatch[2] : "Condition2"
 

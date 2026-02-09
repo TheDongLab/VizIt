@@ -22,8 +22,22 @@ export const getImage = async (dataset,sample) => {
             {params: {dataset: dataset, sample: sample}, responseType: 'blob'});
         return response;
     } catch (error) {
-        console.error("Error reading image data:", error);
-        throw error;
+        console.error("Error fetching image:", error);
+        // Handle different error types
+        if (error.response) {
+            // Server responded with error status
+            const errorText = await error.response.data.text();
+            const errorData = JSON.parse(errorText);
+            return {"data":errorData}
+        } else if (error.request) {
+            // Request made but no response received
+            // throw new Error("No response from server. Please check your connection.");
+            return {"data":{"success": false, "message": "No response from server. Please check your connection."}}
+        } else {
+            // Something else happened
+            // throw new Error("Failed to fetch image");
+            return {"data":{"success": false, "message": "Failed to fetch image"}}
+        }
     }
 }
 

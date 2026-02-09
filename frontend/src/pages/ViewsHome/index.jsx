@@ -20,9 +20,9 @@ export default function HomePage() {
             href: "clusters",
         },
         {
-            title: "Visium ST View",
+            title: "Spatial Tx View",
             description:
-                "Analyze spatial transcriptomics data with Visium technology for tissue-wide gene expression patterns.",
+                "Visualize and explore spatial transcriptomics data for gene expression patterns and cell type locations.",
             icon: <Grid3X3 size={48} style={{color: "#f43f5e"}}/>,
             href: "visiumview",
         },
@@ -97,7 +97,7 @@ export default function HomePage() {
                                         {option.description}
                                     </Typography>
                                 </CardContent>
-                                <CardActions sx={{p: 2, pt: 0}}>
+                                {/* <CardActions sx={{p: 2, pt: 0}}>
                                     <Button
                                         component={Link}
                                         to={option.href}
@@ -115,7 +115,7 @@ export default function HomePage() {
                                     >
                                         Explore {option.title}
                                     </Button>
-                                </CardActions>
+                                </CardActions> */}
                             </Card>
                         </Grid>
                     ))}

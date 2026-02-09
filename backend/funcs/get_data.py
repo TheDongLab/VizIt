@@ -13,25 +13,51 @@ from functools import lru_cache
 def safe_filename(name):
     return re.sub(r"[^a-zA-Z0-9_\-]", "_", name)
 
+def get_snp_group(rs_id: str) -> str:
+    digits = rs_id[2:]
+    if not digits.isdigit():
+        raise ValueError
+    if len(digits) < 4:
+        return "rs_lt1k"
+    return "rs" + digits[:4]
+
+def get_gene_file_name(gene: str) -> str:
+    ## For caQTL dataset, the genes are defined as a region in the format of chr1-1000000-1000001
+    ## the regions on the same chromosome are grouped together in one file, e.g., chr1.json.
+    ## 
+    ## For eQTL dataset, the genes are save in json files with the same name as the gene, e.g., BRCA1.json.
+    if gene.startswith("chr"):
+        return gene.split("-")[0]
+    else:
+        return gene
 
 def get_gene_location(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
         genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_jsons", safe_filename(gene) + ".json"
+            "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
         )
+
+    default_gene_locations_file = os.path.join("backend", "datasets", "gene_locations.json")
 
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-        if data:
-            position_start = data["position_start"]
-            position_end = data["position_end"]
-            strand = data["strand"]
+            gene_x = data.get(gene, None)
+            if not gene_x:
+                # gene info is not groupped and stored directly in the file
+                gene_x = data
+
+        if gene_x:
+            chromosome = gene_x["chromosome"]
+            position_start = gene_x["position_start"]
+            position_end = gene_x["position_end"]
+            strand = gene_x["strand"]
 
             if position_start is not None and position_end is not None:
                 return {
+                    "chromosome": chromosome,
                     "start": position_start,
                     "end": position_end,
                     "strand": strand,
@@ -40,8 +66,29 @@ def get_gene_location(dataset, gene):
                 return f"Error: Gene does not have valid position data in dataset."
         else:
             return f"Error: Gene not found in dataset."
+    elif os.path.exists(default_gene_locations_file):
+        with open(default_gene_locations_file, "r") as f:
+            data = json.load(f)
+            gene_x = data.get(gene, None)
+        if gene_x:
+            chromosome = gene_x["chromosome"]
+            position_start = gene_x["start"]
+            position_end = gene_x["end"]
+            strand = gene_x["strand"]
+
+            if position_start is not None and position_end is not None:
+                return {
+                    "chromosome": chromosome,
+                    "start": position_start,
+                    "end": position_end,
+                    "strand": strand,
+                }
+            else:
+                return f"Error: Gene does not have valid position data in default dataset."
+        else:
+            return f"Error: Gene not found in default dataset."
     else:
-        print(genes_file + " not found")
+        print(default_gene_locations_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
 
 
@@ -50,25 +97,43 @@ def get_snp_location(dataset, snp):
         return "Error: Dataset is not specified."
     else:
         snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons", safe_filename(snp) + ".json"
+            "backend", "datasets", dataset, "snp_jsons_merged", get_snp_group(snp) + ".json"
         )
+
+    default_snp_locations_file = os.path.join("backend", "datasets", "snp_locations.json")
 
     if os.path.exists(snps_file):
         with open(snps_file, "r") as f:
             data = json.load(f)
-        if data:
-            position = data["position"]
+            snp = data.get(snp, None)
+        if data and snp:
+            position = snp["position"]
 
             if position is not None:
                 return {
+                    "chromosome": snp["chromosome"],
                     "position": position,
                 }
             else:
                 return f"Error: SNP {snp} does not have valid position data in {dataset} dataset."
         else:
             return f"Error: SNP {snp} not found in {dataset} dataset."
+    elif os.path.exists(default_snp_locations_file):
+        with open(default_snp_locations_file, "r") as f:
+            data = json.load(f)
+            snp = data.get(snp, None)
+        if snp:
+            position = snp["position"]
+
+            if position is not None:
+                return {
+                    "chromosome": snp["chromosome"],
+                    "position": position,
+                }
+            else:
+                return f"Error: SNP {snp} does not have valid position data in default dataset."
     else:
-        print(snps_file + " not found")
+        print(default_snp_locations_file + " not found")
         return "Error: SNP list file not found for the specified dataset."
 
 
@@ -158,14 +223,18 @@ def get_gene_chromosome(dataset, gene):
         return "Error: Dataset is not specified."
     else:
         genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_jsons", safe_filename(gene) + ".json"
+            "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
         )
 
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-        if data:
-            return data["chromosome"]
+            gene_x = data.get(gene, None)
+            if not gene_x:
+                # gene info is not groupped and stored directly in the file
+                gene_x = data
+        if gene_x:
+            return gene_x["chromosome"]
         else:
             return f"Error: Gene {gene} not found in {dataset} dataset."
     else:
@@ -178,14 +247,15 @@ def get_snp_chromosome(dataset, snp):
         return "Error: Dataset is not specified."
     else:
         snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons", safe_filename(snp) + ".json"
+            "backend", "datasets", dataset, "snp_jsons_merged", get_snp_group(snp) + ".json"
         )
 
     if os.path.exists(snps_file):
         with open(snps_file, "r") as f:
             data = json.load(f)
-        if data:
-            return data["chromosome"]
+            snp = data.get(snp, None)
+        if data and snp:
+            return snp["chromosome"]
         else:
             return f"Error: SNP {snp} not found in {dataset} dataset."
     else:
@@ -204,6 +274,8 @@ def get_gene_list(dataset, query_str="AB"):
             data = json.load(f)
         if query_str == "all":
             return data
+        elif query_str == "default":
+            return data[:10]
         else:
             return [gene for gene in data if gene.lower().startswith(query_str.lower())]
     else:
@@ -252,14 +324,19 @@ def get_gene_celltypes(dataset, gene):
         return "Error: Dataset is not specified."
     else:
         genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_jsons", safe_filename(gene) + ".json"
+            "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
         )
 
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-        if data:
-            return data["celltypes"]
+            gene_x = data.get(gene, None)
+            if not gene_x:
+                # gene info is not groupped and stored directly in the file
+                gene_x = data
+                
+        if gene_x:
+            return gene_x["celltypes"]
         else:
             return f"Error: Gene not found in dataset."
     else:
@@ -272,14 +349,15 @@ def get_snp_celltypes(dataset, snp):
         return "Error: Dataset is not specified."
     else:
         snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons", safe_filename(snp) + ".json"
+            "backend", "datasets", dataset, "snp_jsons_merged", get_snp_group(snp) + ".json"
         )
 
     if os.path.exists(snps_file):
         with open(snps_file, "r") as f:
             data = json.load(f)
-        if data:
-            return data["celltypes"]
+            snp = data.get(snp, None)
+        if data and snp:
+            return snp["celltypes"]
         else:
             return f"Error: SNP not found in dataset."
     else:
@@ -808,7 +886,7 @@ def get_all_metadata(dataset, cols=["all"], rows=["all"]):
 
 def get_expr_data(dataset, gene):
     gene_expr_file = os.path.join(
-        "backend", "datasets", dataset, "gene_jsons", gene + ".json"
+        "backend", "datasets", dataset, "gene_exprs", gene + ".json"
     )
     if not os.path.exists(gene_expr_file):
         return "Error: Gene expression file not found"
@@ -836,44 +914,43 @@ def get_visium_coordinates(dataset, sample):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
-    coordinates_file = os.path.join(
-        "backend",
-        "datasets",
-        dataset,
-        "coordinates",
-        "raw_coordinates_slice1_" + sample + ".csv",
-    )
-    scales_file = os.path.join(
-        "backend",
-        "datasets",
-        dataset,
-        "coordinates",
-        "raw_scalefactors_slice1_" + sample + ".json",
-    )
+    coordinates_folder = os.path.join("backend", "datasets", dataset, "coordinates")
+    coordinates_file_ls = os.listdir(coordinates_folder)
+    coordinates_file = None
+    scales_file = None
+    for f in coordinates_file_ls:
+        if sample in f and "coordinates" in f:
+            coordinates_file = os.path.join(coordinates_folder, f)
+        if sample in f and "scalefactors" in f:
+            scales_file = os.path.join(coordinates_folder, f)
 
-    # if os.path.exists(coordinates_file) and os.path.exists(scales_file):
-    with open(coordinates_file, "r") as f:
-        coordinates_df = pd.read_csv(coordinates_file, index_col=0, header=0)
-        coordinates = coordinates_df.to_dict(orient="index")
+    if coordinates_file and os.path.exists(coordinates_file) :
+        with open(coordinates_file, "r") as f:
+            coordinates_df = pd.read_csv(coordinates_file, index_col=0, header=0)
+            coordinates = coordinates_df.to_dict(orient="index")
+    else:
+        coordinates = None
 
-    with open(scales_file, "r") as f:
-        scales = json.load(f)
+    if scales_file and os.path.exists(scales_file):
+        with open(scales_file, "r") as f:
+            scales = json.load(f)
+    else:
+        scales = None
 
     return {"coordinates": coordinates, "scales": scales}
-    # else:
-    #     return "Error: Image file not found"
 
 
-def get_visium_defaults(dataset):
+
+def get_spatial_defaults(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
     config_info = get_config_info(dataset)
-    if config_info and "visium_defaults" in config_info:
-        data = config_info["visium_defaults"]
+    if ("Error" not in config_info) and ("spatial_defaults" in config_info):
+        data = config_info["spatial_defaults"]
         return data
     else:
-        return f"Error: visium_defaults file not found."
+        return f"Error: spatial_defaults not found."
 
 
 def get_bw_data_exists(dataset):

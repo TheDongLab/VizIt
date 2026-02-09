@@ -20,7 +20,8 @@ function dataToRGB({ beta, y }, min = 2, max = 3) {
     else intensity = (absBeta - min) / (max - min); // Normalize to [0,1]
   }
 
-  const channelValue = Math.round(maxLevel * (1 - intensity));
+  // const channelValue = Math.round(maxLevel * (1 - intensity));
+  const channelValue = 80;
 
   return beta > 0
     ? `rgb(${maxLevel}, ${channelValue}, ${channelValue})`
