@@ -450,13 +450,6 @@ function GenomicRegionView() {
             ...tempDisplayOptions,
             [option]: event.target.checked,
         });
-        // Update immediately for switches
-        if (option !== "dashedLineColor") {
-            setDisplayOptions({
-                ...displayOptions,
-                [option]: event.target.checked,
-            });
-        }
     };
 
     const [visibleRange, setVisibleRange] = useState({start: null, end: null});
@@ -683,9 +676,10 @@ function GenomicRegionView() {
                         anchorEl={anchorEl}
                         open={menuOpen}
                         onClose={handleMenuClose}
+                        marginThreshold={50}
                         PaperProps={{
                             style: {
-                                width: "500px",
+                                width: "400px",
                                 padding: "10px",
                             },
                         }}
@@ -694,7 +688,7 @@ function GenomicRegionView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showGrid}
+                                        checked={tempDisplayOptions.showGrid}
                                         onChange={handleOptionChange("showGrid")}
                                     />
                                 }
@@ -735,18 +729,6 @@ function GenomicRegionView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -783,18 +765,6 @@ function GenomicRegionView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -835,31 +805,33 @@ function GenomicRegionView() {
                                         step: 0.1,
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showGwas}
+                                        checked={tempDisplayOptions.showGwas}
                                         onChange={handleOptionChange("showGwas")}
                                     />
                                 }
                                 label="Show GWAS data"
                             />
                         </MenuItem>
+                        <Box sx={{ mt: 1, p: 1, pb: 0.5 }}>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                    setDisplayOptions({
+                                        ...tempDisplayOptions,
+                                    });
+                                    setAnchorEl(null); // close the menu
+                                }}
+                            >
+                                 Apply changes
+                            </Button>
+                        </Box>
                     </Menu>
                 </div>
             </div>

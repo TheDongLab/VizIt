@@ -510,13 +510,6 @@ function XQTLView() {
             ...tempDisplayOptions,
             [option]: event.target.checked,
         });
-        // Update immediately for switches
-        if (option !== "dashedLineColor") {
-            setDisplayOptions({
-                ...displayOptions,
-                [option]: event.target.checked,
-            });
-        }
     };
 
     useEffect(() => {
@@ -686,9 +679,10 @@ function XQTLView() {
                         anchorEl={anchorEl}
                         open={menuOpen}
                         onClose={handleMenuClose}
+                        marginThreshold={50}
                         PaperProps={{
                             style: {
-                                width: "500px",
+                                width: "400px",
                                 padding: "10px",
                             },
                         }}
@@ -697,7 +691,7 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showDashedLine}
+                                        checked={tempDisplayOptions.showDashedLine}
                                         onChange={handleOptionChange("showDashedLine")}
                                     />
                                 }
@@ -708,7 +702,7 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.crossGapDashedLine}
+                                        checked={tempDisplayOptions.crossGapDashedLine}
                                         onChange={handleOptionChange("crossGapDashedLine")}
                                     />
                                 }
@@ -772,18 +766,6 @@ function XQTLView() {
                                             },
                                         }}
                                     />
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        onClick={() => {
-                                            setDisplayOptions({
-                                                ...tempDisplayOptions,
-                                            });
-                                        }}
-                                        sx={{height: "30px"}}
-                                    >
-                                        Save
-                                    </Button>
                                 </Box>
                             </Box>
                         </MenuItem>
@@ -791,7 +773,7 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.dashedLineOnTop}
+                                        checked={tempDisplayOptions.dashedLineOnTop}
                                         onChange={handleOptionChange("dashedLineOnTop")}
                                     />
                                 }
@@ -802,7 +784,7 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showGrid}
+                                        checked={tempDisplayOptions.showGrid}
                                         onChange={handleOptionChange("showGrid")}
                                     />
                                 }
@@ -843,18 +825,6 @@ function XQTLView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -891,18 +861,6 @@ function XQTLView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -943,28 +901,30 @@ function XQTLView() {
                                         step: 0.1,
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
                             <FormControlLabel
                                 control={
-                                    <Switch checked={displayOptions.showGwas} onChange={handleOptionChange("showGwas")}/>
+                                    <Switch checked={tempDisplayOptions.showGwas} onChange={handleOptionChange("showGwas")}/>
                                 }
                                 label="Show GWAS data"
                             />
                         </MenuItem>
+                        <Box sx={{ mt: 1, p: 1, pb: 0.5 }}>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                    setDisplayOptions({
+                                        ...tempDisplayOptions,
+                                    });
+                                    setAnchorEl(null); // close the menu
+                                }}
+                            >
+                                 Apply changes
+                            </Button>
+                        </Box>
                     </Menu>
                 </div>
             </div>
