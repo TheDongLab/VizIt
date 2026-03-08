@@ -527,6 +527,23 @@ function GenomicRegionView() {
         [debouncedUpdate],
     );
 
+    // Refetch data when dataset, chromosome, or selected range changes
+    useEffect(() => {
+        if (
+            datasetId &&
+            selectedChromosome &&
+            selectedRange?.start != null &&
+            selectedRange?.end != null
+        ) {
+            fetchData(selectedRange);
+        }
+    }, [
+        datasetId,
+        selectedChromosome,
+        selectedRange?.start,
+        selectedRange?.end,
+    ]);
+
     useEffect(() => {
         if (
             visibleRange &&

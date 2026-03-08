@@ -39,17 +39,23 @@ function getDisplayOption(displayOptions, option, defaultValue) {
   return displayOptions[option];
 }
 
-function getTrackHalfRange(
+function getTrackRange(
   trackName,
   allSignalList,
   visibleRange,
   displayOptions,
-  globalHalfRange,
+  trackTypes,
+  globalHalfRangeSym,
+  globalMaxPosRange,
 ) {
   const yPadding = 1;
   const perTrackY = displayOptions?.perTrackY ?? false;
   const trackYHeights = displayOptions?.trackYHeights ?? {};
   const yHeightGlobal = displayOptions?.yHeightGlobal ?? "";
+  const trackType = trackTypes.get(trackName) || "single";
+
+  const rangeFromHeight = (H) =>
+    trackType === "pm" ? [-H, H] : [0, H];
 
   // Per-track manual override
   if (
@@ -57,16 +63,15 @@ function getTrackHalfRange(
     trackYHeights[trackName] !== "" &&
     trackYHeights[trackName] != null
   ) {
-    return Number(trackYHeights[trackName]);
+    const H = Number(trackYHeights[trackName]);
+    return rangeFromHeight(H);
   }
 
-  // If per-track is on but no override for this track:
-  //   - if a global override exists, use it
-  //   - else, use per-track auto
   if (perTrackY) {
+    // Global override
     if (yHeightGlobal !== "" && yHeightGlobal != null) {
-      // Global override for all tracks
-      return Number(yHeightGlobal);
+      const H = Number(yHeightGlobal);
+      return rangeFromHeight(H);
     }
 
     const yVals = allSignalList
@@ -76,19 +81,30 @@ function getTrackHalfRange(
       .filter((y) => Number.isFinite(y));
 
     if (yVals.length > 0) {
-      const dataMaxAbs = yVals.reduce(
-        (max, y) => Math.max(max, Math.abs(y)),
-        0,
-      );
-      return dataMaxAbs + yPadding;
+      if (trackType === "pm") {
+        const dataMaxAbs = yVals.reduce(
+          (max, y) => Math.max(max, Math.abs(y)),
+          0,
+        );
+        const H = dataMaxAbs + yPadding;
+        return [-H, H];
+      } else {
+        const maxPos = yVals.reduce((max, y) => Math.max(max, y), 0);
+        const H = maxPos + yPadding;
+        return [0, H];
+      }
     }
 
-    // Fall back to global override
-    return globalHalfRange;
+    // Fallback to global
+    return trackType === "pm"
+      ? [-globalHalfRangeSym, globalHalfRangeSym]
+      : [0, globalMaxPosRange];
   }
 
-  // If per-track is off, use global override if it exists, otherwise auto
-  return globalHalfRange;
+  // Fallback to global
+  return trackType === "pm"
+    ? [-globalHalfRangeSym, globalHalfRangeSym]
+    : [0, globalMaxPosRange];
 }
 
 const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
@@ -109,68 +125,97 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
 }) {
   const range = visibleRange || selectedRange;
   const signalList = Object.entries(signalData).flatMap(
-  ([celltype, signals]) => {
-    if (signals && !Array.isArray(signals) && signals.plus && signals.minus) {
-      const plusPoints = (signals.plus || []).map(({ position, value, ...rest }) => ({
-        ...rest,
-        x: position,
-        y: value,
-        celltype,
-        strand: "plus",
-      }));
+    ([celltype, signals]) => {
+      if (signals && !Array.isArray(signals) && signals.plus && signals.minus) {
+        const plusPoints = (signals.plus || []).map(({ position, value, ...rest }) => ({
+          ...rest,
+          x: position,
+          y: value,
+          celltype,
+          strand: "plus",
+        }));
 
-      const minusPoints = (signals.minus || []).map(({ position, value, ...rest }) => ({
-        ...rest,
-        x: position,
-        y: -value,
-        celltype,
-        strand: "minus",
-      }));
+        const minusPoints = (signals.minus || []).map(
+          ({ position, value, ...rest }) => ({
+            ...rest,
+            x: position,
+            y: value,      
+            celltype,
+            strand: "minus",
+          }),
+        );
 
-      return [...plusPoints, ...minusPoints];
-    }
+        return [...plusPoints, ...minusPoints];
+      }
 
-    if (Array.isArray(signals)) {
-      return signals.map(({ position, value, ...rest }) => ({
-        ...rest,
-        x: position,
-        y: value,
-        celltype,
-      }));
-    }
+      if (Array.isArray(signals)) {
+        return signals.map(({ position, value, ...rest }) => ({
+          ...rest,
+          x: position,
+          y: value,
+          celltype,
+        }));
+      }
 
-    return [];
-  },
-);
+      return [];
+    },
+  );
+  const trackTypes = useMemo(() => {
+    const types = new Map();
+    cellTypes.forEach((celltype) => {
+      const entry = signalData[celltype];
+      if (entry && !Array.isArray(entry) && (entry.plus || entry.minus)) {
+        types.set(celltype, "pm"); // plus/minus
+      } else {
+        types.set(celltype, "single");
+      }
+    });
+    return types;
+  }, [cellTypes, signalData]);
 
-  const yValues = signalList
+  const yValuesAll = signalList
     .filter((snp) => snp.x >= visibleRange.start && snp.x <= visibleRange.end)
     .map((snp) => snp.y)
     .filter((y) => Number.isFinite(y));
-  
+
   const yPadding = 1;
-  const yHeight = getDisplayOption(displayOptions, "yHeight", "");
-  
-  const dataMaxAbs =
-    yValues.length > 0
-      ? yValues.reduce((max, y) => Math.max(max, Math.abs(y)), 0)
+  const yHeightGlobalOpt = displayOptions?.yHeightGlobal ?? "";
+
+  // Global symmetric range for plus/minus tracks ([-H, H])
+  const globalDataMaxAbs =
+    yValuesAll.length > 0
+      ? yValuesAll.reduce((max, y) => Math.max(max, Math.abs(y)), 0)
       : 0;
-  
-  const halfRange =
-    yHeight !== "" ? Number(yHeight) : dataMaxAbs + yPadding;
 
+  const globalHalfRangeSym =
+    yHeightGlobalOpt !== "" && yHeightGlobalOpt != null
+      ? Number(yHeightGlobalOpt)
+      : globalDataMaxAbs + yPadding;
+
+  // Global positive-only range for single-track tracks ([0, H])
+  const yValuesPos = yValuesAll.filter((y) => y >= 0);
+  const globalMaxPos =
+    yValuesPos.length > 0
+      ? yValuesPos.reduce((max, y) => Math.max(max, y), 0)
+      : 0;
+
+  const globalMaxPosRange =
+    yHeightGlobalOpt !== "" && yHeightGlobalOpt != null
+      ? Number(yHeightGlobalOpt)
+      : globalMaxPos + yPadding;
+
+  // GWAS ranges
   const gwasMin = gwasData.reduce((min, s) => Math.min(min, s.y), 0);
-  const gwasMax = gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding;
+  const gwasMax =
+    gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding;
 
-  // const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
+  // X range for all tracks
   const initialXRange = useMemo(
     () => [range.start, range.end],
     [range.start, range.end],
   );
-  const initialYRange = useMemo(
-    () => [-halfRange, halfRange],
-    [halfRange],
-  );
+
+  // Y range for GWAS track
   const initialGwasYRange = useMemo(
     () => [gwasMin, gwasMax],
     [gwasMin, gwasMax],
@@ -437,8 +482,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     cellTypes.forEach((celltype, i) => {
       const entry = signalData[celltype];
       const baseHue = (i * 360) / cellTypes.length;
-      const plusColor = `hsl(${baseHue}, 70%, 55%)`;
-      const minusColor = `hsl(${(baseHue + 180) % 360}, 70%, 55%)`; // complementary hue for minus
+      const plusColor = `hsl(${baseHue}, 70%, 45%)`;
+      const minusColor = `hsla(${baseHue}, 70%, 75%, 0.7)`; // lighter and semi-transparent for minus strand
       const yaxisId = `y${i + (hasGwas ? 3 : 2)}`;
   
       // Plus/minus case
@@ -636,36 +681,38 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         anchor: "y",
       },
 ...cellTypes.reduce((acc, celltype, i) => {
-  const baseIndex = hasGwas ? i + 2 : i + 1;
-  const halfRangeForTrack = getTrackHalfRange(
-    celltype,
-    signalList,
-    visibleRange,
-    displayOptions,
-    halfRange, 
-  );
+        const baseIndex = hasGwas ? i + 2 : i + 1;
+        const [yMin, yMax] = getTrackRange(
+          celltype,
+          signalList,
+          visibleRange,
+          displayOptions,
+          trackTypes,
+          globalHalfRangeSym,
+          globalMaxPosRange,
+        );
 
-  acc[`yaxis${baseIndex + 1}`] = {
-    title: { text: `Signal`, font: { size: 10 } },
-    domain: calculateDomain(baseIndex),
-    autorange: false,
-    range: [-halfRangeForTrack, halfRangeForTrack],
-    fixedrange: true,
-    showgrid: getDisplayOption(displayOptions, "showGrid", true),
-    zeroline: false,
-    ticks: "outside",
-    ticklen: 6,
-    tickwidth: 1,
-    tickcolor: "black",
-    tickfont: { size: 8 },
-    showline: true,
-    mirror: true,
-    linewidth: 1,
-    linecolor: "black",
-    anchor: "x",
-  };
-  return acc;
-}, {}),
+        acc[`yaxis${baseIndex + 1}`] = {
+          title: { text: `Signal`, font: { size: 10 } },
+          domain: calculateDomain(baseIndex),
+          autorange: false,
+          range: [yMin, yMax],
+          fixedrange: true,
+          showgrid: getDisplayOption(displayOptions, "showGrid", true),
+          zeroline: false,
+          ticks: "outside",
+          ticklen: 6,
+          tickwidth: 1,
+          tickcolor: "black",
+          tickfont: { size: 8 },
+          showline: true,
+          mirror: true,
+          linewidth: 1,
+          linecolor: "black",
+          anchor: "x",
+        };
+        return acc;
+      }, {}),
       ...(hasGwas
         ? {
             [`yaxis2`]: {
@@ -789,7 +836,10 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
       displayOptions,
       calculateDomain,
       initialGwasYRange,
-      initialYRange,
+      signalList,
+        trackTypes,
+        globalHalfRangeSym,
+        globalMaxPosRange,
     ],
   );
 
@@ -898,8 +948,8 @@ RegionViewPlotlyPlot.propTypes = {
     end: PropTypes.number.isRequired,
   }).isRequired,
   visibleRange: PropTypes.shape({
-    start: PropTypes.number.isRequired,
-    end: PropTypes.number.isRequired,
+    start: PropTypes.number,
+    end: PropTypes.number,
   }).isRequired,
   binSize: PropTypes.number.isRequired,
   nearbyGenes: PropTypes.arrayOf(
@@ -910,7 +960,8 @@ RegionViewPlotlyPlot.propTypes = {
       strand: PropTypes.oneOf(["+", "-", "x"]),
     }),
   ).isRequired,
-  signalData: PropTypes.objectOf(
+signalData: PropTypes.objectOf(
+  PropTypes.oneOfType([
     PropTypes.arrayOf(
       PropTypes.shape({
         position: PropTypes.number,
@@ -918,7 +969,23 @@ RegionViewPlotlyPlot.propTypes = {
         celltype: PropTypes.string,
       }),
     ),
-  ).isRequired,
+    PropTypes.shape({
+      plus: PropTypes.arrayOf(
+        PropTypes.shape({
+          position: PropTypes.number,
+          value: PropTypes.number,
+        }),
+      ),
+      minus: PropTypes.arrayOf(
+        PropTypes.shape({
+          position: PropTypes.number,
+          value: PropTypes.number,
+        }),
+      ),
+    }),
+    PropTypes.oneOf([null]),
+  ]),
+).isRequired,
   gwasData: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
