@@ -22,19 +22,22 @@ export const getRegionSignalData = async (
     end,
     celltype,
     binSize,
+    strand = null
 ) => {
     try {
         const response = await axios.get(`${SIGNAL_URL}/getregionsignaldata`, {
             params: {
-                dataset: dataset,
-                chromosome: chromosome,
-                start: start,
-                end: end,
-                celltype: celltype,
+                dataset,
+                chromosome,
+                start,
+                end,
+                celltype,
                 binsize: binSize,
+                ...(strand ? { strand } : {}), 
             },
         });
-        return response;
+
+        return response.data;
     } catch (error) {
         console.error("Error getRegionSignalData:", error);
         throw error;

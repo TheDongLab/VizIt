@@ -1,4 +1,4 @@
-import {useEffect, useState, useMemo, useCallback} from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
     Typography,
     Box,
@@ -22,12 +22,12 @@ import {
     IconButton,
     Tooltip,
 } from "@mui/material";
-import {PropTypes} from "prop-types";
-import {debounce} from "@mui/material/utils";
+import { PropTypes } from "prop-types";
+import { debounce } from "@mui/material/utils";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import SettingsIcon from "@mui/icons-material/Settings";
-import {useSearchParams} from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import "./GenomicRegionView.css";
 
@@ -36,22 +36,22 @@ import useSignalStore from "../../store/GenomicRegionStore.js";
 
 import RegionViewPlotlyPlot from "./RegionViewPlotlyPlot.jsx";
 
-import {ListboxComponent, StyledPopper} from "../../components/Listbox";
+import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
-import {getGeneLocation, getSnpLocation} from "../../api/qtl.js";
+import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 
-import {supportsWebGL} from "../../utils/webgl.js";
+import { supportsWebGL } from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
 // console.log("WebGL supported:", webGLSupported);
 
 function ConfirmationDialog({
-                                isOpen,
-                                handleClose,
-                                handleConfirm,
-                                title,
-                                description,
-                            }) {
+    isOpen,
+    handleClose,
+    handleConfirm,
+    title,
+    description,
+}) {
     return (
         <Dialog
             open={isOpen}
@@ -76,16 +76,17 @@ function GenomicRegionView() {
     const urlDataset = queryParams.get("dataset") ?? "";
     const urlRegion = queryParams.get("region") ?? "";
 
-    const {datasetRecords, fetchDatasetList,setDatasetRecords} = useDataStore();
-    const {checkBWDataExists} = useSignalStore()
+    const { datasetRecords, fetchDatasetList, setDatasetRecords } =
+        useDataStore();
+    const { checkBWDataExists } = useSignalStore();
 
     useEffect(() => {
         fetchDatasetList();
     }, []);
 
     const datasetOptions = datasetRecords
-    .filter((d) => d.assay.toLowerCase().endsWith("qtl") && d.has_bw)
-    .map((d) => d.dataset_id);
+        .filter((d) => /[A-Za-z]*?(RNAseq|ATACseq)$/i.test(d.assay) && d.has_bw)
+        .map((d) => d.dataset_id);
 
     const [datasetId, setDatasetId] = useState(urlDataset);
     const [datasetSearchText, setDatasetSearchText] = useState("");
@@ -104,7 +105,7 @@ function GenomicRegionView() {
         fetchGeneLocations,
         fetchGwas,
     } = useSignalStore();
-    const {loading, error} = useSignalStore();
+    const { loading, error } = useSignalStore();
 
     const [dataLoading, setDataLoading] = useState(false);
 
@@ -121,16 +122,16 @@ function GenomicRegionView() {
                 start: parseInt(match[3].replace(/,/g, "")),
                 end: parseInt(match[4].replace(/,/g, "")),
             };
-        }else if (str.toLowerCase().startsWith("rs")) {
+        } else if (str.toLowerCase().startsWith("rs")) {
             // If the string doesn't match the expected format, check if it's a SNP and try to resolve it to a region
             try {
                 const snp = await getSnpLocation(datasetId, str);
-                if(snp && snp.data){
+                if (snp && snp.data) {
                     return {
                         chromosome: snp.data.chromosome,
                         start: snp.data.position - 50000,
                         end: snp.data.position + 50000,
-                    }
+                    };
                 }
             } catch (error) {
                 console.warn("SNP not found:", str, error);
@@ -139,30 +140,35 @@ function GenomicRegionView() {
             // if it doesn't match the expected format, check if it's a gene symbol and try to resolve it to a region
             try {
                 const gene = await getGeneLocation(datasetId, str);
-                if(gene && gene.data){
+                if (gene && gene.data) {
                     return {
                         chromosome: gene.data.chromosome,
                         start: gene.data.start - 50000,
                         end: gene.data.end + 50000,
-                    }
+                    };
                 }
             } catch (error) {
                 console.warn("Gene not found:", str, error);
             }
-        }   
-        return null;  
+        }
+        return null;
     };
 
     const setRegion = useCallback(
         (chromosome, start, end) => {
             if (!chromosome || start === null || end === null) {
-                console.warn("Invalid region parameters:", chromosome, start, end);
+                console.warn(
+                    "Invalid region parameters:",
+                    chromosome,
+                    start,
+                    end,
+                );
                 return;
             }
             // Update both chromosome and range in a single operation
             setSelectedChromosome(chromosome);
             setSelectedRange(start, end);
-            setVisibleRange({start, end});
+            setVisibleRange({ start, end });
         },
         [setSelectedChromosome, setSelectedRange],
     );
@@ -235,14 +241,18 @@ function GenomicRegionView() {
             setSelectedRange(null, null);
             setNearbyGenes([]);
             setGwasData([]);
-            setVisibleRange({start: null, end: null});
+            setVisibleRange({ start: null, end: null });
 
             // Show descriptive error message
             const input = regionSearchText.trim();
             if (input.toLowerCase().startsWith("rs")) {
                 setSelectionError(`SNP "${input}" not found in this dataset.`);
-            } else if (input.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i)) {
-                setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
+            } else if (
+                input.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i)
+            ) {
+                setSelectionError(
+                    "Invalid region format. Use: chr1:1000000-2000000",
+                );
             } else {
                 setSelectionError(`Gene "${input}" not found in this dataset.`);
             }
@@ -256,7 +266,7 @@ function GenomicRegionView() {
     const fetchData = async (range, binSizeOverride = null) => {
         if (!datasetId || !selectedChromosome || !range) return;
 
-        const {start, end} = range;
+        const { start, end } = range;
         if (start == null || end == null || start >= end) {
             setSelectionError("Invalid region range");
             return;
@@ -282,7 +292,13 @@ function GenomicRegionView() {
                         setHasGwas(true);
                         setGwasData(
                             gwas.map(
-                                ({snp_id, p_value, beta_value, position, ...rest}) => ({
+                                ({
+                                    snp_id,
+                                    p_value,
+                                    beta_value,
+                                    position,
+                                    ...rest
+                                }) => ({
                                     ...rest,
                                     id: snp_id,
                                     y: -Math.log10(Math.max(p_value, 1e-20)),
@@ -373,7 +389,7 @@ function GenomicRegionView() {
                     const start = parseInt(parts[0]);
                     const end = parseInt(parts[1]);
                     setSelectedRange(start, end);
-                    setVisibleRange({start, end});
+                    setVisibleRange({ start, end });
                 }
             }
         }
@@ -387,7 +403,11 @@ function GenomicRegionView() {
             const parsed = await parseRegionString(urlRegion);
             if (!parsed) return;
 
-            const {chromosome: urlChromosome, start: urlStart, end: urlEnd} = parsed;
+            const {
+                chromosome: urlChromosome,
+                start: urlStart,
+                end: urlEnd,
+            } = parsed;
 
             if (
                 urlChromosome !== selectedChromosome ||
@@ -421,8 +441,9 @@ function GenomicRegionView() {
         showGrid: true,
         trackHeight: 120,
         gapHeight: 10,
-        yHeight: "",
+        yHeightGlobal: "",
         showGwas: true,
+        perTrackY: false,
     });
     const [tempDisplayOptions, setTempDisplayOptions] = useState({
         ...displayOptions,
@@ -432,7 +453,7 @@ function GenomicRegionView() {
 
     useEffect(() => {
         if (menuOpen) {
-            setTempDisplayOptions({...displayOptions});
+            setTempDisplayOptions({ ...displayOptions });
         }
     }, [displayOptions, menuOpen]);
 
@@ -441,7 +462,7 @@ function GenomicRegionView() {
     };
 
     const handleMenuClose = () => {
-        setDisplayOptions({...tempDisplayOptions});
+        setDisplayOptions({ ...tempDisplayOptions });
         setAnchorEl(null);
     };
 
@@ -452,7 +473,10 @@ function GenomicRegionView() {
         });
     };
 
-    const [visibleRange, setVisibleRange] = useState({start: null, end: null});
+    const [visibleRange, setVisibleRange] = useState({
+        start: null,
+        end: null,
+    });
     const [currentBinSize, setCurrentBinSize] = useState(1000);
 
     // const debounce = (func, wait) => {
@@ -478,7 +502,10 @@ function GenomicRegionView() {
                     figure.layout.xaxis.range
                 ) {
                     const [start, end] = figure.layout.xaxis.range;
-                    const newRange = {start: Math.floor(start), end: Math.ceil(end)};
+                    const newRange = {
+                        start: Math.floor(start),
+                        end: Math.ceil(end),
+                    };
 
                     if (
                         !visibleRange ||
@@ -542,19 +569,19 @@ function GenomicRegionView() {
     return (
         <div
             className="plot-page-container"
-            style={{display: "flex", flexDirection: "column", flex: 1}}
+            style={{ display: "flex", flexDirection: "column", flex: 1 }}
         >
             {/* Title Row */}
             <Box className="title-row">
                 <Typography variant="h6">Genomic Region View</Typography>
             </Box>
-            <Divider/>
+            <Divider />
             <div className="selection-row">
                 <div className="control-group">
                     {/* <Typography variant="subtitle1">Select a Dataset:</Typography> */}
                     {/* Dataset Selection */}
                     <Autocomplete
-                        sx={{width: "400px"}}
+                        sx={{ width: "400px" }}
                         size="small"
                         disableListWrap
                         options={datasetOptions}
@@ -573,7 +600,7 @@ function GenomicRegionView() {
                             },
                         }}
                         renderOption={(props, option) => {
-                            const {key, ...rest} = props;
+                            const { key, ...rest } = props;
                             return (
                                 <li key={key} {...rest}>
                                     {option}
@@ -597,7 +624,7 @@ function GenomicRegionView() {
                     {/* <label>Select Gene or SNP:</label> */}
                     {/* Gene Selection */}
                     <TextField
-                        sx={{width: "400px"}}
+                        sx={{ width: "400px" }}
                         size="small"
                         value={regionSearchText}
                         onChange={handleRegionChange}
@@ -646,19 +673,21 @@ function GenomicRegionView() {
                 <div className="control-group">
                     {/* Button to fetch data and a loading indicator*/}
                     <Box
-                        /* sx={{ */
-                        /*   display: "flex", */
-                        /*   justifyContent: "center", */
-                        /*   /\* margin: "20px 0px", *\/ */
-                        /* }} */
+                    /* sx={{ */
+                    /*   display: "flex", */
+                    /*   justifyContent: "center", */
+                    /*   /\* margin: "20px 0px", *\/ */
+                    /* }} */
                     >
                         <Button
                             variant="outlined"
-                            endIcon={<ScatterPlotIcon/>}
+                            endIcon={<ScatterPlotIcon />}
                             disabled={loading || dataLoading}
                             onClick={handleLoadPlot}
                         >
-                            {loading || dataLoading ? "Loading plots..." : "Refresh Plots"}
+                            {loading || dataLoading
+                                ? "Loading plots..."
+                                : "Refresh Plots"}
                         </Button>
                     </Box>
                 </div>
@@ -669,7 +698,7 @@ function GenomicRegionView() {
                             color="inherit"
                             aria-label="display options"
                         >
-                            <SettingsIcon/>
+                            <SettingsIcon />
                         </IconButton>
                     </Tooltip>
                     <Menu
@@ -689,7 +718,9 @@ function GenomicRegionView() {
                                 control={
                                     <Switch
                                         checked={tempDisplayOptions.showGrid}
-                                        onChange={handleOptionChange("showGrid")}
+                                        onChange={handleOptionChange(
+                                            "showGrid",
+                                        )}
                                     />
                                 }
                                 label="Show grid"
@@ -704,7 +735,9 @@ function GenomicRegionView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Track height:</Typography>
+                                <Typography variant="body">
+                                    Track height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -740,7 +773,9 @@ function GenomicRegionView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Gap height:</Typography>
+                                <Typography variant="body">
+                                    Gap height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -767,52 +802,160 @@ function GenomicRegionView() {
                                 />
                             </Box>
                         </MenuItem>
-                        <MenuItem>
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 1,
-                                    width: "100%",
-                                }}
-                            >
-                                <Typography variant="body">Y-axis height:</Typography>
-                                <TextField
-                                    size="small"
-                                    type="number"
-                                    value={tempDisplayOptions.yHeight}
-                                    onChange={(e) =>
-                                        setTempDisplayOptions({
-                                            ...tempDisplayOptions,
-                                            yHeight:
-                                                e.target.value === "" ? "" : Number(e.target.value),
-                                        })
-                                    }
-                                    onKeyPress={(e) => {
-                                        if (e.key === "Enter") {
-                                            setDisplayOptions({
+                        {!displayOptions.perTrackY && (
+                            <MenuItem>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                        width: "100%",
+                                    }}
+                                >
+                                    <Typography variant="body">
+                                        Global y-axis height:
+                                    </Typography>
+                                    <TextField
+                                        size="small"
+                                        type="number"
+                                        value={tempDisplayOptions.yHeightGlobal}
+                                        onChange={(e) =>
+                                            setTempDisplayOptions({
                                                 ...tempDisplayOptions,
-                                            });
+                                                yHeightGlobal:
+                                                    e.target.value === ""
+                                                        ? ""
+                                                        : Number(
+                                                              e.target.value,
+                                                          ),
+                                            })
                                         }
-                                    }}
-                                    placeholder="Auto"
-                                    inputProps={{
-                                        style: {
-                                            width: "80px",
-                                            padding: "5px",
-                                        },
-                                        min: 0,
-                                        step: 0.1,
-                                    }}
-                                />
-                            </Box>
+                                        onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                                setDisplayOptions({
+                                                    ...tempDisplayOptions,
+                                                });
+                                            }
+                                        }}
+                                        placeholder="Auto"
+                                        inputProps={{
+                                            style: {
+                                                width: "80px",
+                                                padding: "5px",
+                                            },
+                                            min: 0,
+                                            step: 0.1,
+                                        }}
+                                    />
+                                </Box>
+                            </MenuItem>
+                        )}
+                        <MenuItem>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={tempDisplayOptions.perTrackY}
+                                        onChange={(e) =>
+                                            setTempDisplayOptions({
+                                                ...tempDisplayOptions,
+                                                perTrackY: e.target.checked,
+                                            })
+                                        }
+                                    />
+                                }
+                                label="Separate y-axis height per track"
+                            />
                         </MenuItem>
+                        {tempDisplayOptions.perTrackY && (
+                            <MenuItem disableGutters>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: 0.5,
+                                        width: "100%",
+                                        px: 2,
+                                        pb: 1,
+                                    }}
+                                >
+                                    <Typography
+                                        variant="subtitle2"
+                                        sx={{ fontWeight: 600, mb: 0.5 }}
+                                    >
+                                        Per-track y-axis overrides
+                                    </Typography>
+
+                                    {availableCellTypes.map((ct) => (
+                                        <Box
+                                            key={ct}
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 1,
+                                                pl: 1.5, // Indent rows under heading
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    flex: 1,
+                                                    minWidth: 0,
+                                                    whiteSpace: "nowrap",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                }}
+                                            >
+                                                {ct}:
+                                            </Typography>
+                                            <TextField
+                                                size="small"
+                                                type="number"
+                                                value={
+                                                    tempDisplayOptions
+                                                        .trackYHeights?.[ct] ??
+                                                    ""
+                                                }
+                                                onChange={(e) => {
+                                                    const value =
+                                                        e.target.value === ""
+                                                            ? ""
+                                                            : Number(
+                                                                  e.target
+                                                                      .value,
+                                                              );
+                                                    setTempDisplayOptions(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            trackYHeights: {
+                                                                ...prev.trackYHeights,
+                                                                [ct]: value,
+                                                            },
+                                                        }),
+                                                    );
+                                                }}
+                                                placeholder="Auto"
+                                                inputProps={{
+                                                    style: {
+                                                        width: "80px",
+                                                        padding: "5px",
+                                                    },
+                                                    min: 0,
+                                                    step: 0.1,
+                                                }}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </MenuItem>
+                        )}
                         <MenuItem>
                             <FormControlLabel
                                 control={
                                     <Switch
                                         checked={tempDisplayOptions.showGwas}
-                                        onChange={handleOptionChange("showGwas")}
+                                        onChange={handleOptionChange(
+                                            "showGwas",
+                                        )}
                                     />
                                 }
                                 label="Show GWAS data"
@@ -829,7 +972,7 @@ function GenomicRegionView() {
                                     setAnchorEl(null); // close the menu
                                 }}
                             >
-                                 Apply changes
+                                Apply changes
                             </Button>
                         </Box>
                     </Menu>
@@ -841,44 +984,64 @@ function GenomicRegionView() {
                     handleClose={handleClose}
                     handleConfirm={handleConfirm}
                     title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
-                    description={selectedPointData ?? "No additional data available."}
+                    description={
+                        selectedPointData ?? "No additional data available."
+                    }
                 />
 
                 {/* Plot Area */}
                 <div className="plot-main">
                     {dataLoading && (
                         <>
-                            <Box sx={{width: "100%"}}>
-                                <LinearProgress/>
+                            <Box sx={{ width: "100%" }}>
+                                <LinearProgress />
                             </Box>
                         </>
                     )}
 
-                    {datasetId === "" || datasetId === "all" || datasetId == null ? (
+                    {datasetId === "" ||
+                    datasetId === "all" ||
+                    datasetId == null ? (
                         <Typography
-                            sx={{color: "text.secondary", paddingTop: "100px"}}
+                            sx={{
+                                color: "text.secondary",
+                                paddingTop: "100px",
+                            }}
                             variant="h5"
                         >
                             No dataset selected for exploration
                         </Typography>
                     ) : error ? (
-                        <Typography sx={{paddingTop: "100px"}} variant="h5" color="error">
+                        <Typography
+                            sx={{ paddingTop: "100px" }}
+                            variant="h5"
+                            color="error"
+                        >
                             {error}
                         </Typography>
                     ) : (
                         <div className="qtl-container">
                             {/* Plot Container */}
-                            <div key={"signal-view"} className={`view-container`}>
-                                {!selectedChromosome && !selectedRange && !selectionError ? (
+                            <div
+                                key={"signal-view"}
+                                className={`view-container`}
+                            >
+                                {!selectedChromosome &&
+                                !selectedRange &&
+                                !selectionError ? (
                                     <Typography
-                                        sx={{color: "text.secondary", paddingTop: "100px"}}
+                                        sx={{
+                                            color: "text.secondary",
+                                            paddingTop: "100px",
+                                        }}
                                         variant="h5"
                                     >
-                                        No genomic region selected for exploration
+                                        No genomic region selected for
+                                        exploration
                                     </Typography>
                                 ) : selectionError ? (
                                     <Typography
-                                        sx={{paddingTop: "100px"}}
+                                        sx={{ paddingTop: "100px" }}
                                         variant="h5"
                                         color="error"
                                     >
@@ -886,7 +1049,10 @@ function GenomicRegionView() {
                                     </Typography>
                                 ) : availableCellTypes.length === 0 ? (
                                     <Typography
-                                        sx={{color: "text.secondary", paddingTop: "100px"}}
+                                        sx={{
+                                            color: "text.secondary",
+                                            paddingTop: "100px",
+                                        }}
                                         variant="h5"
                                     >
                                         No cell types available
@@ -911,12 +1077,17 @@ function GenomicRegionView() {
                                                 nearbyGenes={nearbyGenes}
                                                 gwasData={gwasData}
                                                 hasGwas={
-                                                    (displayOptions?.showGwas ?? true) ? hasGwas : false
+                                                    (displayOptions?.showGwas ??
+                                                    true)
+                                                        ? hasGwas
+                                                        : false
                                                 }
                                                 handleSelect={handleSelect}
                                                 useWebGL={webGLSupported}
                                                 displayOptions={displayOptions}
-                                                handlePlotUpdate={handlePlotUpdate}
+                                                handlePlotUpdate={
+                                                    handlePlotUpdate
+                                                }
                                                 binSize={currentBinSize}
                                             />
                                         </div>

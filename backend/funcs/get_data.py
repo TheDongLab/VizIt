@@ -962,8 +962,8 @@ def get_bw_data_exists(dataset):
         return False
     return True
 
-@lru_cache(maxsize=128)  # bump cache size since you’ll open more small files
-def get_cached_bigwig_handle(dataset, celltype):
+@lru_cache(maxsize=128)
+def get_cached_bigwig_handle(dataset, celltype, strand=None):
     celltype_mapping_file = os.path.join(
         "backend", "datasets", dataset,"bigwig","celltype_bigwig.json"
     )
@@ -974,7 +974,21 @@ def get_cached_bigwig_handle(dataset, celltype):
     with open(celltype_mapping_file, "r") as f:
         celltype_mapping = json.load(f)
 
-    celltype_file = celltype_mapping.get(celltype, celltype)
+    entry = celltype_mapping.get(celltype, celltype)
+
+    if isinstance(entry, str):
+        celltype_file = entry
+    else:
+        if strand == "+":
+            celltype_file = entry.get("plus")
+        elif strand == "-":
+            celltype_file = entry.get("minus")
+        else:
+            celltype_file = entry.get("plus") or entry.get("minus")
+
+        if not celltype_file:
+            print(f"No matching bigWig for celltype={celltype}, strand={strand}")
+            return None
 
     bw_path = os.path.join(
         "backend",
@@ -1002,16 +1016,131 @@ def format_signal_value(value, sig_figs=5):
     return round(value, decimal_places)
 
 
-def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_size=1):
+
+def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_size=1, strand=None):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
-    ## check if bigwig is available
+    # check if bigwig is available
     if not get_bw_data_exists(dataset):
         return f"Error: BigWig folder not found"
 
     try:
-        bw = get_cached_bigwig_handle(dataset, celltype)
+        # Read mapping once here to know if we have plus/minus
+        celltype_mapping_file = os.path.join(
+            "backend", "datasets", dataset, "bigwig", "celltype_bigwig.json"
+        )
+        if not os.path.exists(celltype_mapping_file):
+            print(celltype_mapping_file + " not found")
+            return "Error: BigWig mapping file not found"
+
+        with open(celltype_mapping_file, "r") as f:
+            celltype_mapping = json.load(f)
+
+        entry = celltype_mapping.get(celltype, celltype)
+
+        print(f"Entry for celltype '{celltype}': {entry} {strand}")
+        if strand in {"+", "-"}:
+            bw = get_cached_bigwig_handle(dataset, celltype, strand)
+            if bw is None:
+                return f"Error: BigWig file not found for the celltype/strand"
+
+            chrom_len = bw.chroms().get(chromosome)
+            if chrom_len is None:
+                return f"Error: Chromosome not found in the dataset/celltype"
+
+            start = max(0, start)
+            end = min(end, chrom_len)
+            if start >= end:
+                return f"Error: Invalid range input"
+
+            # Binning
+            if bin_size > 1:
+                num_bins = (end - start) // bin_size
+                if (end - start) % bin_size != 0:
+                    num_bins += 1
+
+                values = bw.stats(chromosome, start, end, nBins=num_bins, type="mean")
+                positions = [start + i * bin_size for i in range(num_bins)]
+                values = [v if v is not None else 0 for v in values]
+
+                formatted_values = [
+                    format_signal_value(v) if v is not None else 0.0 for v in values
+                ]
+                return {"position": positions, "value": formatted_values}
+
+            # No binning
+            intervals = bw.intervals(chromosome, start, end)
+            if not intervals:
+                return {"position": [], "value": []}
+
+            positions, values = [], []
+            for interval_start, interval_end, value in intervals:
+                for pos in range(max(start, interval_start), min(end, interval_end) + 1):
+                    positions.append(pos)
+                    values.append(format_signal_value(value))
+
+            return {"position": positions, "value": values}
+
+        # If entry is a dict with plus and minus, try to return both
+        if isinstance(entry, dict):
+            plus_file = entry.get("plus")
+            minus_file = entry.get("minus")
+
+            if plus_file and minus_file:
+                bw_plus = get_cached_bigwig_handle(dataset, celltype, "+")
+                bw_minus = get_cached_bigwig_handle(dataset, celltype, "-")
+
+                if bw_plus is None and bw_minus is None:
+                    return "Error: BigWig files not found for both strands"
+
+                def compute_from_bw(bw):
+                    if bw is None:
+                        return {"position": [], "value": []}
+
+                    chrom_len = bw.chroms().get(chromosome)
+                    if chrom_len is None:
+                        return {"position": [], "value": []}
+
+                    s = max(0, start)
+                    e = min(end, chrom_len)
+                    if s >= e:
+                        return {"position": [], "value": []}
+
+                    if bin_size > 1:
+                        num_bins = (e - s) // bin_size
+                        if (e - s) % bin_size != 0:
+                            num_bins += 1
+
+                        values = bw.stats(chromosome, s, e, nBins=num_bins, type="mean")
+                        positions = [s + i * bin_size for i in range(num_bins)]
+                        values = [v if v is not None else 0 for v in values]
+                        formatted_values = [format_signal_value(v) for v in values]
+                        return {"position": positions, "value": formatted_values}
+
+                    intervals = bw.intervals(chromosome, s, e)
+                    if not intervals:
+                        return {"position": [], "value": []}
+
+                    positions, values = [], []
+                    for interval_start, interval_end, value in intervals:
+                        for pos in range(max(s, interval_start), min(e, interval_end) + 1):
+                            positions.append(pos)
+                            values.append(format_signal_value(value))
+                    return {"position": positions, "value": values}
+
+                data_plus = compute_from_bw(bw_plus)
+                data_minus = compute_from_bw(bw_minus)
+
+                return {"plus": data_plus, "minus": data_minus}
+
+            # only one of plus/minus exists: fall back to single-track behavior
+            chosen_strand = "+" if plus_file else "-"
+            bw = get_cached_bigwig_handle(dataset, celltype, chosen_strand)
+        else:
+            # old string entry
+            bw = get_cached_bigwig_handle(dataset, celltype, None)
+
         if bw is None:
             return f"Error: BigWig file not found for the celltype"
 
@@ -1024,7 +1153,6 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
         if start >= end:
             return f"Error: Invalid range input"
 
-        # Binning
         if bin_size > 1:
             num_bins = (end - start) // bin_size
             if (end - start) % bin_size != 0:
@@ -1039,11 +1167,8 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
             ]
             return {"position": positions, "value": formatted_values}
 
-        # No binning
         intervals = bw.intervals(chromosome, start, end)
         if not intervals:
-            # return f"No coverage in {chromosome}:{start}-{end} for celltype {celltype}"
-            # just return empty
             return {"position": [], "value": []}
 
         positions, values = [], []

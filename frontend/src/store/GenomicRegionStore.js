@@ -31,7 +31,7 @@ export const checkBWDataExists = async (dataset) => {
     } catch (error) {
         console.error("Error checking BW data exists:", error);
     }
-}
+};
 
 const useSignalStore = create((set, get) => ({
     dataset: null,
@@ -133,10 +133,6 @@ const useSignalStore = create((set, get) => ({
         set({ loading: true, snpData: {} });
 
         const promises = get().availableCellTypes.map(async (c) => {
-            // console.log(
-            //     `Fetching signal data for ${dataset}, chromosome ${chromosome}, range ${start}-${end}, cell type ${c}, bin size ${binSize}`,
-            // );
-
             const response = await getRegionSignalData(
                 dataset,
                 chromosome,
@@ -145,12 +141,26 @@ const useSignalStore = create((set, get) => ({
                 c,
                 binSize,
             );
-            const hasBWData = response.data.hasBWData;
-            set({ hasBWData: hasBWData });
+            const hasBWData = response.hasBWData;
+            set({ hasBWData });
             if (!hasBWData) {
                 return [c, []];
             }
-            const signalData = response.data.data;
+            const signalData = response.data;
+
+            if (signalData.plus && signalData.minus) {
+                const plusRows = columnToRow(signalData.plus);
+                const minusRows = columnToRow(signalData.minus);
+
+                return [
+                    c,
+                    {
+                        plus: plusRows,
+                        minus: minusRows,
+                    },
+                ];
+            }
+
             const signalDataRows = columnToRow(signalData);
             return [c, signalDataRows];
         });

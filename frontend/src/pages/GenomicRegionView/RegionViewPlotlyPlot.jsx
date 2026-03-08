@@ -39,6 +39,58 @@ function getDisplayOption(displayOptions, option, defaultValue) {
   return displayOptions[option];
 }
 
+function getTrackHalfRange(
+  trackName,
+  allSignalList,
+  visibleRange,
+  displayOptions,
+  globalHalfRange,
+) {
+  const yPadding = 1;
+  const perTrackY = displayOptions?.perTrackY ?? false;
+  const trackYHeights = displayOptions?.trackYHeights ?? {};
+  const yHeightGlobal = displayOptions?.yHeightGlobal ?? "";
+
+  // Per-track manual override
+  if (
+    perTrackY &&
+    trackYHeights[trackName] !== "" &&
+    trackYHeights[trackName] != null
+  ) {
+    return Number(trackYHeights[trackName]);
+  }
+
+  // If per-track is on but no override for this track:
+  //   - if a global override exists, use it
+  //   - else, use per-track auto
+  if (perTrackY) {
+    if (yHeightGlobal !== "" && yHeightGlobal != null) {
+      // Global override for all tracks
+      return Number(yHeightGlobal);
+    }
+
+    const yVals = allSignalList
+      .filter((s) => s.celltype === trackName)
+      .filter((s) => s.x >= visibleRange.start && s.x <= visibleRange.end)
+      .map((s) => s.y)
+      .filter((y) => Number.isFinite(y));
+
+    if (yVals.length > 0) {
+      const dataMaxAbs = yVals.reduce(
+        (max, y) => Math.max(max, Math.abs(y)),
+        0,
+      );
+      return dataMaxAbs + yPadding;
+    }
+
+    // Fall back to global override
+    return globalHalfRange;
+  }
+
+  // If per-track is off, use global override if it exists, otherwise auto
+  return globalHalfRange;
+}
+
 const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   dataset,
   chromosome,
@@ -56,27 +108,56 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   binSize,
 }) {
   const range = visibleRange || selectedRange;
-  const signalList = Object.entries(signalData).flatMap(([celltype, signals]) =>
-    signals.map(({ position, value, ...rest }) => ({
-      ...rest,
-      x: position,
-      y: value,
-      celltype,
-    })),
-  );
+  const signalList = Object.entries(signalData).flatMap(
+  ([celltype, signals]) => {
+    if (signals && !Array.isArray(signals) && signals.plus && signals.minus) {
+      const plusPoints = (signals.plus || []).map(({ position, value, ...rest }) => ({
+        ...rest,
+        x: position,
+        y: value,
+        celltype,
+        strand: "plus",
+      }));
+
+      const minusPoints = (signals.minus || []).map(({ position, value, ...rest }) => ({
+        ...rest,
+        x: position,
+        y: -value,
+        celltype,
+        strand: "minus",
+      }));
+
+      return [...plusPoints, ...minusPoints];
+    }
+
+    if (Array.isArray(signals)) {
+      return signals.map(({ position, value, ...rest }) => ({
+        ...rest,
+        x: position,
+        y: value,
+        celltype,
+      }));
+    }
+
+    return [];
+  },
+);
 
   const yValues = signalList
     .filter((snp) => snp.x >= visibleRange.start && snp.x <= visibleRange.end)
     .map((snp) => snp.y)
     .filter((y) => Number.isFinite(y));
-
+  
   const yPadding = 1;
   const yHeight = getDisplayOption(displayOptions, "yHeight", "");
-  const yMax =
-    yHeight !== ""
-      ? Number(yHeight)
-      : yValues.reduce((max, y) => Math.max(max, y), 0) + yPadding;
-  const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
+  
+  const dataMaxAbs =
+    yValues.length > 0
+      ? yValues.reduce((max, y) => Math.max(max, Math.abs(y)), 0)
+      : 0;
+  
+  const halfRange =
+    yHeight !== "" ? Number(yHeight) : dataMaxAbs + yPadding;
 
   const gwasMin = gwasData.reduce((min, s) => Math.min(min, s.y), 0);
   const gwasMax = gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding;
@@ -86,7 +167,10 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     () => [range.start, range.end],
     [range.start, range.end],
   );
-  const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
+  const initialYRange = useMemo(
+    () => [-halfRange, halfRange],
+    [halfRange],
+  );
   const initialGwasYRange = useMemo(
     () => [gwasMin, gwasMax],
     [gwasMin, gwasMax],
@@ -348,19 +432,101 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
   };
 
   const signalTraces = useMemo(() => {
-    return cellTypes.map((celltype, i) => {
-      const cellData = signalData[celltype] || [];
-      const xValues = cellData.map((d) => d.position);
-      const yValues = cellData.map((d) => d.value);
-
-      const color = `hsl(${(i * 360) / cellTypes.length}, 70%, 60%)`;
-
+    const traces = [];
+  
+    cellTypes.forEach((celltype, i) => {
+      const entry = signalData[celltype];
+      const baseHue = (i * 360) / cellTypes.length;
+      const plusColor = `hsl(${baseHue}, 70%, 55%)`;
+      const minusColor = `hsl(${(baseHue + 180) % 360}, 70%, 55%)`; // complementary hue for minus
+      const yaxisId = `y${i + (hasGwas ? 3 : 2)}`;
+  
+      // Plus/minus case
+      if (entry && !Array.isArray(entry) && (entry.plus || entry.minus)) {
+        const plus = entry.plus || [];
+        const minus = entry.minus || [];
+  
+        const xPlus = plus.map(d => d.position);
+        const yPlus = plus.map(d => d.value);
+  
+        const xMinus = minus.map(d => d.position);
+        const yMinus = minus.map(d => -d.value); // flip below 0
+  
+        const plusBinRanges = xPlus.map(binStart => {
+          const binEnd = binStart + binSize - 1;
+          return `${binStart}–${binEnd} (${binSize} bp)`;
+        });
+        const minusBinRanges = xMinus.map(binStart => {
+          const binEnd = binStart + binSize - 1;
+          return `${binStart}–${binEnd} (${binSize} bp)`;
+        });
+  
+        // Plus trace
+        traces.push({
+          name: `${celltype} (+)`,
+          x: xPlus,
+          y: yPlus,
+          type: useWebGL ? "scattergl" : "scatter",
+          mode: "lines",
+          fill: "tozeroy",
+          line: { shape: "hv", width: 0 },
+          fillcolor: plusColor,
+          xaxis: "x",
+          yaxis: yaxisId,
+          hoverinfo: "x+y+name",
+          hovertemplate:
+            `<b>${celltype} (+)</b><br>` +
+            `Bin Range: %{customdata}<br>` +
+            `Value: %{y:.3f}<br>` +
+            `<extra></extra>`,
+          hoverlabel: {
+            bgcolor: plusColor,
+          },
+          pointType: "signal",
+          customdata: plusBinRanges,
+          showlegend: false,
+        });
+  
+        // Minus trace
+        traces.push({
+          name: `${celltype} (−)`,
+          x: xMinus,
+          y: yMinus,
+          type: useWebGL ? "scattergl" : "scatter",
+          mode: "lines",
+          fill: "tozeroy",
+          line: { shape: "hv", width: 0 },
+          fillcolor: minusColor,
+          xaxis: "x",
+          yaxis: yaxisId,
+          hoverinfo: "x+y+name",
+          hovertemplate:
+            `<b>${celltype} (−)</b><br>` +
+            `Bin Range: %{customdata}<br>` +
+            `Value: %{y:.3f}<br>` +
+            `<extra></extra>`,
+          hoverlabel: {
+            bgcolor: minusColor,
+          },
+          pointType: "signal",
+          customdata: minusBinRanges,
+          showlegend: false,
+        });
+  
+        return;
+      }
+  
+      // Single-track case
+      const cellData = Array.isArray(entry) ? entry : [];
+      const xValues = cellData.map(d => d.position);
+      const yValues = cellData.map(d => d.value);
+  
       const binRanges = xValues.map((binStart) => {
         const binEnd = binStart + binSize - 1;
         return `${binStart}–${binEnd} (${binSize} bp)`;
       });
-
-      return {
+  
+      traces.push({
         name: celltype,
         x: xValues,
         y: yValues,
@@ -368,9 +534,9 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         mode: "lines",
         fill: "tozeroy",
         line: { shape: "hv", width: 0 },
-        fillcolor: color,
+        fillcolor: plusColor, // reuse plus color for single track
         xaxis: "x",
-        yaxis: `y${i + (hasGwas ? 3 : 2)}`,
+        yaxis: yaxisId,
         hoverinfo: "x+y+name",
         hovertemplate:
           `<b>${celltype}</b><br>` +
@@ -378,12 +544,15 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
           `Value: %{y:.3f}<br>` +
           `<extra></extra>`,
         hoverlabel: {
-          bgcolor: color,
+          bgcolor: plusColor,
         },
         pointType: "signal",
         customdata: binRanges,
-      };
+        showlegend: false,
+      });
     });
+  
+    return traces;
   }, [binSize, cellTypes, hasGwas, signalData, useWebGL]);
 
   // Calculate layout dimensions
@@ -466,29 +635,37 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         side: "bottom",
         anchor: "y",
       },
-      ...cellTypes.reduce((acc, celltype, i) => {
-        const baseIndex = hasGwas ? i + 2 : i + 1;
-        acc[`yaxis${baseIndex + 1}`] = {
-          title: { text: `Signal`, font: { size: 10 } },
-          domain: calculateDomain(baseIndex),
-          autorange: false,
-          range: initialYRange,
-          fixedrange: true, // Prevent zooming on y-axis
-          showgrid: getDisplayOption(displayOptions, "showGrid", true),
-          zeroline: false,
-          ticks: "outside",
-          ticklen: 6,
-          tickwidth: 1,
-          tickcolor: "black",
-          tickfont: { size: 8 },
-          showline: true,
-          mirror: true,
-          linewidth: 1,
-          linecolor: "black",
-          anchor: "x",
-        };
-        return acc;
-      }, {}),
+...cellTypes.reduce((acc, celltype, i) => {
+  const baseIndex = hasGwas ? i + 2 : i + 1;
+  const halfRangeForTrack = getTrackHalfRange(
+    celltype,
+    signalList,
+    visibleRange,
+    displayOptions,
+    halfRange, 
+  );
+
+  acc[`yaxis${baseIndex + 1}`] = {
+    title: { text: `Signal`, font: { size: 10 } },
+    domain: calculateDomain(baseIndex),
+    autorange: false,
+    range: [-halfRangeForTrack, halfRangeForTrack],
+    fixedrange: true,
+    showgrid: getDisplayOption(displayOptions, "showGrid", true),
+    zeroline: false,
+    ticks: "outside",
+    ticklen: 6,
+    tickwidth: 1,
+    tickcolor: "black",
+    tickfont: { size: 8 },
+    showline: true,
+    mirror: true,
+    linewidth: 1,
+    linecolor: "black",
+    anchor: "x",
+  };
+  return acc;
+}, {}),
       ...(hasGwas
         ? {
             [`yaxis2`]: {

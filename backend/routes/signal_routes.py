@@ -34,14 +34,15 @@ async def getregionsignaldata(request: Request):
     end = int(request.query_params.get("end"))
     celltype = request.query_params.get("celltype")
     bin_size = int(request.query_params.get("binsize", 1))
+    strand = request.query_params.get("strand")
 
     print(f"getregionsignaldata() called with bin size {bin_size}================")
 
     response = get_region_signal_data(
-        dataset_id, chromosome, start, end, celltype, bin_size
+        dataset_id, chromosome, start, end, celltype, bin_size, strand
     )
 
-    if "Error" in response:
+    if isinstance(response, str) and "Error" in response:
         print(response)
         if "BigWig folder not found" in response:
             return {"hasBWData": False, "message": response}
