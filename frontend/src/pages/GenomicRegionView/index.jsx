@@ -243,7 +243,6 @@ function GenomicRegionView() {
             setGwasData([]);
             setVisibleRange({ start: null, end: null });
 
-            // Show descriptive error message
             const input = regionSearchText.trim();
             if (input.toLowerCase().startsWith("rs")) {
                 setSelectionError(`SNP "${input}" not found in this dataset.`);
@@ -377,20 +376,46 @@ function GenomicRegionView() {
         setSelectedPointData(null);
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         setIsDialogOpen(false);
-        if (selectedPoint) {
-            if (type === "gene") {
-                console.warn("Clicked on gene. Not implemented!");
-                return;
-            } else if (type === "signal") {
-                const parts = selectedPoint.split("–");
-                if (parts.length == 2) {
-                    const start = parseInt(parts[0]);
-                    const end = parseInt(parts[1]);
-                    setSelectedRange(start, end);
-                    setVisibleRange({ start, end });
+        if (!selectedPoint) return;
+
+        if (type === "gene") {
+            try {
+                const gene = await getGeneLocation(datasetId, selectedPoint);
+
+                if (gene && gene.data) {
+                    const { chromosome, start, end } = gene.data;
+
+                    const paddedStart = start - 50000;
+                    const paddedEnd = end + 50000;
+
+                    setRegion(chromosome, paddedStart, paddedEnd);
+                    setRegionSearchText(
+                        `${chromosome}:${paddedStart}-${paddedEnd}`,
+                    );
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `Gene "${selectedPoint}" not found in this dataset.`,
+                    );
                 }
+            } catch (err) {
+                console.error("Error resolving gene from click:", err);
+                setSelectionError(
+                    `Error resolving gene "${selectedPoint}". Please try again.`,
+                );
+            }
+            return;
+        } else if (type === "signal") {
+            const parts = selectedPoint.split("–");
+            if (parts.length === 2) {
+                const start = parseInt(parts[0]);
+                const end = parseInt(parts[1]);
+                setSelectedRange(start, end);
+                setVisibleRange({ start, end });
+                setRegionSearchText(`${selectedChromosome}:${start}-${end}`);
+                setSelectionError("");
             }
         }
     };
