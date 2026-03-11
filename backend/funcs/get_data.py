@@ -924,7 +924,7 @@ def get_visium_coordinates(dataset, sample):
         if sample in f and "scalefactors" in f:
             scales_file = os.path.join(coordinates_folder, f)
 
-    if coordinates_file and os.path.exists(coordinates_file) :
+    if coordinates_file and os.path.exists(coordinates_file):
         with open(coordinates_file, "r") as f:
             coordinates_df = pd.read_csv(coordinates_file, index_col=0, header=0)
             coordinates = coordinates_df.to_dict(orient="index")
@@ -1200,3 +1200,19 @@ def get_celltype_list(dataset):
 
     return list(celltype_mapping.keys())
 
+
+def get_bigwig_celltype_list(dataset):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+
+    celltype_mapping_file = os.path.join(
+        "backend", "datasets", dataset, "bigwig", "celltype_bigwig.json"
+    )
+    if not os.path.exists(celltype_mapping_file):
+        print(celltype_mapping_file + " not found")
+        return "Error: BigWig celltype mapping file not found for the dataset"
+
+    with open(celltype_mapping_file, "r") as f:
+        celltype_mapping = json.load(f)
+
+    return list(celltype_mapping.keys())

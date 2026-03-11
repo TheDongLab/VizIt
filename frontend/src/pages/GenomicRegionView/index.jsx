@@ -104,6 +104,8 @@ function GenomicRegionView() {
         fetchSignalData,
         fetchGeneLocations,
         fetchGwas,
+        fetchGeneList,
+        fetchSnpList,
     } = useSignalStore();
     const { loading, error } = useSignalStore();
 
@@ -122,34 +124,6 @@ function GenomicRegionView() {
                 start: parseInt(match[3].replace(/,/g, "")),
                 end: parseInt(match[4].replace(/,/g, "")),
             };
-        } else if (str.toLowerCase().startsWith("rs")) {
-            // If the string doesn't match the expected format, check if it's a SNP and try to resolve it to a region
-            try {
-                const snp = await getSnpLocation(datasetId, str);
-                if (snp && snp.data) {
-                    return {
-                        chromosome: snp.data.chromosome,
-                        start: snp.data.position - 50000,
-                        end: snp.data.position + 50000,
-                    };
-                }
-            } catch (error) {
-                console.warn("SNP not found:", str, error);
-            }
-        } else {
-            // if it doesn't match the expected format, check if it's a gene symbol and try to resolve it to a region
-            try {
-                const gene = await getGeneLocation(datasetId, str);
-                if (gene && gene.data) {
-                    return {
-                        chromosome: gene.data.chromosome,
-                        start: gene.data.start - 50000,
-                        end: gene.data.end + 50000,
-                    };
-                }
-            } catch (error) {
-                console.warn("Gene not found:", str, error);
-            }
         }
         return null;
     };
@@ -173,6 +147,17 @@ function GenomicRegionView() {
         [setSelectedChromosome, setSelectedRange],
     );
 
+    const [geneList, setGeneList] = useState([]);
+    const [snpList, setSnpList] = useState([]);
+    const [combinedList, setCombinedList] = useState([]);
+    const [combinedSearchText, setCombinedSearchText] = useState("");
+    const [filteredCombinedList, setFilteredCombinedList] = useState([]);
+    const [selectedOption, setSelectedOption] = useState(null);
+
+    useEffect(() => {
+        console.log("filteredCombinedList", filteredCombinedList);
+    }, [filteredCombinedList]);
+
     useEffect(() => {
         const initialize = async () => {
             if (!datasetId || datasetId === "") return;
@@ -180,6 +165,22 @@ function GenomicRegionView() {
             try {
                 await setDataset(datasetId);
                 await fetchCellTypes(datasetId);
+
+                const genes = await fetchGeneList(datasetId);
+                const snps = await fetchSnpList(datasetId);
+
+                setGeneList(genes || []);
+                setSnpList(snps || []);
+
+                const combined = [
+                    ...(genes || []).map((gene) => ({
+                        type: "gene",
+                        id: gene,
+                    })),
+                    ...(snps || []).map((snp) => ({ type: "snp", id: snp })),
+                ];
+                setCombinedList(combined);
+                setFilteredCombinedList(combined.slice(0, listLength));
 
                 // if (urlRegion) {
                 //   const parsedRegion = parseRegionString(urlRegion);
@@ -207,6 +208,30 @@ function GenomicRegionView() {
     const [nearbyGenes, setNearbyGenes] = useState([]);
     const [regionSearchText, setRegionSearchText] = useState("");
 
+    const indexedList = useMemo(
+        () =>
+            combinedList.map((item) => ({
+                original: item,
+                lowercaseId: item.id.toLowerCase(),
+            })),
+        [combinedList],
+    );
+
+    const debouncedFilter = useMemo(
+        () =>
+            debounce((value, setFn) => {
+                const results = indexedList
+                    .filter((item) =>
+                        item.lowercaseId.includes(value.toLowerCase()),
+                    )
+                    .map((item) => item.original);
+                setFn(results.slice(0, listLength));
+            }, 120),
+        [indexedList],
+    );
+
+    const listLength = 500; // Limit the list length for performance
+
     useEffect(() => {
         const newParams = new URLSearchParams();
         if (datasetId) newParams.set("dataset", datasetId);
@@ -226,6 +251,143 @@ function GenomicRegionView() {
         setQueryParams(newParams);
     }, [datasetId, selectedChromosome, selectedRange, setQueryParams]);
 
+    const handleCombinedInputChange = (event, value, reason) => {
+        // always reflect the current text
+        setRegionSearchText(value);
+
+        if (!value) {
+            setFilteredCombinedList(combinedList.slice(0, listLength));
+        } else {
+            debouncedFilter(value, setFilteredCombinedList);
+        }
+    };
+
+    const handleCombinedAutocompleteOpen = () => {
+        if (!combinedSearchText) {
+            setFilteredCombinedList(combinedList.slice(0, listLength));
+        }
+    };
+
+    const handleCombinedChange = async (event, newValue) => {
+        if (!newValue) {
+            setRegionSearchText("");
+            return;
+        }
+
+        if (typeof newValue === "string") {
+            setRegionSearchText(newValue);
+            return;
+        }
+
+        const id = newValue.id;
+
+        if (newValue.type === "snp") {
+            try {
+                const snp = await getSnpLocation(datasetId, id);
+                if (snp && snp.data) {
+                    const start = snp.data.position - 50000;
+                    const end = snp.data.position + 50000;
+                    const chr = snp.data.chromosome;
+                    setRegion(chr, start, end);
+                    setRegionSearchText(`${chr}:${start}-${end}`);
+                    setSelectionError("");
+                } else {
+                    setSelectionError(`SNP "${id}" not found in this dataset.`);
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`SNP "${id}" not found in this dataset.`);
+            }
+        } else if (newValue.type === "gene") {
+            try {
+                const gene = await getGeneLocation(datasetId, id);
+                if (gene && gene.data) {
+                    const { chromosome, start, end } = gene.data;
+                    const paddedStart = start - 50000;
+                    const paddedEnd = end + 50000;
+
+                    setRegion(chromosome, paddedStart, paddedEnd);
+                    setRegionSearchText(
+                        `${chromosome}:${paddedStart}-${paddedEnd}`,
+                    );
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `Gene "${id}" not found in this dataset.`,
+                    );
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`Gene "${id}" not found in this dataset.`);
+            }
+        }
+    };
+
+    const handleEnterSubmit = async () => {
+        const text = regionSearchText.trim();
+        if (!text) return;
+
+        const match = combinedList.find(
+            (item) => item.id.toLowerCase() === text.toLowerCase(),
+        );
+        if (match) {
+            await handleCombinedChange(null, match, "selectOption");
+            return;
+        }
+
+        const region = parseRegionString(text);
+        if (region) {
+            setSelectionError("");
+            setRegion(region.chromosome, region.start, region.end);
+            setRegionSearchText(
+                `${region.chromosome}:${region.start}-${region.end}`,
+            );
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("rs")) {
+            try {
+                const snp = await getSnpLocation(datasetId, text);
+                if (snp && snp.data) {
+                    const start = snp.data.position - 50000;
+                    const end = snp.data.position + 50000;
+                    const chr = snp.data.chromosome;
+                    setRegion(chr, start, end);
+                    setRegionSearchText(`${chr}:${start}-${end}`);
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `SNP "${text}" not found in this dataset.`,
+                    );
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`SNP "${text}" not found in this dataset.`);
+            }
+        } else {
+            try {
+                const gene = await getGeneLocation(datasetId, text);
+                if (gene && gene.data) {
+                    const { chromosome, start, end } = gene.data;
+                    const paddedStart = start - 50000;
+                    const paddedEnd = end + 50000;
+                    setRegion(chromosome, paddedStart, paddedEnd);
+                    setRegionSearchText(
+                        `${chromosome}:${paddedStart}-${paddedEnd}`,
+                    );
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `Gene "${text}" not found in this dataset.`,
+                    );
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`Gene "${text}" not found in this dataset.`);
+            }
+        }
+    };
+
     const handleRegionChange = (event) => {
         setRegionSearchText(event.target.value);
     };
@@ -235,6 +397,9 @@ function GenomicRegionView() {
         if (region) {
             setSelectionError("");
             setRegion(region.chromosome, region.start, region.end);
+            setRegionSearchText(
+                `${region.chromosome}:${region.start}-${region.end}`,
+            );
         } else {
             // Clear existing plot data
             setSelectedChromosome(null);
@@ -663,22 +828,54 @@ function GenomicRegionView() {
                     />
                 </div>
                 <div className="control-group">
-                    {/* <label>Select Gene or SNP:</label> */}
-                    {/* Gene Selection */}
-                    <TextField
+                    <Autocomplete
                         sx={{ width: "400px" }}
                         size="small"
-                        value={regionSearchText}
-                        onChange={handleRegionChange}
-                        onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                                handleRegionSubmit();
-                            }
+                        freeSolo
+                        disableListWrap
+                        options={filteredCombinedList}
+                        onChange={handleCombinedChange}
+                        inputValue={regionSearchText}
+                        onInputChange={handleCombinedInputChange}
+                        onOpen={handleCombinedAutocompleteOpen}
+                        getOptionLabel={(option) =>
+                            typeof option === "string"
+                                ? option
+                                : option.id || ""
+                        }
+                        isOptionEqualToValue={(option, value) =>
+                            (option.id || option) === (value.id || value)
+                        }
+                        slots={{
+                            popper: StyledPopper,
                         }}
-                        placeholder="chr1:1000000-2000000 or SNCA"
-                        label="Enter genomic region or gene symbol"
-                        variant="standard"
-                        /* helperText="Format: chromosome:start-end or chromosome start end" */
+                        slotProps={{
+                            listbox: {
+                                component: ListboxComponent,
+                            },
+                        }}
+                        renderOption={(props, option) => {
+                            const { key, ...rest } = props;
+                            return (
+                                <li key={key} {...rest}>
+                                    {option.id}
+                                </li>
+                            );
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="chr:start-end, gene symbol or SNP rsID"
+                                variant="standard"
+                                // Pressing Enter should parse as region/gene/SNP
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleEnterSubmit();
+                                    }
+                                }}
+                            />
+                        )}
                     />
 
                     {/* SNP Selection */}

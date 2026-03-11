@@ -5,6 +5,8 @@ import {
     getCellTypeList,
     getGeneLocationsInChromosome,
     getGwasInChromosome,
+    getGeneList,
+    getSnpList,
 } from "../api/signal.js";
 
 function columnToRow(data) {
@@ -42,6 +44,8 @@ const useSignalStore = create((set, get) => ({
     signalData: {},
     loading: false,
     error: null,
+    geneList: [],
+    snpList: [],
 
     setDataset: (dataset) => {
         set({ dataset: dataset });
@@ -238,6 +242,50 @@ const useSignalStore = create((set, get) => ({
             return gwasRows;
         } catch (error) {
             console.error("Error fetching GWAS data:", error);
+            throw error;
+        }
+    },
+
+    fetchGeneList: async (dataset, query_str = "all") => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchGeneList: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const response = await getGeneList(dataset, query_str);
+            const geneList = response.data;
+            set({ geneList: geneList, loading: false });
+            return geneList;
+        } catch (error) {
+            console.error("Error fetching gene list:", error);
+            throw error;
+        }
+    },
+
+    fetchSnpList: async (dataset, query_str = "all") => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({
+                error: "fetchSnpList: No dataset selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+
+        try {
+            const response = await getSnpList(dataset, query_str);
+            const snpList = response.data;
+            set({ snpList: snpList, loading: false });
+            return snpList;
+        } catch (error) {
+            console.error("Error fetching SNP list:", error);
             throw error;
         }
     },

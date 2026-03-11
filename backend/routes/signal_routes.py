@@ -1,15 +1,17 @@
 from fastapi import APIRouter, HTTPException
 from fastapi import Request
 
-
 # from backend.funcs.get_data import *
 
 from backend.funcs.get_data import (
     get_bw_data_exists,
     get_region_signal_data,
     get_celltype_list,
+    get_bigwig_celltype_list,
     get_gene_locations_in_chromosome,
     get_gwas_in_chromosome,
+    get_qtl_gene_list,
+    get_qtl_snp_list,
 )
 
 router = APIRouter()
@@ -25,6 +27,7 @@ async def getbwdataexists(request: Request):
     dataset_id = request.query_params.get("dataset")
     exists = get_bw_data_exists(dataset_id)
     return {"hasBWData": exists}
+
 
 @router.get("/getregionsignaldata")
 async def getregionsignaldata(request: Request):
@@ -63,6 +66,21 @@ async def getcelltypelist(request: Request):
     return response
 
 
+@router.get("/getbigwigcelltypelist")
+async def getbigwigcelltypelist(request: Request):
+    print("getbigwigcelltypelist() called================")
+
+    dataset_id = request.query_params.get("dataset")
+
+    response = get_bigwig_celltype_list(dataset_id)
+
+    if "Error" in response:
+        raise HTTPException(
+            status_code=404, detail="Error in getting bigwig cell type list"
+        )
+    return response
+
+
 @router.get("/getgenelocationsinchromosome")
 async def getgenelocationsinchromosome(request: Request):
     print("getgenelocationsinchromosome() called================")
@@ -97,4 +115,30 @@ async def getgwasinchromosome(request: Request):
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
+    return response
+
+
+@router.get("/getgenelist")
+async def getgenelist(request: Request):
+    print("getgenelist() called================")
+    dataset_id = request.query_params.get("dataset")
+    query_str = request.query_params.get("query_str")
+
+    response = get_qtl_gene_list(dataset_id, query_str)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting gene list.")
+    return response
+
+
+@router.get("/getsnplist")
+async def getsnplist(request: Request):
+    print("getsnplist() called================")
+    dataset_id = request.query_params.get("dataset")
+    query_str = request.query_params.get("query_str")
+
+    response = get_qtl_snp_list(dataset_id, query_str)
+
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting SNP list.")
     return response

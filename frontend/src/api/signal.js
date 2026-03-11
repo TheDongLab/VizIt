@@ -6,7 +6,7 @@ const SIGNAL_URL = `${BASE_URL}/signal`;
 export const getBWDataExists = async (dataset) => {
     try {
         const response = await axios.get(`${SIGNAL_URL}/getbwdataexists`, {
-            params: {dataset: dataset},
+            params: { dataset: dataset },
         });
         return response;
     } catch (error) {
@@ -22,7 +22,7 @@ export const getRegionSignalData = async (
     end,
     celltype,
     binSize,
-    strand = null
+    strand = null,
 ) => {
     try {
         const response = await axios.get(`${SIGNAL_URL}/getregionsignaldata`, {
@@ -33,7 +33,7 @@ export const getRegionSignalData = async (
                 end,
                 celltype,
                 binsize: binSize,
-                ...(strand ? { strand } : {}), 
+                ...(strand ? { strand } : {}),
             },
         });
 
@@ -46,9 +46,12 @@ export const getRegionSignalData = async (
 
 export const getCellTypeList = async (dataset) => {
     try {
-        const response = await axios.get(`${SIGNAL_URL}/getcelltypelist`, {
-            params: {dataset: dataset},
-        });
+        const response = await axios.get(
+            `${SIGNAL_URL}/getbigwigcelltypelist`,
+            {
+                params: { dataset: dataset },
+            },
+        );
         return response;
     } catch (error) {
         console.error("Error getCellTypeList:", error);
@@ -94,6 +97,30 @@ export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
         return response;
     } catch (error) {
         console.error("Error getGwasInChromosome:", error);
+        throw error;
+    }
+};
+
+export const getGeneList = async (dataset, query_str) => {
+    try {
+        const response = await axios.get(`${SIGNAL_URL}/getgenelist`, {
+            params: { dataset: dataset, query_str: query_str },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGeneList:", error);
+        throw error;
+    }
+};
+
+export const getSnpList = async (dataset, query_str) => {
+    try {
+        const response = await axios.get(`${SIGNAL_URL}/getsnplist`, {
+            params: { dataset: dataset, query_str: query_str },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getSnpList:", error);
         throw error;
     }
 };
