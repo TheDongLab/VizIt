@@ -93,11 +93,7 @@ const useSignalStore = create((set, get) => ({
 
         try {
             const response = await getCellTypeList(dataset);
-            const acellTypes = response.data;
-            // remove astrocytes and oligodendrocytes
-            const cellTypes = acellTypes.filter(
-                (c) => c !== "Astrocytes" && c !== "Oligodendrocytes",
-            );
+            const cellTypes = response.data;
             set({ availableCellTypes: cellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);

@@ -264,17 +264,62 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     ];
   }, [gwasData, useWebGL]);
 
-  const jitterMap = useMemo(() => {
-    const map = new Map();
-    const maxAmplitude = 1.75;
+const jitterMap = useMemo(() => {
+  const map = new Map();
 
-    nearbyGenes.forEach((g) => {
+  const maxAmplitude = 1.55;
+  const regionWidth = range.end - range.start || 1; // avoid 0
+  const maxXSpacing = regionWidth * 0.02; // 2% of current region
+  const minYSpacing = 0.3;
+  const maxAttempts = 100;
+
+  // array of { pos: number, jitter: number }
+  const assigned = [];
+
+  const sortedGenes = [...nearbyGenes].sort(
+    (a, b) => a.position_start - b.position_start,
+  );
+
+  let numFallbacks = 0;
+
+  for (const gene of sortedGenes) {
+    let jitterValue;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const candidate = Math.random() * maxAmplitude;
       const sign = Math.random() > 0.5 ? 1 : -1;
-      const amplitude = Math.random() * maxAmplitude;
-      map.set(g.gene_id, sign * amplitude);
-    });
-    return map;
-  }, [nearbyGenes]);
+      const jitter = sign * candidate;
+
+      const isTooClose = assigned.some(
+        ({ pos, jitter: prev }) =>
+          Math.abs(prev - jitter) < minYSpacing &&
+          Math.abs(pos - gene.position_start) < maxXSpacing,
+      );
+
+      if (!isTooClose) {
+        jitterValue = jitter;
+        break;
+      }
+
+      attempts++;
+    }
+
+    if (jitterValue === undefined) {
+      numFallbacks++;
+      jitterValue = (Math.random() - 0.5) * 2 * maxAmplitude;
+    }
+
+    assigned.push({ pos: gene.position_start, jitter: jitterValue });
+    map.set(gene.gene_id, jitterValue);
+  }
+
+  console.log(
+    `Assigned ${assigned.length} nearbyGenes with ${numFallbacks} fallbacks`,
+  );
+
+  return map;
+}, [nearbyGenes, range.start, range.end]);
 
   const geneTraces = useMemo(() => {
     const getStart = (gene) =>
