@@ -111,7 +111,7 @@ function GenomicRegionView() {
 
     const [dataLoading, setDataLoading] = useState(false);
 
-    const parseRegionString = async (str) => {
+    const parseRegionString = (str) => {
         if (str === null || str === undefined || str.trim() === "") {
             console.log("inside parseRegionString: empty string");
         }
