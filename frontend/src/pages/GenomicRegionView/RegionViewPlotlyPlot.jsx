@@ -3,28 +3,35 @@ import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
 
-function dataToRGB({ beta, y }, min = 2, max = 3) {
-    const maxLevel = 230;
-
-    if (Math.abs(y) < 2)
-        return beta > 0 ? `rgb(200, 161, 161)` : `rgb(161, 161, 200)`;
-
-    const absBeta = Math.abs(beta);
-    let intensity;
-
-    if (min >= max) {
-        intensity = absBeta >= max ? 1 : 0; // Treat min/max as single threshold
-    } else {
-        if (absBeta < min) intensity = 0;
-        else if (absBeta > max) intensity = 1;
-        else intensity = (absBeta - min) / (max - min); // Normalize to [0,1]
+function getTranscriptColor(biotype) {
+    switch (biotype) {
+        case "protein_coding":
+        case "protein_coding_gene":
+            return {
+                exonFill: "rgb(200,230,255)",
+                exonBorder: "rgb(40,90,160)",
+                intron: "rgb(80,120,200)",
+            };
+        case "lncRNA":
+        case "lincRNA":
+            return {
+                exonFill: "rgb(230,200,255)",
+                exonBorder: "rgb(120,60,180)",
+                intron: "rgb(150,100,200)",
+            };
+        case "miRNA":
+            return {
+                exonFill: "rgb(255,220,200)",
+                exonBorder: "rgb(200,90,60)",
+                intron: "rgb(200,120,80)",
+            };
+        default:
+            return {
+                exonFill: "rgb(220,220,220)",
+                exonBorder: "rgb(80,80,80)",
+                intron: "rgb(140,140,140)",
+            };
     }
-
-    const channelValue = Math.round(maxLevel * (1 - intensity));
-
-    return beta > 0
-        ? `rgb(${maxLevel}, ${channelValue}, ${channelValue})`
-        : `rgb(${channelValue}, ${channelValue}, ${maxLevel})`;
 }
 
 function round(num, precision = 6) {
@@ -121,6 +128,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     displayOptions,
     handlePlotUpdate,
     binSize,
+    exonStructure,
+    exonStructureTruncated,
 }) {
     const range = visibleRange || selectedRange;
     const signalList = Object.entries(signalData).flatMap(
@@ -272,6 +281,9 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         ];
     }, [gwasData, useWebGL]);
 
+    const GENE_TRACK_GAP_PIXELS = 20;
+    const GENE_LABEL_OFFSET_PIXELS = 7;
+
     const jitterMap = useMemo(() => {
         const map = new Map();
 
@@ -329,11 +341,60 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         return map;
     }, [nearbyGenes, range.start, range.end]);
 
+    const isExonMode =
+        !exonStructureTruncated && exonStructure && exonStructure.length > 0;
+
+    let geneTrackYMin, geneTrackYMax;
+    let exonTrackPixels;
+    const exonTrackPixelsBase = 60;
+    const pixelsPerTranscript = 16;
+
+    if (isExonMode) {
+        const nTxLanes = exonStructure.length;
+        exonTrackPixels = exonTrackPixelsBase + nTxLanes * pixelsPerTranscript;
+        const laneMin = 0;
+        const laneMax = nTxLanes - 1;
+        const span = laneMax - laneMin; // nTxLanes - 1
+        const denominator = exonTrackPixels - 2 * GENE_TRACK_GAP_PIXELS;
+        if (denominator <= 0) {
+            // Fallback (should not happen with reasonable values)
+            geneTrackYMin = -1;
+            geneTrackYMax = nTxLanes;
+        } else {
+            const pad = (GENE_TRACK_GAP_PIXELS * span) / denominator;
+            geneTrackYMin = laneMin - pad;
+            geneTrackYMax = laneMax + pad;
+        }
+    } else {
+        const nGenes = nearbyGenes.length;
+        const baseLanes = 3;
+        const lanesPerNGenes = 15;
+        const effectiveLanes = baseLanes + Math.ceil(nGenes / lanesPerNGenes);
+        exonTrackPixels =
+            exonTrackPixelsBase + effectiveLanes * pixelsPerTranscript;
+        const jitterMin = -1.5;
+        const jitterMax = 1.5;
+        const span = jitterMax - jitterMin;
+        const denominator = exonTrackPixels - 2 * GENE_TRACK_GAP_PIXELS;
+        if (denominator <= 0) {
+            geneTrackYMin = -2;
+            geneTrackYMax = 2;
+        } else {
+            const pad = (GENE_TRACK_GAP_PIXELS * span) / denominator;
+            geneTrackYMin = jitterMin - pad;
+            geneTrackYMax = jitterMax + pad;
+        }
+    }
+
     const geneTraces = useMemo(() => {
         const getStart = (gene) =>
             gene.strand === "-" ? gene.position_end : gene.position_start;
         const getEnd = (gene) =>
             gene.strand === "-" ? gene.position_start : gene.position_end;
+
+        const dataRangeHeight = geneTrackYMax - geneTrackYMin;
+        const labelDataOffset =
+            (GENE_LABEL_OFFSET_PIXELS * dataRangeHeight) / exonTrackPixels;
 
         // We need null values to create breaks in the line
         const others = {
@@ -398,7 +459,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             x: nearbyGenes.map((gene) => (getEnd(gene) + getStart(gene)) / 2), // 在基因终点显示名称
             y: nearbyGenes.map((gene) => {
                 const jitter = jitterMap.get(gene.gene_id);
-                return jitter - 0.2;
+                return jitter - labelDataOffset;
             }),
             xaxis: "x",
             yaxis: "y",
@@ -419,6 +480,176 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
 
         return [others, geneLabels];
     }, [jitterMap, nearbyGenes]);
+
+    const exonTraces = useMemo(() => {
+        if (!exonStructure || exonStructure.length === 0) return [];
+
+        const plots = [];
+
+        const transcripts = exonStructure;
+        const txToLane = new Map(
+            transcripts.map((tx, idx) => [tx.transcript_id, idx]),
+        );
+
+        const exonHalfHeight = 0.2;
+
+        for (const tx of transcripts) {
+            const laneY = txToLane.get(tx.transcript_id);
+            const exons = (tx.exons || [])
+                .slice()
+                .sort((a, b) => a.exon_start - b.exon_start);
+            if (exons.length === 0) continue;
+
+            const exonCount =
+                exons[0].exon_count != null ? exons[0].exon_count : null;
+
+            const colors = getTranscriptColor(tx.biotype);
+            const exonFill = colors.exonFill;
+            const exonBorder = colors.exonBorder;
+            const intronColor = colors.intron;
+
+            // Exons
+            for (const e of exons) {
+                const x0 = e.exon_start;
+                const x1 = e.exon_end;
+                const y0 = laneY - exonHalfHeight;
+                const y1 = laneY + exonHalfHeight;
+
+                plots.push({
+                    x: [x0, x1, x1, x0, x0],
+                    y: [y0, y0, y1, y1, y0],
+                    type: "scatter",
+                    mode: "lines",
+                    fill: "toself",
+                    line: { color: exonBorder, width: 1 },
+                    fillcolor: exonFill,
+                    xaxis: "x",
+                    yaxis: "y",
+                    hoverinfo: "text",
+                    hovertext:
+                        `<b>${tx.gene_symbol}</b> (${tx.transcript_id})<br>` +
+                        `Exon: ${e.exon_start}-${e.exon_end}<br>` +
+                        `Strand: ${tx.strand}<br>` +
+                        (e.exon_index != null && exonCount != null
+                            ? `Exon #${e.exon_index + 1} / ${exonCount}<br>`
+                            : "") +
+                        (tx.biotype ? `Biotype: ${tx.biotype}<br>` : ""),
+                    pointType: "gene",
+                    showlegend: false,
+                });
+            }
+
+            // Introns
+            for (let i = 0; i < exons.length - 1; i++) {
+                const a = exons[i];
+                const b = exons[i + 1];
+                const x0 = a.exon_end;
+                const x1 = b.exon_start;
+                const y = laneY;
+
+                plots.push({
+                    x: [x0, x1],
+                    y: [y, y],
+                    type: "scatter",
+                    mode: "lines",
+                    line: { color: intronColor, width: 1 },
+                    xaxis: "x",
+                    yaxis: "y",
+                    hoverinfo: "skip",
+                    pointType: "gene",
+                    showlegend: false,
+                });
+            }
+
+            // Partial introns if first/last exon is not at transcript boundary
+            const firstExon = exons[0];
+            const lastExon = exons[exons.length - 1];
+
+            if (
+                exonCount != null &&
+                firstExon.exon_index != null &&
+                firstExon.exon_index > 0
+            ) {
+                const x0 = Math.max(range.start, tx.tx_start ?? range.start);
+                const x1 = firstExon.exon_start;
+                const y = laneY;
+
+                if (x1 > x0) {
+                    plots.push({
+                        x: [x0, x1],
+                        y: [y, y],
+                        type: "scatter",
+                        mode: "lines",
+                        line: {
+                            color: intronColor,
+                            width: 1,
+                        },
+                        xaxis: "x",
+                        yaxis: "y",
+                        hoverinfo: "skip",
+                        pointType: "gene",
+                        showlegend: false,
+                    });
+                }
+            }
+
+            if (
+                exonCount != null &&
+                lastExon.exon_index != null &&
+                lastExon.exon_index < exonCount - 1
+            ) {
+                const x0 = lastExon.exon_end;
+                const x1 = Math.min(range.end, tx.tx_end ?? range.end);
+                const y = laneY;
+
+                if (x1 > x0) {
+                    plots.push({
+                        x: [x0, x1],
+                        y: [y, y],
+                        type: "scatter",
+                        mode: "lines",
+                        line: {
+                            color: intronColor,
+                            width: 1,
+                        },
+                        xaxis: "x",
+                        yaxis: "y",
+                        hoverinfo: "skip",
+                        pointType: "gene",
+                        showlegend: false,
+                    });
+                }
+            }
+
+            // Gene label only if TSS is inside view
+            const txLeft = tx.tx_start ?? firstExon.exon_start;
+            const tssInside = txLeft >= range.start && txLeft <= range.end;
+
+            if (tssInside) {
+                const labelX =
+                    firstExon.exon_start - (range.end - range.start) * 0.005;
+                const labelY = laneY - exonHalfHeight / 6;
+
+                plots.push({
+                    x: [labelX],
+                    y: [labelY],
+                    type: "scatter",
+                    mode: "text",
+                    text: [tx.gene_symbol],
+                    textposition: "middle left",
+                    xaxis: "x",
+                    yaxis: "y",
+                    hoverinfo: "skip",
+                    textfont: { size: 10, color: exonBorder },
+                    showlegend: false,
+                });
+            }
+        }
+
+        return plots;
+    }, [exonStructure, range.start, range.end]);
+
+    const geneTrackTraces = exonStructureTruncated ? geneTraces : exonTraces;
 
     // Handle clicking points
     const onClick = (data) => {
@@ -677,28 +908,60 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const marginLeft = 80;
     const marginRight = 80;
 
-    const nTracks = cellTypes.length + (hasGwas ? 1 : 0) + 1; // +1 for the gene track
-    const totalHeight =
-        marginTop +
-        marginBottom +
-        nTracks * pixelsPerTrack +
-        (nTracks - 1) * pixelsPerGap;
+    const nSignalTracks = cellTypes.length;
+    const nGwasTracks = hasGwas ? 1 : 0;
 
-    // Normalized domain
-    const trackDomainHeight =
+    const totalInnerHeight =
+        exonTrackPixels + // special for exon track
+        nGwasTracks * pixelsPerTrack +
+        nSignalTracks * pixelsPerTrack +
+        (1 + nGwasTracks + nSignalTracks - 1) * pixelsPerGap;
+
+    const totalHeight = marginTop + marginBottom + totalInnerHeight;
+
+    // Normalized heights
+    const exonTrackDomainHeight =
+        exonTrackPixels / (totalHeight - marginTop - marginBottom);
+    const normalTrackDomainHeight =
         pixelsPerTrack / (totalHeight - marginTop - marginBottom);
     const gapDomainHeight =
         pixelsPerGap / (totalHeight - marginTop - marginBottom);
 
     const calculateDomain = useCallback(
         (trackIndex) => {
-            const start = trackIndex * (trackDomainHeight + gapDomainHeight);
-            const end = start + trackDomainHeight;
+            let offset = 0;
 
-            // Prevent floating point precision errors from exceeding 1.0
+            if (trackIndex === 0) {
+                const start = 0;
+                const end = start + exonTrackDomainHeight;
+                return [start, Math.min(end, 1.0)];
+            }
+
+            offset += exonTrackDomainHeight + gapDomainHeight;
+
+            if (hasGwas && trackIndex === 1) {
+                const start = offset;
+                const end = start + normalTrackDomainHeight;
+                return [start, Math.min(end, 1.0)];
+            }
+
+            if (hasGwas) {
+                offset += normalTrackDomainHeight + gapDomainHeight;
+            }
+
+            const signalIndex = trackIndex - (hasGwas ? 2 : 1);
+            offset += signalIndex * (normalTrackDomainHeight + gapDomainHeight);
+
+            const start = offset;
+            const end = start + normalTrackDomainHeight;
             return [start, Math.min(end, 1.0)];
         },
-        [trackDomainHeight, gapDomainHeight],
+        [
+            exonTrackDomainHeight,
+            normalTrackDomainHeight,
+            gapDomainHeight,
+            hasGwas,
+        ],
     );
 
     // Plotly layout
@@ -816,7 +1079,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             yaxis: {
                 autorange: false,
                 domain: calculateDomain(0), // 0th track is for SNP track
-                range: [-2, 2],
+                range: [geneTrackYMin, geneTrackYMax],
                 fixedrange: true, // Prevent zooming on y-axis
                 // minallowed: yMin,
                 // maxallowed: yMax,
@@ -837,8 +1100,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     yref: "y",
                     x0: 0,
                     x1: 1,
-                    y0: -2,
-                    y1: 2,
+                    y0: geneTrackYMin,
+                    y1: geneTrackYMax,
                     fillcolor: "lightgray",
                     opacity: 0.3,
                     layer: "below",
@@ -904,15 +1167,16 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             chromosome,
             selectedRange.start,
             selectedRange.end,
-            visibleRange.start,
-            visibleRange.end,
             totalHeight,
             cellTypes,
             hasGwas,
+            visibleRange,
             initialXRange,
             displayOptions,
             calculateDomain,
             initialGwasYRange,
+            geneTrackYMin,
+            geneTrackYMax,
             signalList,
             trackTypes,
             globalHalfRangeSym,
@@ -931,7 +1195,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 onUpdate={handlePlotUpdate}
                 onInitialized={handlePlotUpdate}
                 onClick={onClick}
-                data={[...geneTraces, ...gwasTrace, ...signalTraces]}
+                data={[...geneTrackTraces, ...gwasTrace, ...signalTraces]}
                 style={{ width: "100%", height: "100%" }}
                 layout={layout}
                 useResizeHandler
@@ -943,7 +1207,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     toImageButtonOptions: {
                         name: "Save as PNG",
                         format: "png", // one of png, svg, jpeg, webp
-                        filename: `${dataset}.${chromosome}.${range.start}-${range.end}`,
+                        filename: `${dataset}.${chromosome}.${Math.max(range.start, 0)}-${range.end}`,
                         scale: 1, // Multiply title/legend/axis/canvas sizes by this factor
                     },
                     modeBarButtonsToRemove: [
@@ -1039,6 +1303,26 @@ RegionViewPlotlyPlot.propTypes = {
         end: PropTypes.number,
     }).isRequired,
     binSize: PropTypes.number.isRequired,
+    exonStructure: PropTypes.arrayOf(
+        PropTypes.shape({
+            chrom: PropTypes.string,
+            transcript_id: PropTypes.string,
+            gene_id: PropTypes.string,
+            gene_symbol: PropTypes.string,
+            strand: PropTypes.string,
+            biotype: PropTypes.string,
+            tx_start: PropTypes.number,
+            tx_end: PropTypes.number,
+            exons: PropTypes.arrayOf(
+                PropTypes.shape({
+                    exon_start: PropTypes.number,
+                    exon_end: PropTypes.number,
+                }),
+            ),
+            _truncated: PropTypes.bool,
+        }),
+    ),
+    exonStructureTruncated: PropTypes.bool,
     nearbyGenes: PropTypes.arrayOf(
         PropTypes.shape({
             gene_id: PropTypes.string,
@@ -1095,7 +1379,10 @@ RegionViewPlotlyPlot.propTypes = {
         showGrid: PropTypes.bool,
         trackHeight: PropTypes.number,
         gapHeight: PropTypes.number,
-        yHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+        yHeightGlobal: PropTypes.oneOfType([
+            PropTypes.number,
+            PropTypes.string,
+        ]),
     }),
     handlePlotUpdate: PropTypes.func.isRequired,
 };

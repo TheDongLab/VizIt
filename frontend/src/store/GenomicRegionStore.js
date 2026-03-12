@@ -7,6 +7,7 @@ import {
     getGwasInChromosome,
     getGeneList,
     getSnpList,
+    getExonStructureInChromosome,
 } from "../api/signal.js";
 
 function columnToRow(data) {
@@ -46,6 +47,8 @@ const useSignalStore = create((set, get) => ({
     error: null,
     geneList: [],
     snpList: [],
+    exonStructure: [],
+    exonStructureTruncated: false,
 
     setDataset: (dataset) => {
         set({ dataset: dataset });
@@ -286,6 +289,92 @@ const useSignalStore = create((set, get) => ({
             return snpList;
         } catch (error) {
             console.error("Error fetching SNP list:", error);
+            throw error;
+        }
+    },
+
+    fetchExonStructure: async (dataset, start, end) => {
+        dataset = dataset ?? get().dataset;
+        const chromosome = get().selectedChromosome;
+        if (!dataset || dataset === "all" || !chromosome) {
+            set({
+                error: "fetchExonStructure: No dataset or chromosome selected",
+                loading: false,
+            });
+            return;
+        }
+        set({ loading: true });
+        try {
+            const resp = await getExonStructureInChromosome(
+                dataset,
+                chromosome,
+                start,
+                end,
+            );
+            const data = resp.data;
+
+            if (typeof data === "string" && data.startsWith("Error")) {
+                set({ exonStructure: [], loading: false });
+                return [];
+            }
+
+            const exonRows = columnToRow(data).filter(
+                (row) =>
+                    row.transcript_id != null &&
+                    row.exon_start != null &&
+                    row.exon_end != null,
+            );
+
+            // group by transcript_id
+            const byTx = new Map();
+            for (const r of exonRows) {
+                const tx = r.transcript_id;
+                if (!byTx.has(tx)) byTx.set(tx, []);
+                byTx.get(tx).push(r);
+            }
+
+            // rebuild the original nested transcript structure
+            const transcripts = [];
+            for (const [tx, rows] of byTx.entries()) {
+                if (!rows || rows.length === 0) continue;
+                const r0 = rows[0];
+                const exons = rows
+                    .map((r) => ({
+                        exon_start: r.exon_start,
+                        exon_end: r.exon_end,
+                        exon_index: r.exon_index,
+                        exon_count: r.exon_count,
+                    }))
+                    .sort((a, b) => a.exon_start - b.exon_start);
+
+                transcripts.push({
+                    chrom: r0.chrom,
+                    transcript_id: tx,
+                    gene_id: r0.gene_id,
+                    gene_symbol: r0.gene_symbol,
+                    strand: r0.strand,
+                    biotype: r0.biotype,
+                    tx_start: r0.tx_start,
+                    tx_end: r0.tx_end,
+                    exons,
+                });
+            }
+
+            const truncated = !!data._truncated;
+
+            set({
+                exonStructure: transcripts,
+                exonStructureTruncated: truncated,
+                loading: false,
+            });
+            return transcripts;
+        } catch (error) {
+            console.error("Error fetching exon structure:", error);
+            set({
+                exonStructure: [],
+                exonStructureTruncated: false,
+                loading: false,
+            });
             throw error;
         }
     },

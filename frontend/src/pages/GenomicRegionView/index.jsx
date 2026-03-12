@@ -76,9 +76,7 @@ function GenomicRegionView() {
     const urlDataset = queryParams.get("dataset") ?? "";
     const urlRegion = queryParams.get("region") ?? "";
 
-    const { datasetRecords, fetchDatasetList, setDatasetRecords } =
-        useDataStore();
-    const { checkBWDataExists } = useSignalStore();
+    const { datasetRecords, fetchDatasetList } = useDataStore();
 
     useEffect(() => {
         fetchDatasetList();
@@ -106,6 +104,9 @@ function GenomicRegionView() {
         fetchGwas,
         fetchGeneList,
         fetchSnpList,
+        fetchExonStructure,
+        exonStructure,
+        exonStructureTruncated,
     } = useSignalStore();
     const { loading, error } = useSignalStore();
 
@@ -147,12 +148,8 @@ function GenomicRegionView() {
         [setSelectedChromosome, setSelectedRange],
     );
 
-    const [geneList, setGeneList] = useState([]);
-    const [snpList, setSnpList] = useState([]);
     const [combinedList, setCombinedList] = useState([]);
-    const [combinedSearchText, setCombinedSearchText] = useState("");
     const [filteredCombinedList, setFilteredCombinedList] = useState([]);
-    const [selectedOption, setSelectedOption] = useState(null);
 
     useEffect(() => {
         console.log("filteredCombinedList", filteredCombinedList);
@@ -168,9 +165,6 @@ function GenomicRegionView() {
 
                 const genes = await fetchGeneList(datasetId);
                 const snps = await fetchSnpList(datasetId);
-
-                setGeneList(genes || []);
-                setSnpList(snps || []);
 
                 const combined = [
                     ...(genes || []).map((gene) => ({
@@ -263,7 +257,7 @@ function GenomicRegionView() {
     };
 
     const handleCombinedAutocompleteOpen = () => {
-        if (!combinedSearchText) {
+        if (!regionSearchText) {
             setFilteredCombinedList(combinedList.slice(0, listLength));
         }
     };
@@ -388,41 +382,6 @@ function GenomicRegionView() {
         }
     };
 
-    const handleRegionChange = (event) => {
-        setRegionSearchText(event.target.value);
-    };
-
-    const handleRegionSubmit = async () => {
-        const region = await parseRegionString(regionSearchText);
-        if (region) {
-            setSelectionError("");
-            setRegion(region.chromosome, region.start, region.end);
-            setRegionSearchText(
-                `${region.chromosome}:${region.start}-${region.end}`,
-            );
-        } else {
-            // Clear existing plot data
-            setSelectedChromosome(null);
-            setSelectedRange(null, null);
-            setNearbyGenes([]);
-            setGwasData([]);
-            setVisibleRange({ start: null, end: null });
-
-            const input = regionSearchText.trim();
-            if (input.toLowerCase().startsWith("rs")) {
-                setSelectionError(`SNP "${input}" not found in this dataset.`);
-            } else if (
-                input.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i)
-            ) {
-                setSelectionError(
-                    "Invalid region format. Use: chr1:1000000-2000000",
-                );
-            } else {
-                setSelectionError(`Gene "${input}" not found in this dataset.`);
-            }
-        }
-    };
-
     const [gwasData, setGwasData] = useState([]);
     const [hasGwas, setHasGwas] = useState(true);
     const [selectionError, setSelectionError] = useState("");
@@ -444,6 +403,8 @@ function GenomicRegionView() {
 
             const locations = await fetchGeneLocations(datasetId, start, end);
             setNearbyGenes(locations);
+
+            await fetchExonStructure(datasetId, start, end);
 
             let gwas;
             if (hasGwas !== false) {
@@ -1328,6 +1289,10 @@ function GenomicRegionView() {
                                                     handlePlotUpdate
                                                 }
                                                 binSize={currentBinSize}
+                                                exonStructure={exonStructure}
+                                                exonStructureTruncated={
+                                                    exonStructureTruncated
+                                                }
                                             />
                                         </div>
                                     )

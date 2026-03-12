@@ -1216,3 +1216,112 @@ def get_bigwig_celltype_list(dataset):
         celltype_mapping = json.load(f)
 
     return list(celltype_mapping.keys())
+
+
+def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=1000):
+    if dataset == "all":
+        return "Error: Dataset is not specified."
+
+    # config = get_config_info(dataset)
+    # if isinstance(config, str) and config.startswith("Error"):
+    #     return "Error: Config info file not found for the specified dataset."
+
+    # annotation_cfg = config.get("annotation", {})
+    # bed_rel = annotation_cfg.get("bed_file")
+    # if not bed_rel:
+    #     return "Error: Annotation BED file not specified for the dataset."
+    bed_rel = "gene_annotation.bed"
+
+    bed_path = os.path.join("backend", "datasets", dataset, bed_rel)
+    if not os.path.exists(bed_path):
+        print(bed_path + " not found")
+        return "Error: Annotation BED file not found for the specified dataset."
+
+    chrom_list = []
+    transcript_id_list = []
+    gene_id_list = []
+    gene_symbol_list = []
+    strand_list = []
+    biotype_list = []
+    tx_start_list = []
+    tx_end_list = []
+    exon_index_list = []
+    exon_start_list = []
+    exon_end_list = []
+    exon_count_list = []
+
+    total_exons = 0
+    truncated = False
+
+    import csv
+    with open(bed_path) as f:
+      reader = csv.reader(f, delimiter="\t")
+      for row in reader:
+          if len(row) < 12:
+              continue
+
+          bed_chrom = row[0]
+          tx_start = int(row[1])
+          tx_end = int(row[2])
+          name = row[3]
+          strand = row[5]
+          block_count = int(row[9])
+          block_sizes = [int(x) for x in row[10].rstrip(",").split(",")]
+          block_starts = [int(x) for x in row[11].rstrip(",").split(",")]
+
+          if bed_chrom != chromosome:
+              continue
+          if tx_end < start or tx_start > end:
+              continue
+
+          parts = name.split("___")
+          transcript_id = parts[0] if len(parts) > 0 else name
+          gene_id = parts[1] if len(parts) > 1 else ""
+          biotype = parts[2] if len(parts) > 2 else ""
+          gene_symbol = parts[3] if len(parts) > 3 else gene_id
+
+          for i in range(block_count):
+              exon_start = tx_start + block_starts[i]
+              exon_end = exon_start + block_sizes[i]
+              if exon_end < start or exon_start > end:
+                  continue
+
+              chrom_list.append(bed_chrom)
+              transcript_id_list.append(transcript_id)
+              gene_id_list.append(gene_id)
+              gene_symbol_list.append(gene_symbol)
+              strand_list.append(strand)
+              biotype_list.append(biotype)
+              tx_start_list.append(tx_start)
+              tx_end_list.append(tx_end)
+              exon_index_list.append(i)
+              exon_start_list.append(exon_start)
+              exon_end_list.append(exon_end)
+              exon_count_list.append(block_count)
+
+              total_exons += 1
+              if total_exons >= max_exons:
+                  truncated = True
+                  break
+
+          if truncated:
+              break
+
+    if total_exons == 0:
+        return "No transcripts found in the region."
+
+    return {
+        "chrom": chrom_list,
+        "transcript_id": transcript_id_list,
+        "gene_id": gene_id_list,
+        "gene_symbol": gene_symbol_list,
+        "strand": strand_list,
+        "biotype": biotype_list,
+        "tx_start": tx_start_list,
+        "tx_end": tx_end_list,
+        "exon_index": exon_index_list,
+        "exon_start": exon_start_list,
+        "exon_end": exon_end_list,
+        "exon_count": exon_count_list,
+        "_truncated": truncated,
+    }

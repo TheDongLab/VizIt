@@ -12,6 +12,7 @@ from backend.funcs.get_data import (
     get_gwas_in_chromosome,
     get_qtl_gene_list,
     get_qtl_snp_list,
+    get_exon_structure_in_chromosome,
 )
 
 router = APIRouter()
@@ -141,4 +142,24 @@ async def getsnplist(request: Request):
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting SNP list.")
+    return response
+
+
+@router.get("/getexonstructureinchromosome")
+async def getexonstructureinchromosome(request: Request):
+    print("getexonstructureinchromosome() called================")
+    dataset_id = request.query_params.get("dataset")
+    chromosome = request.query_params.get("chromosome")
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+
+    start = int(start) if start else None
+    end = int(end) if end else None
+
+    response = get_exon_structure_in_chromosome(dataset_id, chromosome, start, end)
+
+    if isinstance(response, str) and "Error" in response:
+        print(response)
+        raise HTTPException(status_code=404, detail="Error in getting exon structure.")
+
     return response

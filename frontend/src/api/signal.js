@@ -124,3 +124,28 @@ export const getSnpList = async (dataset, query_str) => {
         throw error;
     }
 };
+
+export const getExonStructureInChromosome = async (
+    dataset,
+    chromosome,
+    start,
+    end,
+) => {
+    try {
+        const response = await axios.get(
+            `${SIGNAL_URL}/getexonstructureinchromosome`,
+            {
+                params: {
+                    dataset: dataset,
+                    chromosome: chromosome,
+                    start: start,
+                    end: end,
+                },
+            },
+        );
+        return response;
+    } catch (error) {
+        console.error("Error getExonStructureInChromosome:", error);
+        throw error;
+    }
+};
