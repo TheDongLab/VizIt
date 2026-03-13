@@ -594,7 +594,7 @@ function GenomicRegionView() {
         gapHeight: 10,
         yHeightGlobal: "",
         showGwas: true,
-        perTrackY: false,
+        perTrackY: true,
     });
     const [tempDisplayOptions, setTempDisplayOptions] = useState({
         ...displayOptions,

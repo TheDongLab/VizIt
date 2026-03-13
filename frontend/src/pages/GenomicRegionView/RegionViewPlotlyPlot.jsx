@@ -8,27 +8,27 @@ function getTranscriptColor(biotype) {
         case "protein_coding":
         case "protein_coding_gene":
             return {
-                exonFill: "rgb(200,230,255)",
-                exonBorder: "rgb(40,90,160)",
+                exonFill: "rgb(110,170,240)",
+                exonBorder: "rgb(30,70,140)",
                 intron: "rgb(80,120,200)",
             };
         case "lncRNA":
         case "lincRNA":
             return {
-                exonFill: "rgb(230,200,255)",
-                exonBorder: "rgb(120,60,180)",
+                exonFill: "rgb(200,150,240)",
+                exonBorder: "rgb(110,50,170)",
                 intron: "rgb(150,100,200)",
             };
         case "miRNA":
             return {
-                exonFill: "rgb(255,220,200)",
-                exonBorder: "rgb(200,90,60)",
+                exonFill: "rgb(245,160,110)",
+                exonBorder: "rgb(190,80,40)",
                 intron: "rgb(200,120,80)",
             };
         default:
             return {
-                exonFill: "rgb(220,220,220)",
-                exonBorder: "rgb(80,80,80)",
+                exonFill: "rgb(150,150,150)",
+                exonBorder: "rgb(90,90,90)",
                 intron: "rgb(140,140,140)",
             };
     }
@@ -446,7 +446,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                             : gene.strand === "+"
                               ? "+"
                               : "N/A"
-                    }`;
+                    }<br>`;
                 return [text, text, null];
             }),
             name: "Nearby Genes",
@@ -479,7 +479,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         };
 
         return [others, geneLabels];
-    }, [jitterMap, nearbyGenes]);
+    }, [exonTrackPixels, geneTrackYMax, geneTrackYMin, jitterMap, nearbyGenes]);
 
     const exonTraces = useMemo(() => {
         if (!exonStructure || exonStructure.length === 0) return [];
@@ -491,7 +491,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             transcripts.map((tx, idx) => [tx.transcript_id, idx]),
         );
 
-        const exonHalfHeight = 0.2;
+        const exonHalfHeight = 0.3;
 
         for (const tx of transcripts) {
             const laneY = txToLane.get(tx.transcript_id);
@@ -508,38 +508,66 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             const exonBorder = colors.exonBorder;
             const intronColor = colors.intron;
 
+            const txMeta = {
+                transcript_id: tx.transcript_id,
+                gene_id: tx.gene_id,
+                gene_symbol: tx.gene_symbol,
+                biotype: tx.biotype,
+                strand: tx.strand,
+                tx_start: tx.tx_start,
+                tx_end: tx.tx_end,
+            };
+
             // Exons
+            const exonXs = [];
+            const exonYs = [];
+            const exonHoverTexts = [];
+
             for (const e of exons) {
                 const x0 = e.exon_start;
                 const x1 = e.exon_end;
-                const y0 = laneY - exonHalfHeight;
-                const y1 = laneY + exonHalfHeight;
+                const y = laneY;
 
-                plots.push({
-                    x: [x0, x1, x1, x0, x0],
-                    y: [y0, y0, y1, y1, y0],
-                    type: "scatter",
-                    mode: "lines",
-                    fill: "toself",
-                    line: { color: exonBorder, width: 1 },
-                    fillcolor: exonFill,
-                    xaxis: "x",
-                    yaxis: "y",
-                    hoverinfo: "text",
-                    hovertext:
-                        `<b>${tx.gene_symbol}</b> (${tx.transcript_id})<br>` +
-                        `Exon: ${e.exon_start}-${e.exon_end}<br>` +
-                        `Strand: ${tx.strand}<br>` +
-                        (e.exon_index != null && exonCount != null
-                            ? `Exon #${e.exon_index + 1} / ${exonCount}<br>`
-                            : "") +
-                        (tx.biotype ? `Biotype: ${tx.biotype}<br>` : ""),
-                    pointType: "gene",
-                    showlegend: false,
-                });
+                const h =
+                    `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
+                    `Exon: ${e.exon_start}–${e.exon_end}<br>` +
+                    `Strand: ${
+                        tx.strand === "-"
+                            ? "−"
+                            : tx.strand === "+"
+                              ? "+"
+                              : "N/A"
+                    }<br>` +
+                    (e.exon_index != null && exonCount != null
+                        ? `Exon Number: #${e.exon_index + 1} / ${exonCount}<br>`
+                        : "") +
+                    (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "");
+
+                exonXs.push(x0, x1, null);
+                exonYs.push(y, y, null);
+                exonHoverTexts.push(h, h, null);
             }
 
+            plots.push({
+                x: exonXs,
+                y: exonYs,
+                type: "scatter",
+                mode: "lines",
+                line: { color: exonFill, width: exonHalfHeight * 3 * 10 },
+                xaxis: "x",
+                yaxis: "y",
+                hoverinfo: "text",
+                hovertext: exonHoverTexts,
+                pointType: "gene",
+                customdata: txMeta,
+                showlegend: false,
+            });
+
             // Introns
+            const intronXs = [];
+            const intronYs = [];
+            const intronHoverTexts = [];
+
             for (let i = 0; i < exons.length - 1; i++) {
                 const a = exons[i];
                 const b = exons[i + 1];
@@ -547,24 +575,46 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const x1 = b.exon_start;
                 const y = laneY;
 
+                // TODO remove hovertext
+                const h =
+                    `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
+                    `Transcript coords: ${tx.tx_start ?? "?"}–${tx.tx_end ?? "?"}<br>` +
+                    `Strand: ${
+                        tx.strand === "-"
+                            ? "−"
+                            : tx.strand === "+"
+                              ? "+"
+                              : "N/A"
+                    }<br>` +
+                    (tx.biotype ? `Biotype: ${tx.biotype}` : "");
+
+                intronXs.push(x0, x1);
+                intronYs.push(y, y);
+                intronHoverTexts.push(h, h);
+            }
+
+            if (intronXs.length > 0) {
                 plots.push({
-                    x: [x0, x1],
-                    y: [y, y],
+                    x: intronXs,
+                    y: intronYs,
                     type: "scatter",
                     mode: "lines",
                     line: { color: intronColor, width: 1 },
                     xaxis: "x",
                     yaxis: "y",
                     hoverinfo: "skip",
+                    hovertext: intronHoverTexts,
                     pointType: "gene",
+                    customdata: txMeta,
                     showlegend: false,
                 });
             }
 
-            // Partial introns if first/last exon is not at transcript boundary
+            // Partial Introns (extending out of viewing window)
             const firstExon = exons[0];
             const lastExon = exons[exons.length - 1];
 
+            // Left continuation
             if (
                 exonCount != null &&
                 firstExon.exon_index != null &&
@@ -575,24 +625,36 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const y = laneY;
 
                 if (x1 > x0) {
+                    // TODO remove hovertext
+                    const h =
+                        `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
+                        `Strand: ${
+                            tx.strand === "-"
+                                ? "−"
+                                : tx.strand === "+"
+                                  ? "+"
+                                  : "N/A"
+                        }<br>` +
+                        (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "");
+
                     plots.push({
                         x: [x0, x1],
                         y: [y, y],
                         type: "scatter",
                         mode: "lines",
-                        line: {
-                            color: intronColor,
-                            width: 1,
-                        },
+                        line: { color: intronColor, width: 1 },
                         xaxis: "x",
                         yaxis: "y",
                         hoverinfo: "skip",
+                        hovertext: [h, h],
                         pointType: "gene",
+                        customdata: txMeta,
                         showlegend: false,
                     });
                 }
             }
 
+            // Right continuation
             if (
                 exonCount != null &&
                 lastExon.exon_index != null &&
@@ -603,25 +665,35 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const y = laneY;
 
                 if (x1 > x0) {
+                    const h =
+                        `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
+                        (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "") +
+                        `Strand: ${
+                            tx.strand === "-"
+                                ? "−"
+                                : tx.strand === "+"
+                                  ? "+"
+                                  : "N/A"
+                        }`;
+
                     plots.push({
                         x: [x0, x1],
                         y: [y, y],
                         type: "scatter",
                         mode: "lines",
-                        line: {
-                            color: intronColor,
-                            width: 1,
-                        },
+                        line: { color: intronColor, width: 1 },
                         xaxis: "x",
                         yaxis: "y",
-                        hoverinfo: "skip",
+                        hoverinfo: "text",
+                        hovertext: [h, h],
                         pointType: "gene",
+                        customdata: txMeta,
                         showlegend: false,
                     });
                 }
             }
 
-            // Gene label only if TSS is inside view
+            // Gene Label
             const txLeft = tx.tx_start ?? firstExon.exon_start;
             const tssInside = txLeft >= range.start && txLeft <= range.end;
 
@@ -635,12 +707,31 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     y: [labelY],
                     type: "scatter",
                     mode: "text",
-                    text: [tx.gene_symbol],
+                    text: [tx.gene_symbol || tx.gene_id || ""],
                     textposition: "middle left",
                     xaxis: "x",
                     yaxis: "y",
-                    hoverinfo: "skip",
-                    textfont: { size: 10, color: exonBorder },
+                    hoverinfo: "text",
+                    hovertext: [
+                        `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
+                            (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "") +
+                            `Strand: ${
+                                tx.strand === "-"
+                                    ? "−"
+                                    : tx.strand === "+"
+                                      ? "+"
+                                      : "N/A"
+                            }`,
+                    ],
+                    textfont: {
+                        size: 10,
+                        color: exonBorder,
+                    },
+                    hoverlabel: {
+                        bgcolor: exonFill,
+                    },
+                    pointType: "gene",
+                    customdata: txMeta,
                     showlegend: false,
                 });
             }
@@ -659,7 +750,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         const point = data.points[0];
         const pointData = point.data;
         const pointType = pointData.pointType;
-        const name = point.customdata || pointData.name;
+        const cd = pointData.customdata;
+        const name =
+            typeof cd === "string" || typeof cd === "number"
+                ? cd
+                : pointData.name;
 
         if (pointType === "signal") {
             // let data = combinedSnpList.filter((s) => s.id === name);
@@ -723,29 +818,79 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             handleSelect(name, formattedData, "signal");
             return;
         } else if (pointType === "gene") {
-            const data = nearbyGenes.find((g) => g.gene_id === name);
-            if (!data) return;
+            // Transcript structure track
+            if (cd && typeof cd === "object" && cd.transcript_id) {
+                const tx = cd;
 
-            // TODO
+                const formattedData = (
+                    <>
+                        <strong>Transcript:</strong> {tx.transcript_id}
+                        <br />
+                        <strong>Gene:</strong>{" "}
+                        {tx.gene_symbol || tx.gene_id || "N/A"}
+                        <br />
+                        {tx.gene_id && (
+                            <>
+                                <strong>Gene ID:</strong> {tx.gene_id}
+                                <br />
+                            </>
+                        )}
+                        {tx.biotype && (
+                            <>
+                                <strong>Biotype:</strong> {tx.biotype}
+                                <br />
+                            </>
+                        )}
+                        <strong>Chromosome:</strong> {chromosome}
+                        <br />
+                        {tx.tx_start != null && (
+                            <>
+                                <strong>Transcript Start:</strong> {tx.tx_start}
+                                <br />
+                            </>
+                        )}
+                        {tx.tx_end != null && (
+                            <>
+                                <strong>Transcript End:</strong> {tx.tx_end}
+                                <br />
+                            </>
+                        )}
+                        <strong>Strand:</strong>{" "}
+                        {tx.strand === "-"
+                            ? "−"
+                            : tx.strand === "+"
+                              ? "+"
+                              : "N/A"}
+                    </>
+                );
+
+                // TODO replace with generalized gene handler
+                const key = tx.gene_symbol || tx.gene_id || tx.transcript_id;
+                console.log(key, formattedData);
+                handleSelect(key, formattedData, "gene");
+                return;
+            }
+
+            // Gene overview track
+            const geneId = typeof cd === "string" ? cd : name;
+            const g = nearbyGenes.find((gg) => gg.gene_id === geneId);
+            if (!g) return;
+
             const formattedData = (
                 <>
-                    <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
-                    {data.gene_id}
+                    <strong>{g.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
+                    {g.gene_id}
                     <br />
-                    <strong>Start:</strong> {data.position_start}
+                    <strong>Start:</strong> {g.position_start}
                     <br />
-                    <strong>End:</strong> {data.position_end}
+                    <strong>End:</strong> {g.position_end}
                     <br />
                     <strong>Strand:</strong>{" "}
-                    {data.strand === "-"
-                        ? "−"
-                        : data.strand === "+"
-                          ? "+"
-                          : "N/A"}
+                    {g.strand === "-" ? "−" : g.strand === "+" ? "+" : "N/A"}
                 </>
             );
 
-            handleSelect(name, formattedData, "gene");
+            handleSelect(geneId, formattedData, "gene");
             return;
         } else if (pointType === "gwas") {
             let data = gwasData.find((s) => s.id === name);
