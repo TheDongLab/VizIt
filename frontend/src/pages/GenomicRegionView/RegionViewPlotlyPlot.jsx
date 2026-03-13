@@ -3,35 +3,110 @@ import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
 
-function getTranscriptColor(biotype) {
-    switch (biotype) {
-        case "protein_coding":
-        case "protein_coding_gene":
-            return {
-                exonFill: "rgb(110,170,240)",
-                exonBorder: "rgb(30,70,140)",
-                intron: "rgb(80,120,200)",
-            };
-        case "lncRNA":
-        case "lincRNA":
-            return {
-                exonFill: "rgb(200,150,240)",
-                exonBorder: "rgb(110,50,170)",
-                intron: "rgb(150,100,200)",
-            };
-        case "miRNA":
-            return {
-                exonFill: "rgb(245,160,110)",
-                exonBorder: "rgb(190,80,40)",
-                intron: "rgb(200,120,80)",
-            };
-        default:
-            return {
-                exonFill: "rgb(150,150,150)",
-                exonBorder: "rgb(90,90,90)",
-                intron: "rgb(140,140,140)",
-            };
+function getTranscriptColor(biotypeRaw) {
+    const biotype = (biotypeRaw || "").toLowerCase();
+
+    // Protein-coding
+    if (
+        biotype === "protein_coding" ||
+        biotype === "protein_coding_cds_not_defined" ||
+        biotype === "protein_coding_lof"
+    ) {
+        return {
+            exonFill: "rgb(110,170,240)", // blue
+            exonBorder: "rgb(30,70,140)",
+            intron: "rgb(80,120,200)",
+        };
     }
+
+    // lncRNA / processed / NMD / retained intron / TEC
+    if (
+        biotype === "lncrna" ||
+        biotype === "processed_transcript" ||
+        biotype === "retained_intron" ||
+        biotype === "nonsense_mediated_decay" ||
+        biotype === "non_stop_decay" ||
+        biotype === "tec"
+    ) {
+        return {
+            exonFill: "rgb(200,150,240)", // purple
+            exonBorder: "rgb(110,50,170)",
+            intron: "rgb(150,100,200)",
+        };
+    }
+
+    // Small non-coding RNAs
+    if (
+        biotype === "mirna" ||
+        biotype === "snorna" ||
+        biotype === "snrna" ||
+        biotype === "scarna" ||
+        biotype === "srna" ||
+        biotype === "vault_rna" ||
+        biotype === "misc_rna"
+    ) {
+        return {
+            exonFill: "rgb(245,160,110)", // orange
+            exonBorder: "rgb(190,80,40)",
+            intron: "rgb(200,120,80)",
+        };
+    }
+
+    // rRNA / mitochondrial r/t RNA
+    if (
+        biotype === "rrna" ||
+        biotype === "rrna_pseudogene" ||
+        biotype === "mt_rrna" ||
+        biotype === "mt_trna"
+    ) {
+        return {
+            exonFill: "rgb(150,210,150)", // green
+            exonBorder: "rgb(60,120,60)",
+            intron: "rgb(100,160,100)",
+        };
+    }
+
+    // IG and TR genes/pseudogenes
+    if (biotype.startsWith("ig_") || biotype.startsWith("tr_")) {
+        return {
+            exonFill: "rgb(140,210,210)", // teal
+            exonBorder: "rgb(40,120,120)",
+            intron: "rgb(90,160,160)",
+        };
+    }
+
+    // Pseudogenes (non-IG/TR/rRNA)
+    if (
+        biotype === "processed_pseudogene" ||
+        biotype === "unprocessed_pseudogene" ||
+        biotype === "unitary_pseudogene" ||
+        biotype === "transcribed_processed_pseudogene" ||
+        biotype === "transcribed_unprocessed_pseudogene" ||
+        biotype === "transcribed_unitary_pseudogene" ||
+        biotype === "translated_processed_pseudogene"
+    ) {
+        return {
+            exonFill: "rgb(190,170,150)", // brownish / muted
+            exonBorder: "rgb(110,90,70)",
+            intron: "rgb(150,130,110)",
+        };
+    }
+
+    // Artifact / other
+    if (biotype === "artifact") {
+        return {
+            exonFill: "rgb(180,180,180)", // dull gray
+            exonBorder: "rgb(110,110,110)",
+            intron: "rgb(130,130,130)",
+        };
+    }
+
+    // Fallback
+    return {
+        exonFill: "rgb(150,150,150)", // darker gray
+        exonBorder: "rgb(90,90,90)",
+        intron: "rgb(120,120,120)",
+    };
 }
 
 function round(num, precision = 6) {
