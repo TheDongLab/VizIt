@@ -13,6 +13,14 @@ from functools import lru_cache
 def safe_filename(name):
     return re.sub(r"[^a-zA-Z0-9_\-]", "_", name)
 
+
+def _normalize_gene_list(raw):
+    # Normalize gene list to the format of [{id, name}, ...]
+    if raw and isinstance(raw[0], str):
+        return [{"id": g, "name": g} for g in raw]
+    return raw
+
+
 def get_snp_group(rs_id: str) -> str:
     digits = rs_id[2:]
     if not digits.isdigit():
@@ -39,56 +47,39 @@ def get_gene_location(dataset, gene):
             "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
         )
 
-    default_gene_locations_file = os.path.join("backend", "datasets", "gene_locations.json")
-
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-            gene_x = data.get(gene, None)
-            if not gene_x:
-                # gene info is not groupped and stored directly in the file
+
+            if gene.startswith("chr"):
+                # caQTL data is keyed by region string
+                gene_x = data.get(gene, None)
+                if not gene_x:
+                    return f"Error: Gene not found in dataset."
+            else:
                 gene_x = data
 
         if gene_x:
-            chromosome = gene_x["chromosome"]
-            position_start = gene_x["position_start"]
-            position_end = gene_x["position_end"]
-            strand = gene_x["strand"]
+            name = gene_x.get("name", gene)
+            chromosome = gene_x.get("chromosome")
+            position_start = gene_x.get("position_start")
+            position_end = gene_x.get("position_end")
 
             if position_start is not None and position_end is not None:
                 return {
+                    "gene_id": gene,
+                    "gene_name": name,
                     "chromosome": chromosome,
                     "start": position_start,
                     "end": position_end,
-                    "strand": strand,
                 }
             else:
                 return f"Error: Gene does not have valid position data in dataset."
         else:
             return f"Error: Gene not found in dataset."
-    elif os.path.exists(default_gene_locations_file):
-        with open(default_gene_locations_file, "r") as f:
-            data = json.load(f)
-            gene_x = data.get(gene, None)
-        if gene_x:
-            chromosome = gene_x["chromosome"]
-            position_start = gene_x["start"]
-            position_end = gene_x["end"]
-            strand = gene_x["strand"]
 
-            if position_start is not None and position_end is not None:
-                return {
-                    "chromosome": chromosome,
-                    "start": position_start,
-                    "end": position_end,
-                    "strand": strand,
-                }
-            else:
-                return f"Error: Gene does not have valid position data in default dataset."
-        else:
-            return f"Error: Gene not found in default dataset."
     else:
-        print(default_gene_locations_file + " not found")
+        print(genes_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
 
 
@@ -229,12 +220,14 @@ def get_gene_chromosome(dataset, gene):
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-            gene_x = data.get(gene, None)
-            if not gene_x:
-                # gene info is not groupped and stored directly in the file
+
+            if gene.startswith("chr"):
+                gene_x = data.get(gene, None)
+            else:
                 gene_x = data
+
         if gene_x:
-            return gene_x["chromosome"]
+            return gene_x.get("chromosome")
         else:
             return f"Error: Gene {gene} not found in {dataset} dataset."
     else:
@@ -287,15 +280,31 @@ def get_qtl_gene_list(dataset, query_str="all"):
     if dataset == "all":
         return "Error: Gene dataset not specified."
     else:
-        genes_file = os.path.join("backend", "datasets", dataset, "gene_list.json")
+        genes_file = os.path.join(
+            "backend", "datasets", dataset, "gene_list.json"
+        )
 
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
+
+        data = _normalize_gene_list(data)
+
         if query_str == "all":
-            return data
+            filtered = data
         else:
-            return [gene for gene in data if gene.lower().startswith(query_str.lower())]
+            q = query_str.lower()
+            filtered = [
+                gene
+                for gene in data
+                if gene["id"].lower().startswith(q)
+                or gene["name"].lower().startswith(q)
+            ]
+
+        return {
+            "id": [g["id"] for g in filtered],
+            "name": [g["name"] for g in filtered],
+        }
     else:
         print(genes_file + " not found")
         return "Error: Gene list file not found"
@@ -330,13 +339,14 @@ def get_gene_celltypes(dataset, gene):
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-            gene_x = data.get(gene, None)
-            if not gene_x:
-                # gene info is not groupped and stored directly in the file
+
+            if gene.startswith("chr"):
+                gene_x = data.get(gene, None)
+            else:
                 gene_x = data
-                
+
         if gene_x:
-            return gene_x["celltypes"]
+            return gene_x.get("celltypes", [])
         else:
             return f"Error: Gene not found in dataset."
     else:
@@ -1039,7 +1049,6 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
 
         entry = celltype_mapping.get(celltype, celltype)
 
-        print(f"Entry for celltype '{celltype}': {entry} {strand}")
         if strand in {"+", "-"}:
             bw = get_cached_bigwig_handle(dataset, celltype, strand)
             if bw is None:

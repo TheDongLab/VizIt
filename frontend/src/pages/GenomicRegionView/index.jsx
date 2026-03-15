@@ -169,10 +169,15 @@ function GenomicRegionView() {
                 const combined = [
                     ...(genes || []).map((gene) => ({
                         type: "gene",
-                        id: gene,
+                        id: gene.id, // Ensembl ID
+                        name: gene.name, // Symbol
                     })),
-                    ...(snps || []).map((snp) => ({ type: "snp", id: snp })),
+                    ...(snps || []).map((snp) => ({
+                        type: "snp",
+                        id: snp,
+                    })),
                 ];
+
                 setCombinedList(combined);
                 setFilteredCombinedList(combined.slice(0, listLength));
 
@@ -206,7 +211,8 @@ function GenomicRegionView() {
         () =>
             combinedList.map((item) => ({
                 original: item,
-                lowercaseId: item.id.toLowerCase(),
+                lowercaseId: (item.id || "").toLowerCase(),
+                lowercaseName: (item.name || "").toLowerCase(),
             })),
         [combinedList],
     );
@@ -214,9 +220,12 @@ function GenomicRegionView() {
     const debouncedFilter = useMemo(
         () =>
             debounce((value, setFn) => {
+                const q = value.toLowerCase();
                 const results = indexedList
-                    .filter((item) =>
-                        item.lowercaseId.includes(value.toLowerCase()),
+                    .filter(
+                        (item) =>
+                            item.lowercaseId.includes(q) ||
+                            item.lowercaseName.includes(q),
                     )
                     .map((item) => item.original);
                 setFn(results.slice(0, listLength));
@@ -307,12 +316,14 @@ function GenomicRegionView() {
                     setSelectionError("");
                 } else {
                     setSelectionError(
-                        `Gene "${id}" not found in this dataset.`,
+                        `Gene "${newValue.name || id}" not found in this dataset.`,
                     );
                 }
             } catch (e) {
                 console.error(e);
-                setSelectionError(`Gene "${id}" not found in this dataset.`);
+                setSelectionError(
+                    `Gene "${newValue.name || id}" not found in this dataset.`,
+                );
             }
         }
     };
@@ -321,9 +332,15 @@ function GenomicRegionView() {
         const text = regionSearchText.trim();
         if (!text) return;
 
-        const match = combinedList.find(
-            (item) => item.id.toLowerCase() === text.toLowerCase(),
-        );
+        const textLower = text.toLowerCase();
+
+        const match = combinedList.find((item) => {
+            const idMatch = (item.id || "").toLowerCase() === textLower;
+            const nameMatch =
+                item.type === "gene" &&
+                (item.name || "").toLowerCase() === textLower;
+            return idMatch || nameMatch;
+        });
         if (match) {
             await handleCombinedChange(null, match, "selectOption");
             return;
@@ -339,7 +356,7 @@ function GenomicRegionView() {
             return;
         }
 
-        if (text.toLowerCase().startsWith("rs")) {
+        if (textLower.startsWith("rs")) {
             try {
                 const snp = await getSnpLocation(datasetId, text);
                 if (snp && snp.data) {
@@ -799,11 +816,16 @@ function GenomicRegionView() {
                         inputValue={regionSearchText}
                         onInputChange={handleCombinedInputChange}
                         onOpen={handleCombinedAutocompleteOpen}
-                        getOptionLabel={(option) =>
-                            typeof option === "string"
-                                ? option
-                                : option.id || ""
-                        }
+                        getOptionLabel={(option) => {
+                            if (typeof option === "string") return option;
+                            if (option.type === "gene") {
+                                if (option.name && option.id) {
+                                    return `${option.name} (${option.id})`;
+                                }
+                                return option.name || option.id || "";
+                            }
+                            return option.id || "";
+                        }}
                         isOptionEqualToValue={(option, value) =>
                             (option.id || option) === (value.id || value)
                         }
@@ -817,6 +839,15 @@ function GenomicRegionView() {
                         }}
                         renderOption={(props, option) => {
                             const { key, ...rest } = props;
+                            if (option.type === "gene") {
+                                return (
+                                    <li key={key} {...rest}>
+                                        {option.name
+                                            ? `${option.name} (${option.id})`
+                                            : option.id}
+                                    </li>
+                                );
+                            }
                             return (
                                 <li key={key} {...rest}>
                                     {option.id}

@@ -511,8 +511,13 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             ]),
             hoverinfo: "text",
             hovertext: nearbyGenes.flatMap((gene) => {
+                const label = gene.gene_name || gene.gene_id || "N/A";
                 const text =
-                    `<b>${gene.strand === "x" ? "Peak" : "Gene"}:</b> ${gene.gene_id}<br>` +
+                    `<b>${gene.strand === "x" ? "Peak" : "Gene"}:</b> ${label}<br>` +
+                    (gene.gene_id ? `<b>ID:</b> ${gene.gene_id}<br>` : "") +
+                    (gene.biotype
+                        ? `<b>Biotype:</b> ${gene.biotype}<br>`
+                        : "") +
                     `<b>Start:</b> ${gene.position_start}<br>` +
                     `<b>End:</b> ${gene.position_end}<br>` +
                     `<b>Strand:</b> ${
@@ -521,7 +526,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                             : gene.strand === "+"
                               ? "+"
                               : "N/A"
-                    }<br>`;
+                    }`;
                 return [text, text, null];
             }),
             name: "Nearby Genes",
@@ -540,7 +545,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             yaxis: "y",
             type: "scatter",
             mode: "text", // 只显示文本
-            text: nearbyGenes.map((gene) => gene.gene_id),
+            text: nearbyGenes.map((gene) => gene.gene_name || gene.gene_id),
             textposition: "bottom center",
             textfont: {
                 family: "Arial",
@@ -603,20 +608,24 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const x1 = e.exon_end;
                 const y = laneY;
 
+                const geneLabel = tx.gene_symbol || tx.gene_id || "N/A";
                 const h =
-                    `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
-                    `Exon: ${e.exon_start}–${e.exon_end}<br>` +
-                    `Strand: ${
+                    `<b>Gene:</b> ${geneLabel}<br>` +
+                    (tx.transcript_id
+                        ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
+                        : "") +
+                    (tx.biotype ? `<b>Biotype:</b> ${tx.biotype}<br>` : "") +
+                    `<b>Strand:</b> ${
                         tx.strand === "-"
                             ? "−"
                             : tx.strand === "+"
                               ? "+"
                               : "N/A"
                     }<br>` +
+                    `<b>Exon:</b> ${e.exon_start}–${e.exon_end}<br>` +
                     (e.exon_index != null && exonCount != null
-                        ? `Exon Number: #${e.exon_index + 1} / ${exonCount}<br>`
-                        : "") +
-                    (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "");
+                        ? `<b>Exon Number:</b> #${e.exon_index + 1} / ${exonCount}<br>`
+                        : "");
 
                 exonXs.push(x0, x1, null);
                 exonYs.push(y, y, null);
@@ -641,7 +650,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             // Introns
             const intronXs = [];
             const intronYs = [];
-            const intronHoverTexts = [];
 
             for (let i = 0; i < exons.length - 1; i++) {
                 const a = exons[i];
@@ -650,22 +658,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const x1 = b.exon_start;
                 const y = laneY;
 
-                // TODO remove hovertext
-                const h =
-                    `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
-                    `Transcript coords: ${tx.tx_start ?? "?"}–${tx.tx_end ?? "?"}<br>` +
-                    `Strand: ${
-                        tx.strand === "-"
-                            ? "−"
-                            : tx.strand === "+"
-                              ? "+"
-                              : "N/A"
-                    }<br>` +
-                    (tx.biotype ? `Biotype: ${tx.biotype}` : "");
-
                 intronXs.push(x0, x1);
                 intronYs.push(y, y);
-                intronHoverTexts.push(h, h);
             }
 
             if (intronXs.length > 0) {
@@ -678,7 +672,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     xaxis: "x",
                     yaxis: "y",
                     hoverinfo: "skip",
-                    hovertext: intronHoverTexts,
                     pointType: "gene",
                     customdata: txMeta,
                     showlegend: false,
@@ -700,18 +693,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const y = laneY;
 
                 if (x1 > x0) {
-                    // TODO remove hovertext
-                    const h =
-                        `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
-                        `Strand: ${
-                            tx.strand === "-"
-                                ? "−"
-                                : tx.strand === "+"
-                                  ? "+"
-                                  : "N/A"
-                        }<br>` +
-                        (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "");
-
                     plots.push({
                         x: [x0, x1],
                         y: [y, y],
@@ -721,7 +702,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                         xaxis: "x",
                         yaxis: "y",
                         hoverinfo: "skip",
-                        hovertext: [h, h],
                         pointType: "gene",
                         customdata: txMeta,
                         showlegend: false,
@@ -740,17 +720,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 const y = laneY;
 
                 if (x1 > x0) {
-                    const h =
-                        `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
-                        (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "") +
-                        `Strand: ${
-                            tx.strand === "-"
-                                ? "−"
-                                : tx.strand === "+"
-                                  ? "+"
-                                  : "N/A"
-                        }`;
-
                     plots.push({
                         x: [x0, x1],
                         y: [y, y],
@@ -759,8 +728,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                         line: { color: intronColor, width: 1 },
                         xaxis: "x",
                         yaxis: "y",
-                        hoverinfo: "text",
-                        hovertext: [h, h],
+                        hoverinfo: "skip",
                         pointType: "gene",
                         customdata: txMeta,
                         showlegend: false,
@@ -788,9 +756,14 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     yaxis: "y",
                     hoverinfo: "text",
                     hovertext: [
-                        `<b>${tx.gene_symbol || tx.gene_id || "N/A"}</b> (${tx.transcript_id})<br>` +
-                            (tx.biotype ? `Biotype: ${tx.biotype}<br>` : "") +
-                            `Strand: ${
+                        `<b>Gene:</b> ${tx.gene_symbol || tx.gene_id || "N/A"}<br>` +
+                            (tx.transcript_id
+                                ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
+                                : "") +
+                            (tx.biotype
+                                ? `<b>Biotype:</b> ${tx.biotype}<br>`
+                                : "") +
+                            `<b>Strand:</b> ${
                                 tx.strand === "-"
                                     ? "−"
                                     : tx.strand === "+"
@@ -825,7 +798,13 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         const point = data.points[0];
         const pointData = point.data;
         const pointType = pointData.pointType;
-        const cd = pointData.customdata;
+        const cdPoint = point.customdata;
+        const cdTrace = pointData.customdata;
+
+        // Prefer the point-level value when present
+        const cd =
+            cdPoint !== undefined && cdPoint !== null ? cdPoint : cdTrace;
+
         const name =
             typeof cd === "string" || typeof cd === "number"
                 ? cd
@@ -881,7 +860,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                                 <tr key={idx}>
                                     <td>{d.celltype}</td>
                                     <td style={{ textAlign: "right" }}>
-                                        {formatNumber(d.y, 3)}
+                                        {formatNumber(d.y, 6)}
                                     </td>
                                 </tr>
                             ))}
@@ -896,13 +875,12 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             // Transcript structure track
             if (cd && typeof cd === "object" && cd.transcript_id) {
                 const tx = cd;
+                const geneLabel = tx.gene_symbol || tx.gene_id || "N/A";
+                const g = nearbyGenes.find((gg) => gg.gene_id === tx.gene_id);
 
                 const formattedData = (
                     <>
-                        <strong>Transcript:</strong> {tx.transcript_id}
-                        <br />
-                        <strong>Gene:</strong>{" "}
-                        {tx.gene_symbol || tx.gene_id || "N/A"}
+                        <strong>Gene:</strong> {geneLabel}
                         <br />
                         {tx.gene_id && (
                             <>
@@ -917,6 +895,12 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                             </>
                         )}
                         <strong>Chromosome:</strong> {chromosome}
+                        <br />
+                        <strong>Start:</strong> {g.position_start}
+                        <br />
+                        <strong>End:</strong> {g.position_end}
+                        <br />
+                        <strong>Transcript ID:</strong> {tx.transcript_id}
                         <br />
                         {tx.tx_start != null && (
                             <>
@@ -940,8 +924,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 );
 
                 // TODO replace with generalized gene handler
-                const key = tx.gene_symbol || tx.gene_id || tx.transcript_id;
-                console.log(key, formattedData);
+                const key = tx.gene_id || tx.gene_symbol || tx.transcript_id;
                 handleSelect(key, formattedData, "gene");
                 return;
             }
@@ -951,11 +934,26 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             const g = nearbyGenes.find((gg) => gg.gene_id === geneId);
             if (!g) return;
 
+            const label = g.gene_name || g.gene_id || "N/A";
+            console.log("Clicked gene:", g);
+
             const formattedData = (
                 <>
                     <strong>{g.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
-                    {g.gene_id}
+                    {label}
                     <br />
+                    {g.gene_id && (
+                        <>
+                            <strong>Gene ID:</strong> {g.gene_id}
+                            <br />
+                        </>
+                    )}
+                    {g.biotype && (
+                        <>
+                            <strong>Biotype:</strong> {g.biotype}
+                            <br />
+                        </>
+                    )}
                     <strong>Start:</strong> {g.position_start}
                     <br />
                     <strong>End:</strong> {g.position_end}
@@ -1026,6 +1024,9 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     return `${binStart}–${binEnd} (${binSize} bp)`;
                 });
 
+                const plusHoverValues = yPlus.map((v) => formatNumber(v, 3));
+                const minusHoverValues = yMinus.map((v) => formatNumber(v, 3));
+
                 // Plus trace
                 traces.push({
                     name: `${celltype} (+)`,
@@ -1039,10 +1040,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     xaxis: "x",
                     yaxis: yaxisId,
                     hoverinfo: "x+y+name",
+                    hovertext: plusHoverValues,
                     hovertemplate:
-                        `<b>${celltype} (+)</b><br>` +
-                        `Bin Range: %{customdata}<br>` +
-                        `Value: %{y:.3f}<br>` +
+                        `<b>Bin Range:</b> %{customdata}<br>` +
+                        `<b>Value:</b> %{hovertext}<br>` +
+                        `<b>Strand:</b> +` +
                         `<extra></extra>`,
                     hoverlabel: {
                         bgcolor: plusColor,
@@ -1065,10 +1067,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     xaxis: "x",
                     yaxis: yaxisId,
                     hoverinfo: "x+y+name",
+                    hovertext: minusHoverValues,
                     hovertemplate:
-                        `<b>${celltype} (−)</b><br>` +
-                        `Bin Range: %{customdata}<br>` +
-                        `Value: %{y:.3f}<br>` +
+                        `<b>Bin Range:</b> %{customdata}<br>` +
+                        `<b>Value:</b> %{hovertext}<br>` +
+                        `<b>Strand:</b> −` +
                         `<extra></extra>`,
                     hoverlabel: {
                         bgcolor: minusColor,
