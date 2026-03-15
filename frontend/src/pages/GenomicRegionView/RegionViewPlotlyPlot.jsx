@@ -811,25 +811,29 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 : pointData.name;
 
         if (pointType === "signal") {
-            // let data = combinedSnpList.filter((s) => s.id === name);
-            let data = signalList.filter((s) => s.x === point.x);
-            // if (hasGwas) {
-            //   data = data.concat(
-            //     gwasData
-            //       .filter((s) => s.id === name)
-            //       .map((s) => ({
-            //         ...s,
-            //         celltype: "GWAS",
-            //       })),
-            //   );
-            // }
+            // const gwasUrl = `https:www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
 
-            if (!data || data.length === 0) return;
+            const clickedSignals = signalList.filter((s) => s.x === point.x);
+            if (!clickedSignals || clickedSignals.length === 0) return;
 
-            const binStart = data[0].x;
+            const binStart = clickedSignals[0].x;
             const binEnd = binStart + binSize - 1;
 
-            // const gwasUrl = `https:www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
+            // Group by celltype and collect plus/minus values
+            const byCelltype = new Map();
+            for (const s of clickedSignals) {
+                if (!byCelltype.has(s.celltype)) {
+                    byCelltype.set(s.celltype, { plus: null, minus: null });
+                }
+                const entry = byCelltype.get(s.celltype);
+                if (s.strand === "plus") {
+                    entry.plus = s.y;
+                } else if (s.strand === "minus") {
+                    entry.minus = s.y;
+                } else {
+                    entry.plus = s.y;
+                }
+            }
 
             const formattedData = (
                 <>
@@ -839,7 +843,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     <br />
                     <strong>Chromosome:</strong> {chromosome}
                     <br />
-                    {/* Group each cell‑type’s stats on the same row */}
                     <table
                         style={{
                             marginTop: "0.75em",
@@ -851,19 +854,31 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                             <tr>
                                 <th style={{ textAlign: "left" }}>Cell Type</th>
                                 <th style={{ textAlign: "right" }}>
-                                    Signal Strength
+                                    Signal (+)
+                                </th>
+                                <th style={{ textAlign: "right" }}>
+                                    Signal (−)
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
-                            {data.map((d, idx) => (
-                                <tr key={idx}>
-                                    <td>{d.celltype}</td>
-                                    <td style={{ textAlign: "right" }}>
-                                        {formatNumber(d.y, 6)}
-                                    </td>
-                                </tr>
-                            ))}
+                            {Array.from(byCelltype.entries()).map(
+                                ([ct, vals], idx) => (
+                                    <tr key={idx}>
+                                        <td>{ct}</td>
+                                        <td style={{ textAlign: "right" }}>
+                                            {vals.plus != null
+                                                ? formatNumber(vals.plus, 6)
+                                                : ""}
+                                        </td>
+                                        <td style={{ textAlign: "right" }}>
+                                            {vals.minus != null
+                                                ? formatNumber(vals.minus, 6)
+                                                : ""}
+                                        </td>
+                                    </tr>
+                                ),
+                            )}
                         </tbody>
                     </table>
                 </>
