@@ -812,8 +812,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 : pointData.name;
 
         if (pointType === "signal") {
-            // const gwasUrl = `https:www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
-
             const clickedSignals = signalList.filter((s) => s.x === point.x);
             if (!clickedSignals || clickedSignals.length === 0) return;
 
@@ -822,19 +820,36 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
 
             // Group by celltype and collect plus/minus values
             const byCelltype = new Map();
+
             for (const s of clickedSignals) {
+                const trackType = trackTypes.get(s.celltype) || "single";
+
                 if (!byCelltype.has(s.celltype)) {
-                    byCelltype.set(s.celltype, { plus: null, minus: null });
+                    byCelltype.set(
+                        s.celltype,
+                        trackType === "pm"
+                            ? { type: "pm", plus: null, minus: null }
+                            : { type: "single", value: null },
+                    );
                 }
+
                 const entry = byCelltype.get(s.celltype);
-                if (s.strand === "plus") {
-                    entry.plus = s.y;
-                } else if (s.strand === "minus") {
-                    entry.minus = s.y;
+
+                if (entry.type === "pm") {
+                    if (s.strand === "plus") {
+                        entry.plus = s.y;
+                    } else if (s.strand === "minus") {
+                        entry.minus = s.y;
+                    }
                 } else {
-                    entry.plus = s.y;
+                    entry.value = s.y;
                 }
             }
+
+            // Decide if we should show pm table or single table
+            const anyPm = Array.from(byCelltype.values()).some(
+                (v) => v.type === "pm",
+            );
 
             const formattedData = (
                 <>
@@ -854,31 +869,84 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                         <thead>
                             <tr>
                                 <th style={{ textAlign: "left" }}>Cell Type</th>
-                                <th style={{ textAlign: "right" }}>
-                                    Signal (+)
-                                </th>
-                                <th style={{ textAlign: "right" }}>
-                                    Signal (−)
-                                </th>
+                                {anyPm ? (
+                                    <>
+                                        <th style={{ textAlign: "right" }}>
+                                            Signal (+)
+                                        </th>
+                                        <th style={{ textAlign: "right" }}>
+                                            Signal (−)
+                                        </th>
+                                    </>
+                                ) : (
+                                    <th style={{ textAlign: "right" }}>
+                                        Signal
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
                             {Array.from(byCelltype.entries()).map(
-                                ([ct, vals], idx) => (
-                                    <tr key={idx}>
-                                        <td>{ct}</td>
-                                        <td style={{ textAlign: "right" }}>
-                                            {vals.plus != null
-                                                ? formatNumber(vals.plus, 6)
-                                                : ""}
-                                        </td>
-                                        <td style={{ textAlign: "right" }}>
-                                            {vals.minus != null
-                                                ? formatNumber(vals.minus, 6)
-                                                : ""}
-                                        </td>
-                                    </tr>
-                                ),
+                                ([ct, vals], idx) => {
+                                    if (anyPm) {
+                                        return (
+                                            <tr key={idx}>
+                                                <td>{ct}</td>
+                                                <td
+                                                    style={{
+                                                        textAlign: "right",
+                                                    }}
+                                                >
+                                                    {vals.type === "pm" &&
+                                                    vals.plus != null
+                                                        ? formatNumber(
+                                                              vals.plus,
+                                                              6,
+                                                          )
+                                                        : vals.type ===
+                                                                "single" &&
+                                                            vals.value != null
+                                                          ? formatNumber(
+                                                                vals.value,
+                                                                6,
+                                                            )
+                                                          : ""}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        textAlign: "right",
+                                                    }}
+                                                >
+                                                    {vals.type === "pm" &&
+                                                    vals.minus != null
+                                                        ? formatNumber(
+                                                              vals.minus,
+                                                              6,
+                                                          )
+                                                        : ""}
+                                                </td>
+                                            </tr>
+                                        );
+                                    } else {
+                                        return (
+                                            <tr key={idx}>
+                                                <td>{ct}</td>
+                                                <td
+                                                    style={{
+                                                        textAlign: "right",
+                                                    }}
+                                                >
+                                                    {vals.value != null
+                                                        ? formatNumber(
+                                                              vals.value,
+                                                              6,
+                                                          )
+                                                        : ""}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                },
                             )}
                         </tbody>
                     </table>
