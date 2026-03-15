@@ -598,55 +598,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 tx_end: tx.tx_end,
             };
 
-            // Exons
-            const exonXs = [];
-            const exonYs = [];
-            const exonHoverTexts = [];
-
-            for (const e of exons) {
-                const x0 = e.exon_start;
-                const x1 = e.exon_end;
-                const y = laneY;
-
-                const geneLabel = tx.gene_symbol || tx.gene_id || "N/A";
-                const h =
-                    `<b>Gene:</b> ${geneLabel}<br>` +
-                    (tx.transcript_id
-                        ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
-                        : "") +
-                    (tx.biotype ? `<b>Biotype:</b> ${tx.biotype}<br>` : "") +
-                    `<b>Strand:</b> ${
-                        tx.strand === "-"
-                            ? "−"
-                            : tx.strand === "+"
-                              ? "+"
-                              : "N/A"
-                    }<br>` +
-                    `<b>Exon:</b> ${e.exon_start}–${e.exon_end}<br>` +
-                    (e.exon_index != null && exonCount != null
-                        ? `<b>Exon Number:</b> #${e.exon_index + 1} / ${exonCount}<br>`
-                        : "");
-
-                exonXs.push(x0, x1, null);
-                exonYs.push(y, y, null);
-                exonHoverTexts.push(h, h, null);
-            }
-
-            plots.push({
-                x: exonXs,
-                y: exonYs,
-                type: "scatter",
-                mode: "lines",
-                line: { color: exonFill, width: exonHalfHeight * 3 * 10 },
-                xaxis: "x",
-                yaxis: "y",
-                hoverinfo: "text",
-                hovertext: exonHoverTexts,
-                pointType: "gene",
-                customdata: txMeta,
-                showlegend: false,
-            });
-
             // Introns
             const intronXs = [];
             const intronYs = [];
@@ -736,6 +687,56 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 }
             }
 
+            // Exons
+            const exonXs = [];
+            const exonYs = [];
+            const exonHoverTexts = [];
+
+            for (const e of exons) {
+                const x0 = e.exon_start;
+                const x1 = e.exon_end;
+                const y = laneY;
+
+                const geneLabel = tx.gene_symbol || tx.gene_id || "N/A";
+                const h =
+                    `<b>Gene:</b> ${geneLabel}<br>` +
+                    (tx.transcript_id
+                        ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
+                        : "") +
+                    (tx.biotype ? `<b>Biotype:</b> ${tx.biotype}<br>` : "") +
+                    `<b>Strand:</b> ${
+                        tx.strand === "-"
+                            ? "−"
+                            : tx.strand === "+"
+                              ? "+"
+                              : "N/A"
+                    }<br>` +
+                    `<b>Exon:</b> ${e.exon_start}–${e.exon_end}<br>` +
+                    (e.exon_index != null && exonCount != null
+                        ? `<b>Exon Number:</b> #${e.exon_index + 1} / ${exonCount}<br>`
+                        : "");
+
+                exonXs.push(x0, x1, null);
+                exonYs.push(y, y, null);
+                exonHoverTexts.push(h, h, null);
+            }
+
+            // Exon traces need to come after introns so that they are visually on top
+            plots.push({
+                x: exonXs,
+                y: exonYs,
+                type: "scatter",
+                mode: "lines",
+                line: { color: exonFill, width: exonHalfHeight * 3 * 10 },
+                xaxis: "x",
+                yaxis: "y",
+                hoverinfo: "text",
+                hovertext: exonHoverTexts,
+                pointType: "gene",
+                customdata: txMeta,
+                showlegend: false,
+            });
+
             // Gene Label
             const txLeft = tx.tx_start ?? firstExon.exon_start;
             const tssInside = txLeft >= range.start && txLeft <= range.end;
@@ -788,7 +789,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         return plots;
     }, [exonStructure, range.start, range.end]);
 
-    const geneTrackTraces = exonStructureTruncated ? geneTraces : exonTraces;
+    const geneTrackTraces = isExonMode ? exonTraces : geneTraces;
 
     // Handle clicking points
     const onClick = (data) => {
@@ -1206,7 +1207,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const layout = useMemo(
         () => ({
             title: {
-                text: `<b>${chromosome}:${selectedRange.start}-${selectedRange.end}</b>`,
+                text: `<b>${chromosome}:${selectedRange.start}–${selectedRange.end}</b>`,
                 font: { size: 20 },
             },
             paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -1227,7 +1228,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             },
             xaxis: {
                 title: {
-                    text: `Genomic Position (${chromosome}:${Math.max(0, visibleRange.start)}-${visibleRange.end})`,
+                    text: `Genomic Position (${chromosome}:${Math.max(0, visibleRange.start)}–${visibleRange.end})`,
                 },
                 range: initialXRange,
                 // range: [range.start, range.end],
@@ -1564,9 +1565,11 @@ RegionViewPlotlyPlot.propTypes = {
     nearbyGenes: PropTypes.arrayOf(
         PropTypes.shape({
             gene_id: PropTypes.string,
+            gene_name: PropTypes.string,
             position_start: PropTypes.number,
             position_end: PropTypes.number,
             strand: PropTypes.oneOf(["+", "-", "x"]),
+            biotype: PropTypes.string,
         }),
     ).isRequired,
     signalData: PropTypes.objectOf(

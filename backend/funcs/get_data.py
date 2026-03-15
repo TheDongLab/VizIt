@@ -1227,7 +1227,7 @@ def get_bigwig_celltype_list(dataset):
     return list(celltype_mapping.keys())
 
 
-def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=1000):
+def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=2000):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
@@ -1239,7 +1239,7 @@ def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=
     # bed_rel = annotation_cfg.get("bed_file")
     # if not bed_rel:
     #     return "Error: Annotation BED file not specified for the dataset."
-    bed_rel = "gene_annotation.bed"
+    bed_rel = "transcript_annotation.bed"
 
     bed_path = os.path.join("backend", "datasets", dataset, bed_rel)
     if not os.path.exists(bed_path):

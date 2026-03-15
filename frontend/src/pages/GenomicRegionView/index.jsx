@@ -288,7 +288,7 @@ function GenomicRegionView() {
             try {
                 const snp = await getSnpLocation(datasetId, id);
                 if (snp && snp.data) {
-                    const start = snp.data.position - 50000;
+                    const start = Math.max(snp.data.position - 50000, 0);
                     const end = snp.data.position + 50000;
                     const chr = snp.data.chromosome;
                     setRegion(chr, start, end);
@@ -306,7 +306,7 @@ function GenomicRegionView() {
                 const gene = await getGeneLocation(datasetId, id);
                 if (gene && gene.data) {
                     const { chromosome, start, end } = gene.data;
-                    const paddedStart = start - 50000;
+                    const paddedStart = Math.max(start - 50000, 0);
                     const paddedEnd = end + 50000;
 
                     setRegion(chromosome, paddedStart, paddedEnd);
@@ -360,7 +360,7 @@ function GenomicRegionView() {
             try {
                 const snp = await getSnpLocation(datasetId, text);
                 if (snp && snp.data) {
-                    const start = snp.data.position - 50000;
+                    const tart = Math.max(snp.data.position - 50000, 0);
                     const end = snp.data.position + 50000;
                     const chr = snp.data.chromosome;
                     setRegion(chr, start, end);
@@ -380,7 +380,7 @@ function GenomicRegionView() {
                 const gene = await getGeneLocation(datasetId, text);
                 if (gene && gene.data) {
                     const { chromosome, start, end } = gene.data;
-                    const paddedStart = start - 50000;
+                    const paddedStart = Math.max(start - 50000, 0);
                     const paddedEnd = end + 50000;
                     setRegion(chromosome, paddedStart, paddedEnd);
                     setRegionSearchText(
@@ -530,7 +530,7 @@ function GenomicRegionView() {
                 if (gene && gene.data) {
                     const { chromosome, start, end } = gene.data;
 
-                    const paddedStart = start - 50000;
+                    const paddedStart = Math.max(start - 50000, 0);
                     const paddedEnd = end + 50000;
 
                     setRegion(chromosome, paddedStart, paddedEnd);
