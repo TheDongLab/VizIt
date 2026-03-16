@@ -301,6 +301,7 @@ def get_qtl_gene_list(dataset, query_str="all"):
                 or gene["name"].lower().startswith(q)
             ]
 
+            print(f"Filtered gene list with query '{query_str}': {len(filtered)} genes found")
         return {
             "id": [g["id"] for g in filtered],
             "name": [g["name"] for g in filtered],
@@ -378,107 +379,125 @@ def get_snp_celltypes(dataset, snp):
 def get_snp_data_for_gene(dataset, gene, celltype=""):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        celltype_mapping_file = os.path.join(
-            "backend", "datasets", dataset, "celltypes","celltype_parquet.json"
-        )
 
-        if os.path.exists(celltype_mapping_file):
-            with open(celltype_mapping_file, "r") as f:
-                celltype_mapping = json.load(f)
-        else:
-            print(celltype_mapping_file + " not found")
-            return "Error: Celltype mapping file not found for the specified dataset."
+    gene_loc = get_gene_location(dataset, gene)
+    if not isinstance(gene_loc, dict):
+        return f"Error: {gene_loc}"
 
-        celltype_file = celltype_mapping.get(celltype, celltype)
-        data_file = os.path.join(
-            "backend", "datasets", dataset, "celltypes", celltype_file
-        )
+    chrom = gene_loc["chromosome"]
+    gene_name = gene_loc["gene_name"] or gene  # symbol
+    gene_start = gene_loc["start"]
+    gene_end = gene_loc["end"]
 
-    if os.path.exists(data_file):
-        df = pl.scan_parquet(data_file).filter(pl.col("gene_id") == gene).collect()
-        gene_df = df.drop("gene_id")
+    celltype_mapping_file = os.path.join(
+        "backend", "datasets", dataset, "celltypes", "celltype_parquet.json"
+    )
+    if not os.path.exists(celltype_mapping_file):
+        print(celltype_mapping_file + " not found")
+        return "Error: Celltype mapping file not found for the specified dataset."
 
-        if gene_df.is_empty():
-            return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
+    with open(celltype_mapping_file, "r") as f:
+        celltype_mapping = json.load(f)
 
-        def get_position(snp_id: str):
-            snp_location = get_snp_location(dataset, snp_id)
-            if isinstance(snp_location, dict):
-                return snp_location.get("position")
-            return None
+    celltype_file = celltype_mapping.get(celltype, celltype)
+    data_file = os.path.join("backend", "datasets", dataset, "celltypes", celltype_file)
 
-        gene_df = gene_df.with_columns(
-            [
-                pl.col("snp_id")
-                .map_elements(get_position, return_dtype=pl.Int64)
-                .alias("position")
-            ]
-        ).drop_nulls()
-
-        return gene_df.to_dict(as_series=False)
-        # return {col: gene_df.get_column(col).to_list() for col in gene_df.columns}
-    else:
+    if not os.path.exists(data_file):
         print(data_file + " not found")
         return "Error: QTL data file not found for the specified dataset and cell type."
+
+    gene_df = (
+        pl.scan_parquet(data_file)
+        .filter(
+            pl.col("gene_id") == gene_name
+        )  # TODO consider filtering on gene_id instead of gene_name
+        .collect()
+    )
+
+    if gene_df.is_empty():
+        return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
+
+    def get_position(snp_id: str):
+        snp_location = get_snp_location(dataset, snp_id)
+        if isinstance(snp_location, dict):
+            return snp_location.get("position")
+        return None
+
+    gene_df = gene_df.with_columns(
+        pl.col("snp_id")
+        .map_elements(get_position, return_dtype=pl.Int64)
+        .alias("position")
+    ).drop_nulls(subset=["position"])
+
+    gene_df = gene_df.with_columns(
+        [
+            pl.lit(gene).alias("gene_id"),  # Ensembl ID
+            pl.lit(gene_name).alias("gene_name"),  # Symbol
+            pl.lit(chrom).alias("chromosome"),
+            pl.lit(gene_start).alias("position_start"),
+            pl.lit(gene_end).alias("position_end"),
+        ]
+    )
+
+    return gene_df.to_dict(as_series=False)
 
 
 def get_gene_data_for_snp(dataset, snp, celltype=""):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        celltype_mapping_file = os.path.join(
-            "backend", "datasets", dataset,"celltypes", "celltype_parquet.json"
-        )
-        if os.path.exists(celltype_mapping_file):
-            with open(celltype_mapping_file, "r") as f:
-                celltype_mapping = json.load(f)
-        else:
-            print(celltype_mapping_file + " not found")
-            return "Error: Celltype mapping file not found for the specified dataset."
 
-        celltype_file = celltype_mapping.get(celltype, celltype)
-        data_file = os.path.join(
-            "backend", "datasets", dataset, "celltypes", celltype_file
-        )
+    snp_loc = get_snp_location(dataset, snp)
+    if not isinstance(snp_loc, dict):
+        return f"Error: {snp_loc}"
+    chrom = snp_loc["chromosome"]
 
-    if os.path.exists(data_file):
-        df = pl.scan_parquet(data_file).filter(pl.col("snp_id") == snp).collect()
-        snp_df = df.drop("snp_id")
+    celltype_mapping_file = os.path.join(
+        "backend", "datasets", dataset, "celltypes", "celltype_parquet.json"
+    )
+    if not os.path.exists(celltype_mapping_file):
+        print(celltype_mapping_file + " not found")
+        return "Error: Celltype mapping file not found for the specified dataset."
 
-        if snp_df.is_empty():
-            return f"Error: SNP not found in cell type file."
+    with open(celltype_mapping_file, "r") as f:
+        celltype_mapping = json.load(f)
 
-        def get_start(gene_id):
-            loc = get_gene_location(dataset, gene_id)
-            return loc.get("start") if isinstance(loc, dict) else None
+    celltype_file = celltype_mapping.get(celltype, celltype)
+    data_file = os.path.join("backend", "datasets", dataset, "celltypes", celltype_file)
 
-        def get_end(gene_id):
-            loc = get_gene_location(dataset, gene_id)
-            return loc.get("end") if isinstance(loc, dict) else None
-
-        def get_strand(gene_id):
-            loc = get_gene_location(dataset, gene_id)
-            return loc.get("strand") if isinstance(loc, dict) else None
-
-        snp_df = snp_df.with_columns(
-            [
-                pl.col("gene_id")
-                .map_elements(get_start, return_dtype=pl.Int64)
-                .alias("position_start"),
-                pl.col("gene_id")
-                .map_elements(get_end, return_dtype=pl.Int64)
-                .alias("position_end"),
-                pl.col("gene_id")
-                .map_elements(get_strand, return_dtype=pl.String)
-                .alias("strand"),
-            ]
-        ).drop_nulls()
-
-        return {col: snp_df.get_column(col).to_list() for col in snp_df.columns}
-    else:
+    if not os.path.exists(data_file):
         print(data_file + " not found")
         return "Error: QTL data file not found for the specified dataset and cell type."
+
+    snp_df = (
+        pl.scan_parquet(data_file)
+        .filter(pl.col("snp_id") == snp)
+        .collect()
+        .drop("snp_id")
+    )
+
+    if snp_df.is_empty():
+        return f"Error: SNP not found in cell type file."
+
+    snp_df = snp_df.rename({"gene_id": "gene_name"})
+
+    gene_loc_file = os.path.join(
+        "backend", "datasets", dataset, "gene_locations", f"{chrom}.parquet"
+    )
+    if not os.path.exists(gene_loc_file):
+        print(gene_loc_file + " not found")
+        return "Error: Gene locations file not found for the specified dataset."
+
+    gene_loc_df = pl.read_parquet(gene_loc_file)
+
+    gene_loc_df = gene_loc_df.select(
+        ["gene_id", "gene_name", "position_start", "position_end", "strand", "biotype"]
+    )
+
+    result_df = snp_df.join(gene_loc_df, on="gene_name", how="left")
+
+    result_df = result_df.drop_nulls(subset=["position_start", "position_end"])
+
+    return result_df.to_dict(as_series=False)
 
 
 def get_cell2sample_map(dataset):

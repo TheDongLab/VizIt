@@ -70,7 +70,7 @@ const useQtlStore = create((set, get) => ({
 
         try {
             const response = await getGeneList(dataset, query_str);
-            const geneList = response.data;
+            const geneList = columnToRow(response.data);
             set({ geneList: geneList, loading: false });
             return geneList;
         } catch (error) {
