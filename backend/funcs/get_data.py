@@ -86,46 +86,38 @@ def get_gene_location(dataset, gene):
 def get_snp_location(dataset, snp):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
+
+    def load_snp_from_file(file_path):
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                data = json.load(f)
+            return data.get(snp, None)
+        return None
+
+    try:
+        group = get_snp_group(snp)
         snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons_merged", get_snp_group(snp) + ".json"
+            "backend", "datasets", dataset, "snp_jsons_merged", group + ".json"
         )
+        snp_data = load_snp_from_file(snps_file)
+        if snp_data:
+            return {
+                "chromosome": snp_data["chromosome"],
+                "position": snp_data["position"],
+            }
+    except ValueError:
+        # Invalid rsID
+        pass
 
-    default_snp_locations_file = os.path.join("backend", "datasets", "snp_locations.json")
+    default_file = os.path.join("backend", "datasets", "snp_locations.json")
+    snp_data = load_snp_from_file(default_file)
+    if snp_data:
+        return {
+            "chromosome": snp_data["chromosome"],
+            "position": snp_data["position"],
+        }
 
-    if os.path.exists(snps_file):
-        with open(snps_file, "r") as f:
-            data = json.load(f)
-            snp = data.get(snp, None)
-        if data and snp:
-            position = snp["position"]
-
-            if position is not None:
-                return {
-                    "chromosome": snp["chromosome"],
-                    "position": position,
-                }
-            else:
-                return f"Error: SNP {snp} does not have valid position data in {dataset} dataset."
-        else:
-            return f"Error: SNP {snp} not found in {dataset} dataset."
-    elif os.path.exists(default_snp_locations_file):
-        with open(default_snp_locations_file, "r") as f:
-            data = json.load(f)
-            snp = data.get(snp, None)
-        if snp:
-            position = snp["position"]
-
-            if position is not None:
-                return {
-                    "chromosome": snp["chromosome"],
-                    "position": position,
-                }
-            else:
-                return f"Error: SNP {snp} does not have valid position data in default dataset."
-    else:
-        print(default_snp_locations_file + " not found")
-        return "Error: SNP list file not found for the specified dataset."
+    return None
 
 
 def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
@@ -418,6 +410,8 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
         return f"Error: Gene {gene} not found in {celltype or 'file'} cell type."
 
     def get_position(snp_id: str):
+        if snp_id is None or not isinstance(snp_id, str):
+            return None
         snp_location = get_snp_location(dataset, snp_id)
         if isinstance(snp_location, dict):
             return snp_location.get("position")
