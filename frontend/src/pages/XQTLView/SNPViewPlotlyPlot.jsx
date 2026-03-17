@@ -396,7 +396,9 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                                 : "") +
                             `<b>Start:</b> ${gene.position_start}<br>` +
                             `<b>End:</b> ${gene.position_end}<br>` +
-                            `<b>Strand:</b> ${gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"}<br>` +
+                            (gene.strand && !isPeak
+                                ? `<b>Strand:</b> ${gene.strand === "-" ? "−" : gene.strand === "+" ? "+" : "N/A"}<br>`
+                                : "") +
                             (gene.biotype && !isPeak
                                 ? `<b>Biotype:</b> ${gene.biotype}<br>`
                                 : "") +
@@ -490,13 +492,17 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                     <br />
                     <strong>End:</strong> {data[0].position_end}
                     <br />
-                    <strong>Strand:</strong>{" "}
-                    {data[0].strand === "-"
-                        ? "−"
-                        : data[0].strand === "+"
-                          ? "+"
-                          : "N/A"}
-                    <br />
+                    {data[0].strand !== "x" ? (
+                        <>
+                            <strong>Strand:</strong>{" "}
+                            {data[0].strand === "-"
+                                ? "−"
+                                : data[0].strand === "+"
+                                  ? "+"
+                                  : "N/A"}
+                            <br />
+                        </>
+                    ) : null}
                     {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
                     {/* <br />−<strong>log10(p):</strong> {formatNumber(data.y, 6)} */}
                     <table

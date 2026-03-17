@@ -207,10 +207,11 @@ async def getsnpdataforgene(request: Request):
 async def getgenedataforsnp(request: Request):
     print("getgenedataforsnp() called================")
     dataset_id = request.query_params.get("dataset")
+    is_caqtl = request.query_params.get("is_caqtl", "false").lower() == "true"
     snp = request.query_params.get("snp")
     celltype = request.query_params.get("celltype")
 
-    response = get_gene_data_for_snp(dataset_id, snp, celltype)
+    response = get_gene_data_for_snp(dataset_id, is_caqtl, snp, celltype)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene data.")
     return response

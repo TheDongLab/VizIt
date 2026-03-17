@@ -111,10 +111,15 @@ export const getSnpDataForGene = async (dataset, gene, celltype) => {
     }
 };
 
-export const getGeneDataForSnp = async (dataset, snp, celltype) => {
+export const getGeneDataForSnp = async (dataset, isCaQtl, snp, celltype) => {
     try {
         const response = await axios.get(`${QTL_URL}/getgenedataforsnp`, {
-            params: { dataset: dataset, snp: snp, celltype: celltype },
+            params: {
+                dataset: dataset,
+                is_caqtl: isCaQtl,
+                snp: snp,
+                celltype: celltype,
+            },
         });
         return response;
     } catch (error) {

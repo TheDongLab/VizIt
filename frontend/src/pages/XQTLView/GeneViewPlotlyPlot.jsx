@@ -75,6 +75,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const gene = genes.find((g) => g.gene_id === geneId);
     const geneStart = gene ? gene.position_start : 0;
     const geneEnd = gene ? gene.position_end : 0;
+    const geneLabel = gene ? gene.gene_name || gene.gene_id || geneId : geneId;
 
     // Calculate X and Y ranges
     const radius = 1_000_000;
@@ -461,7 +462,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 (targetGene.biotype && !targetIsPeak
                     ? `<b>Biotype:</b> ${targetGene.biotype}<br>`
                     : "") +
-                `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : targetGene.strand === "+" ? "+" : "N/A"}`,
+                (!targetIsPeak
+                    ? `<b>Strand:</b> ${targetGene.strand === "-" ? "−" : targetGene.strand === "+" ? "+" : "N/A"}<br>`
+                    : ""),
             name: targetGene.gene_id,
             pointType: "gene",
             showlegend: false,
@@ -476,7 +479,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             y: [-labelDataOffset],
             type: "scatter",
             mode: "text",
-            text: [gene.gene_name],
+            text: [geneLabel],
             textposition: "bottom center",
             showlegend: false,
             hoverinfo: "skip",
@@ -591,7 +594,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             const formattedData = (
                 <>
                     <strong>{data.strand === "x" ? "Peak" : "Gene"}:</strong>{" "}
-                    {data.gene_name}
+                    {data.gene_name || data.gene_id || name}
                     <br />
                     {data.gene_id && data.strand !== "x" ? (
                         <>
@@ -611,15 +614,20 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                             <br />
                         </>
                     ) : null}
-                    <strong>Strand:</strong>{" "}
-                    {data.strand === "-"
-                        ? "−"
-                        : data.strand === "+"
-                          ? "+"
-                          : "N/A"}
+                    {data.strand !== "x" ? (
+                        <>
+                            <strong>Strand:</strong>{" "}
+                            {data.strand === "-"
+                                ? "−"
+                                : data.strand === "+"
+                                  ? "+"
+                                  : "N/A"}
+                        </>
+                    ) : null}
                 </>
             );
 
+            // TODO if they select a gene, it goes to an error because its not a region
             handleSelect(name, formattedData, "gene");
             return;
         }
@@ -693,7 +701,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const layout = useMemo(
         () => ({
             title: {
-                text: `<b>${gene.gene_name}</b>`,
+                text: `<b>${geneLabel}</b>`,
                 font: { size: 20 },
             },
             paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
@@ -1063,7 +1071,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             ],
         }),
         [
-            gene.gene_name,
+            gene,
             totalHeight,
             cellTypes,
             hasGwas,

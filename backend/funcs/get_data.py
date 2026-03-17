@@ -442,7 +442,7 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
     return gene_df.to_dict(as_series=False)
 
 
-def get_gene_data_for_snp(dataset, snp, celltype=""):
+def get_gene_data_for_snp(dataset, is_caqtl, snp, celltype=""):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
@@ -478,7 +478,31 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
     if snp_df.is_empty():
         return f"Error: SNP not found in cell type file."
 
-    snp_df = snp_df.rename({"gene_id": "gene_name"})
+    if is_caqtl:
+        def parse_region(region: str):
+            try:
+                chrom_part, start_str, end_str = region.split("-")
+                return chrom_part, int(start_str), int(end_str)
+            except Exception:
+                return None, None, None
+
+        snp_df = snp_df.with_columns(
+            [
+                pl.col("gene_id")
+                .map_elements(lambda r: parse_region(r)[0], return_dtype=pl.Utf8)
+                .alias("chromosome"),
+                pl.col("gene_id")
+                .map_elements(lambda r: parse_region(r)[1], return_dtype=pl.Int64)
+                .alias("position_start"),
+                pl.col("gene_id")
+                .map_elements(lambda r: parse_region(r)[2], return_dtype=pl.Int64)
+                .alias("position_end"),
+                pl.lit("x").alias("strand"),
+                pl.lit(None, dtype=pl.Utf8).alias("biotype"),
+                pl.col("gene_id").alias("gene_name"),
+            ]
+        )
+        return snp_df.to_dict(as_series=False)
 
     gene_loc_file = os.path.join(
         "backend", "datasets", dataset, "gene_locations", f"{chrom}.parquet"
@@ -489,11 +513,17 @@ def get_gene_data_for_snp(dataset, snp, celltype=""):
 
     gene_loc_df = pl.read_parquet(gene_loc_file)
 
+    if "gene_name" not in gene_loc_df.columns:
+        return "Error: gene_locations parquet has no gene_name column for eQTL dataset."
+
     gene_loc_df = gene_loc_df.select(
         ["gene_id", "gene_name", "position_start", "position_end", "strand", "biotype"]
     )
 
-    result_df = snp_df.join(gene_loc_df, on="gene_name", how="left")
+    snp_df = snp_df.rename({"gene_id": "gene_name"})
+    result_df = snp_df.join(
+        gene_loc_df, on="gene_name", how="left"
+    )
 
     result_df = result_df.drop_nulls(subset=["position_start", "position_end"])
 

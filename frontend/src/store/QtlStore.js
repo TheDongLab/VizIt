@@ -223,7 +223,7 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
-    fetchGeneData: async (dataset) => {
+    fetchGeneData: async (dataset, isCaQtl) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({
@@ -234,12 +234,13 @@ const useQtlStore = create((set, get) => ({
         }
         set({ loading: true, geneData: {} });
         const snp = get().selectedSnp;
+
         // const loadingMap = new Map();
         // cellTypes.forEach((c) => loadingMap.set(c, true));
         // set({ loadingCellTypes: loadingMap, loading: false });
 
         const promises = get().selectedCellTypes.map(async (c) => {
-            const response = await getGeneDataForSnp(dataset, snp, c);
+            const response = await getGeneDataForSnp(dataset, isCaQtl, snp, c);
             const geneData = response.data;
             const geneDataRows = columnToRow(geneData);
             return [c, geneDataRows];

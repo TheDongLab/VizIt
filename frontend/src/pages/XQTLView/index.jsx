@@ -90,6 +90,11 @@ function XQTLView() {
     const [datasetId, setDatasetId] = useState(urlDataset);
     const [datasetSearchText, setDatasetSearchText] = useState("");
 
+    const isCaQTL = useMemo(() => {
+        const dataset = datasetRecords.find((d) => d.dataset_id === datasetId);
+        return dataset?.assay.toLowerCase().startsWith("ca");
+    }, [datasetId, datasetRecords]);
+
     const {
         setDataset,
         selectedGene,
@@ -293,10 +298,10 @@ function XQTLView() {
                 if (!locations.some((g) => g.id === selectedGene)) {
                     locations.push({
                         gene_id: selectedGene,
-                        gene_name: gene.data.name,
+                        gene_name: gene.data.name || selectedGene,
                         position_start: gene.data.start,
                         position_end: gene.data.end,
-                        strand: gene.data.strand,
+                        strand: gene.data.strand || "x",
                         biotype: gene.data.biotype,
                     });
                 }
@@ -403,7 +408,7 @@ function XQTLView() {
                 }
                 setSnps(locations);
 
-                await fetchGeneData(datasetId);
+                await fetchGeneData(datasetId, isCaQTL);
                 setSelectionError("");
                 setDataLoading(false);
             } catch (error) {
@@ -645,6 +650,9 @@ function XQTLView() {
                         getOptionLabel={(option) => {
                             if (typeof option === "string") return option;
                             if (option.type === "gene") {
+                                if (isCaQTL) {
+                                    return option.name || option.id || "";
+                                }
                                 if (option.name && option.id) {
                                     return `${option.name} (${option.id})`;
                                 }
@@ -655,6 +663,13 @@ function XQTLView() {
                         renderOption={(props, option) => {
                             const { key, ...rest } = props;
                             if (option.type === "gene") {
+                                if (isCaQTL) {
+                                    return (
+                                        <li key={key} {...rest}>
+                                            {option.name || option.id}
+                                        </li>
+                                    );
+                                }
                                 return (
                                     <li key={key} {...rest}>
                                         {option.name
