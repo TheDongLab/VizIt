@@ -429,7 +429,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         exonTrackPixels = exonTrackPixelsBase + nTxLanes * pixelsPerTranscript;
         const laneMin = 0;
         const laneMax = nTxLanes - 1;
-        const span = laneMax - laneMin; // nTxLanes - 1
+        const span = nTxLanes > 1 ? laneMax - laneMin : 1; // Avoid zero when only one transcript
         const denominator = exonTrackPixels - 2 * GENE_TRACK_GAP_PIXELS;
         if (denominator <= 0) {
             // Fallback (should not happen with reasonable values)
