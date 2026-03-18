@@ -694,7 +694,15 @@ function GenomicRegionView() {
                     figure.layout.xaxis &&
                     figure.layout.xaxis.range
                 ) {
-                    const [start, end] = figure.layout.xaxis.range;
+                    let [start, end] = figure.layout.xaxis.range;
+
+                    // Clamp at 0
+                    if (start < 0) {
+                        const width = end - start;
+                        start = 0;
+                        end = width;
+                    }
+
                     const newRange = {
                         start: Math.floor(start),
                         end: Math.ceil(end),

@@ -302,10 +302,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding;
 
     // X range for all tracks
-    const initialXRange = useMemo(
-        () => [range.start, range.end],
-        [range.start, range.end],
-    );
+    const initialXRange = useMemo(() => {
+        const start = Math.max(0, range.start);
+        const end = Math.max(start + 1, range.end); // ensure non-zero width
+        return [start, end];
+    }, [range.start, range.end]);
 
     // Y range for GWAS track
     const initialGwasYRange = useMemo(
