@@ -129,6 +129,11 @@ function GenomicRegionView() {
         return null;
     };
 
+    const [visibleRange, setVisibleRange] = useState({
+        start: null,
+        end: null,
+    });
+
     const setRegion = useCallback(
         (chromosome, start, end) => {
             if (!chromosome || start === null || end === null) {
@@ -235,24 +240,48 @@ function GenomicRegionView() {
 
     const listLength = 500; // Limit the list length for performance
 
+    // useEffect(() => {
+    //     const newParams = new URLSearchParams();
+    //     if (datasetId) newParams.set("dataset", datasetId);
+    //     if (
+    //         selectedChromosome &&
+    //         selectedRange &&
+    //         selectedRange.start !== undefined &&
+    //         selectedRange.start !== null &&
+    //         selectedRange.end !== undefined &&
+    //         selectedRange.end !== null
+    //     ) {
+    //         newParams.set(
+    //             "region",
+    //             `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+    //         );
+    //     }
+    //     setQueryParams(newParams);
+    // }, [datasetId, selectedChromosome, selectedRange, setQueryParams]);
+
     useEffect(() => {
         const newParams = new URLSearchParams();
+
         if (datasetId) newParams.set("dataset", datasetId);
-        if (
-            selectedChromosome &&
-            selectedRange &&
-            selectedRange.start !== undefined &&
-            selectedRange.start !== null &&
-            selectedRange.end !== undefined &&
-            selectedRange.end !== null
-        ) {
+
+        const regionStart = visibleRange?.start ?? selectedRange?.start ?? null;
+        const regionEnd = visibleRange?.end ?? selectedRange?.end ?? null;
+
+        if (selectedChromosome && regionStart != null && regionEnd != null) {
             newParams.set(
                 "region",
-                `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+                `${selectedChromosome}:${regionStart}-${regionEnd}`,
             );
         }
+
         setQueryParams(newParams);
-    }, [datasetId, selectedChromosome, selectedRange, setQueryParams]);
+    }, [
+        datasetId,
+        selectedChromosome,
+        visibleRange,
+        selectedRange,
+        setQueryParams,
+    ]);
 
     const handleCombinedInputChange = (event, value, reason) => {
         // always reflect the current text
@@ -641,10 +670,6 @@ function GenomicRegionView() {
         });
     };
 
-    const [visibleRange, setVisibleRange] = useState({
-        start: null,
-        end: null,
-    });
     const [currentBinSize, setCurrentBinSize] = useState(1000);
 
     // const debounce = (func, wait) => {
