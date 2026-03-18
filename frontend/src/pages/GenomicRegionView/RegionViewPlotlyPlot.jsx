@@ -1275,8 +1275,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const layout = useMemo(
         () => ({
             title: {
-                text: `<b>${chromosome}:${selectedRange.start}–${selectedRange.end}</b>`,
-                font: { size: 20 },
+                text: "",
             },
             paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
             showlegend: false,
