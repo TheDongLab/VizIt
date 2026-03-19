@@ -50,8 +50,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     dataset,
     geneId,
     genes,
+    gwasDatasets,
     gwasData,
-    hasGwas,
     snpData,
     chromosome,
     cellTypes,
@@ -122,19 +122,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             : yValues.reduce((max, y) => Math.max(max, y), 2) + yPadding;
     const yMin = yValues.reduce((min, y) => Math.min(min, y), 0);
 
-    const gwasMin = hasGwas
-        ? gwasData.reduce((min, s) => Math.min(min, s.y), 0)
-        : -2;
-    const gwasMax = hasGwas
-        ? gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding
-        : 2;
-
     const initialXRange = useMemo(() => [xMin, xMax], [xMin, xMax]);
     const initialYRange = useMemo(() => [yMin, yMax], [yMin, yMax]);
-    const initialGwasYRange = useMemo(
-        () => [gwasMin, gwasMax],
-        [gwasMin, gwasMax],
-    );
 
     const nearbyXValues = useMemo(
         () => genes.flatMap((gene) => [gene.position_start, gene.position_end]),
@@ -158,12 +147,99 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         ];
     }, [nearbyXValues]);
 
+    // Global Y‑range for all GWAS tracks (if any)
+    const allGwasSnps = useMemo(() => {
+        return Object.values(gwasData).flat();
+    }, [gwasData]);
+    const gwasYValues = allGwasSnps.map((s) => s.y);
+    const gwasYMin = gwasYValues.length ? Math.min(...gwasYValues, 0) : 0;
+    const gwasYMax = gwasYValues.length ? Math.max(...gwasYValues, 2) + 1 : 3;
+    const initialGwasYRange = useMemo(
+        () => [gwasYMin, gwasYMax],
+        [gwasYMin, gwasYMax],
+    );
+
     const formatNumber = (num, precision) => {
         const rounded = round(num, precision);
         return rounded < 0 // Just in case there's a hyphen in there somehow
             ? rounded.toString().replace("-", "−")
             : rounded.toString();
     };
+
+    const GENE_TRACK_GAP_PIXELS = 20;
+    const GENE_LABEL_OFFSET_PIXELS = 7;
+
+    let geneTrackYMin, geneTrackYMax;
+    let geneTrackPixels;
+    const geneTrackPixelsBase = 60;
+    const pixelsPerJitterLane = 16;
+
+    {
+        const nGenes = visibleGenes.length;
+        const baseLanes = 3;
+        const lanesPerNGenes = 15;
+        const effectiveLanes = baseLanes + Math.ceil(nGenes / lanesPerNGenes);
+        geneTrackPixels =
+            geneTrackPixelsBase + effectiveLanes * pixelsPerJitterLane;
+        const jitterMin = -1.5;
+        const jitterMax = 1.5;
+        const span = jitterMax - jitterMin;
+        const denominator = geneTrackPixels - 2 * GENE_TRACK_GAP_PIXELS;
+        if (denominator <= 0) {
+            geneTrackYMin = -2;
+            geneTrackYMax = 2;
+        } else {
+            const pad = (GENE_TRACK_GAP_PIXELS * span) / denominator;
+            geneTrackYMin = jitterMin - pad;
+            geneTrackYMax = jitterMax + pad;
+        }
+    }
+
+    // Calculate layout dimensions
+    const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 150);
+    const pixelsPerGap = getDisplayOption(displayOptions, "gapHeight", 20);
+    const marginTop = 80;
+    const marginBottom = 80;
+    const marginLeft = 80;
+    const marginRight = 80;
+
+    const nGwas = gwasDatasets.length;
+    const nCell = cellTypes.length;
+    const totalInnerHeight =
+        geneTrackPixels +
+        nGwas * pixelsPerTrack +
+        nCell * pixelsPerTrack +
+        (1 + nGwas + nCell - 1) * pixelsPerGap;
+    const totalHeight = marginTop + marginBottom + totalInnerHeight;
+
+    // Normalized heights
+    const geneTrackDomainHeight =
+        geneTrackPixels / (totalHeight - marginTop - marginBottom);
+    const trackDomainHeight =
+        pixelsPerTrack / (totalHeight - marginTop - marginBottom);
+    const gapDomainHeight =
+        pixelsPerGap / (totalHeight - marginTop - marginBottom);
+
+    const calculateDomain = useCallback(
+        (trackIndex) => {
+            if (trackIndex === 0) {
+                return [0, geneTrackDomainHeight];
+            }
+            let offset = geneTrackDomainHeight + gapDomainHeight;
+            if (trackIndex <= nGwas) {
+                const start =
+                    offset +
+                    (trackIndex - 1) * (trackDomainHeight + gapDomainHeight);
+                return [start, start + trackDomainHeight];
+            }
+            offset += nGwas * (trackDomainHeight + gapDomainHeight);
+            const cellIndex = trackIndex - nGwas - 1;
+            const start =
+                offset + cellIndex * (trackDomainHeight + gapDomainHeight);
+            return [start, start + trackDomainHeight];
+        },
+        [geneTrackDomainHeight, trackDomainHeight, gapDomainHeight, nGwas],
+    );
 
     const snpTraces = useMemo(() => {
         return cellTypes.flatMap((celltype, i) => {
@@ -172,7 +248,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 ({ snp_id, p_value, beta_value, position, ...rest }) => ({
                     ...rest,
                     id: snp_id,
-                    y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
+                    y: -Math.log10(Math.max(p_value, 1e-20)),
                     beta: beta_value,
                     x: position,
                     p_value,
@@ -185,7 +261,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                     x: snpList.map((snp) => snp.x),
                     y: snpList.map((snp) => snp.y),
                     xaxis: "x",
-                    yaxis: `y${i + (hasGwas ? 3 : 2)}`,
+                    yaxis: `y${nGwas + 2 + i}`,
                     type: useWebGL ? "scattergl" : "scatter",
                     mode: "markers",
                     marker: {
@@ -196,9 +272,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                         size: snpList.map((snp) =>
                             Math.abs(snp.y) < 2 ? 6 : 8,
                         ),
-                        line: {
-                            width: 0,
-                        },
+                        line: { width: 0 },
                     },
                     customdata: snpList.map((snp) => snp.id),
                     hoverinfo: "text",
@@ -216,51 +290,53 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     }, [
         cellTypes,
         snpData,
-        hasGwas,
+        nGwas,
         useWebGL,
         minBetaMagnitude,
         maxBetaMagnitude,
     ]);
 
-    const gwasTrace = useMemo(() => {
-        if (!hasGwas || gwasData.length === 0) return [];
-
-        return [
-            {
-                x: gwasData.map((s) => s.x),
-                y: gwasData.map((s) => s.y),
-                xaxis: "x",
-                yaxis: "y2", // Second track for GWAS
-                type: useWebGL ? "scattergl" : "scatter",
-                mode: "markers",
-                marker: {
-                    color: gwasData.map((s) =>
-                        s.beta > 0
-                            ? "rgb(230, 120, 120)"
-                            : "rgb(120, 120, 230)",
-                    ),
-                    // color: gwasData.map((s) =>
-                    //   dataToRGB(s, minBetaMagnitude, maxBetaMagnitude),
-                    // ),
-                    opacity: 1,
-                    size: 6,
-                    line: {
-                        width: 0,
+    const gwasTraces = useMemo(() => {
+        return gwasDatasets.flatMap((ds, idx) => {
+            const data = gwasData[ds.id] || [];
+            const points = data.map((d) => ({
+                x: d.position,
+                y: -Math.log10(Math.max(d.p_value, 1e-20)),
+                beta: d.beta,
+                id: d.snp_id,
+            }));
+            return [
+                {
+                    name: ds.name,
+                    x: points.map((p) => p.x),
+                    y: points.map((p) => p.y),
+                    xaxis: "x",
+                    yaxis: `y${idx + 2}`, // first GWAS track uses y2
+                    type: useWebGL ? "scattergl" : "scatter",
+                    mode: "markers",
+                    marker: {
+                        color: points.map((p) =>
+                            p.beta > 0
+                                ? "rgb(230,120,120)"
+                                : "rgb(120,120,230)",
+                        ),
+                        size: 6,
+                        line: { width: 0 },
                     },
+                    customdata: points.map((p) => p.id),
+                    hoverinfo: "text",
+                    hovertext: points.map(
+                        (p) =>
+                            `<b>SNP:</b> ${p.id}<br>` +
+                            `<b>Position:</b> ${p.x}<br>` +
+                            `<b>β (GWAS):</b> ${round(p.beta, 6)}<br>` +
+                            `<b>−log10(p):</b> ${round(p.y, 6)}`,
+                    ),
+                    pointType: "gwas",
                 },
-                customdata: gwasData.map((s) => s.id),
-                pointType: "gwas",
-                hoverinfo: "text",
-                hovertext: gwasData.flatMap(
-                    (s) =>
-                        `<b>SNP:</b> ${s.snp_id}<br>` +
-                        `<b>Position:</b> ${s.position}<br>` +
-                        `<b>β (GWAS):</b> ${formatNumber(s.beta, 6)}<br>` +
-                        `<b>−log10(p) (GWAS):</b> ${formatNumber(s.y, 6)}`,
-                ),
-            },
-        ];
-    }, [hasGwas, gwasData, useWebGL]);
+            ];
+        });
+    }, [gwasDatasets, gwasData, useWebGL]);
 
     // Advanced jitter to avoid overlapping gene labels
     const jitterMap = useMemo(() => {
@@ -315,35 +391,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         );
         return map;
     }, [xMin, xMax, visibleGenes]);
-
-    const GENE_TRACK_GAP_PIXELS = 20;
-    const GENE_LABEL_OFFSET_PIXELS = 7;
-
-    let geneTrackYMin, geneTrackYMax;
-    let geneTrackPixels;
-    const geneTrackPixelsBase = 60;
-    const pixelsPerJitterLane = 16;
-
-    {
-        const nGenes = visibleGenes.length;
-        const baseLanes = 3;
-        const lanesPerNGenes = 15;
-        const effectiveLanes = baseLanes + Math.ceil(nGenes / lanesPerNGenes);
-        geneTrackPixels =
-            geneTrackPixelsBase + effectiveLanes * pixelsPerJitterLane;
-        const jitterMin = -1.5;
-        const jitterMax = 1.5;
-        const span = jitterMax - jitterMin;
-        const denominator = geneTrackPixels - 2 * GENE_TRACK_GAP_PIXELS;
-        if (denominator <= 0) {
-            geneTrackYMin = -2;
-            geneTrackYMax = 2;
-        } else {
-            const pad = (GENE_TRACK_GAP_PIXELS * span) / denominator;
-            geneTrackYMin = jitterMin - pad;
-            geneTrackYMax = jitterMax + pad;
-        }
-    }
 
     const geneTraces = useMemo(() => {
         const getStart = (gene) =>
@@ -521,37 +568,28 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         const name = point.customdata || pointData.name;
 
         if (pointType === "snp" || pointType === "gwas") {
-            let data = combinedSnpList.filter((s) => s.id === name);
-            if (hasGwas) {
-                data = data.concat(
-                    gwasData
-                        .filter((s) => s.id === name)
-                        .map((s) => ({
-                            ...s,
-                            celltype: "GWAS",
-                        })),
-                );
-            }
+            // Collect data from all sources (cell types and GWAS datasets)
+            const snpRows = combinedSnpList.filter((s) => s.id === name);
+            const gwasRows = Object.entries(gwasData).flatMap(([dsId, snps]) =>
+                snps
+                    .filter((s) => s.snp_id === name)
+                    .map((s) => ({ ...s, celltype: dsId })),
+            );
+            const allRows = [...snpRows, ...gwasRows];
+            if (allRows.length === 0) return;
 
-            if (!data || data.length === 0) return;
-
-            const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data[0].id)}`;
-
+            const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(name)}`;
             const formattedData = (
                 <>
-                    <strong>SNP:</strong> {data[0].id}{" "}
+                    <strong>SNP:</strong> {name}{" "}
                     <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
                         (View in GWAS Catalog)
                     </a>
                     <br />
                     <strong>Chromosome:</strong> {chromosome}
                     <br />
-                    <strong>Position:</strong> {data[0].x}
+                    <strong>Position:</strong> {allRows[0].x}
                     <br />
-                    {/* <strong>β:</strong> {formatNumber(data.beta, 6)} */}
-                    {/* <br />−<strong>log10(p):</strong>{" "} */}
-                    {/* {formatNumber(data.y * Math.sign(data.beta), 6)} */}
-                    {/* Group each cell‑type’s stats on the same row */}
                     <table
                         style={{
                             marginTop: "0.75em",
@@ -561,7 +599,9 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                     >
                         <thead>
                             <tr>
-                                <th style={{ textAlign: "left" }}>Cell Type</th>
+                                <th style={{ textAlign: "left" }}>
+                                    Dataset/Cell Type
+                                </th>
                                 <th style={{ textAlign: "right" }}>β</th>
                                 <th style={{ textAlign: "right" }}>
                                     −log10(p)
@@ -569,14 +609,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                             </tr>
                         </thead>
                         <tbody>
-                            {data.map((d, idx) => (
+                            {allRows.map((row, idx) => (
                                 <tr key={idx}>
-                                    <td>{d.celltype}</td>
+                                    <td>{row.celltype}</td>
                                     <td style={{ textAlign: "right" }}>
-                                        {formatNumber(d.beta, 3)}
+                                        {round(row.beta, 3)}
                                     </td>
                                     <td style={{ textAlign: "right" }}>
-                                        {formatNumber(d.y, 3)}
+                                        {round(row.y, 3)}
                                     </td>
                                 </tr>
                             ))}
@@ -584,9 +624,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                     </table>
                 </>
             );
-
             handleSelect(name, formattedData, "snp");
-            return;
         } else if (pointType === "gene") {
             const data = genes.find((g) => g.gene_id === name);
             if (!data) return;
@@ -633,69 +671,267 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         }
     };
 
-    // Calculate layout dimensions
-    const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 150);
-    const pixelsPerGap = getDisplayOption(displayOptions, "gapHeight", 20);
-    const marginTop = 80;
-    const marginBottom = 80;
-    const marginLeft = 80;
-    const marginRight = 80;
+    // Generate y‑axis definitions
+    const yAxes = useMemo(() => {
+        const axes = {};
+        // Gene track
+        axes.yaxis = {
+            domain: calculateDomain(0),
+            range: [geneTrackYMin, geneTrackYMax],
+            fixedrange: true,
+            showgrid: false,
+            zeroline: false,
+            ticks: "",
+            showticklabels: false,
+            showline: true,
+            mirror: true,
+            linewidth: 1,
+            linecolor: "black",
+            anchor: "x",
+        };
+        // GWAS tracks
+        for (let i = 0; i < nGwas; i++) {
+            axes[`yaxis${i + 2}`] = {
+                title: { text: `−log10(p)`, font: { size: 12 } },
+                domain: calculateDomain(i + 1),
+                range: initialGwasYRange,
+                fixedrange: true,
+                showgrid: getDisplayOption(displayOptions, "showGrid", true),
+                zeroline: false,
+                ticks: "outside",
+                ticklen: 6,
+                tickwidth: 1,
+                tickcolor: "black",
+                showline: true,
+                mirror: true,
+                linewidth: 1,
+                linecolor: "black",
+                anchor: "x",
+            };
+        }
+        // Cell type tracks
+        for (let i = 0; i < nCell; i++) {
+            axes[`yaxis${nGwas + 2 + i}`] = {
+                title: { text: `−log10(p)`, font: { size: 12 } },
+                domain: calculateDomain(nGwas + 1 + i),
+                range: initialYRange,
+                fixedrange: true,
+                showgrid: getDisplayOption(displayOptions, "showGrid", true),
+                zeroline: false,
+                ticks: "outside",
+                ticklen: 6,
+                tickwidth: 1,
+                tickcolor: "black",
+                showline: true,
+                mirror: true,
+                linewidth: 1,
+                linecolor: "black",
+                anchor: "x",
+            };
+        }
+        return axes;
+    }, [
+        calculateDomain,
+        geneTrackYMin,
+        geneTrackYMax,
+        nGwas,
+        nCell,
+        initialGwasYRange,
+        initialYRange,
+        displayOptions,
+    ]);
 
-    const nSignalTracks = cellTypes.length;
-    const nGwasTracks = hasGwas ? 1 : 0;
+    // Background shapes for each track
+    const backgroundShapes = useMemo(() => {
+        const shapes = [];
+        // Gray rectangle for gene track
+        shapes.push({
+            type: "rect",
+            xref: "paper",
+            yref: "y",
+            x0: 0,
+            x1: 1,
+            y0: geneTrackYMin,
+            y1: geneTrackYMax,
+            fillcolor: "lightgray",
+            opacity: 0.3,
+            layer: "below",
+            line: { width: 0 },
+        });
+        // Gray rectangles for GWAS tracks
+        for (let i = 0; i < nGwas; i++) {
+            shapes.push({
+                type: "rect",
+                xref: "paper",
+                yref: `y${i + 2}`,
+                x0: 0,
+                x1: 1,
+                y0: Math.log10(5e-8),
+                y1: -Math.log10(5e-8),
+                fillcolor: "lightgray",
+                opacity: 0.3,
+                layer: "below",
+                line: { width: 0 },
+            });
+        }
+        // Gray rectangles for cell type tracks
+        for (let i = 0; i < nCell; i++) {
+            shapes.push({
+                type: "rect",
+                xref: "paper",
+                yref: `y${nGwas + 2 + i}`,
+                x0: 0,
+                x1: 1,
+                y0: -2,
+                y1: 2,
+                fillcolor: "lightgray",
+                opacity: 0.3,
+                layer: "below",
+                line: { width: 0 },
+            });
+        }
+        return shapes;
+    }, [
+        geneTrackYMin,
+        geneTrackYMax,
+        nGwas,
+        nCell,
+        initialGwasYRange,
+        initialYRange,
+    ]);
 
-    const totalInnerHeight =
-        geneTrackPixels + // gene track (special)
-        nGwasTracks * pixelsPerTrack +
-        nSignalTracks * pixelsPerTrack +
-        (1 + nGwasTracks + nSignalTracks - 1) * pixelsPerGap;
-
-    const totalHeight = marginTop + marginBottom + totalInnerHeight;
-
-    // Normalized heights
-    const geneTrackDomainHeight =
-        geneTrackPixels / (totalHeight - marginTop - marginBottom);
-    const normalTrackDomainHeight =
-        pixelsPerTrack / (totalHeight - marginTop - marginBottom);
-    const gapDomainHeight =
-        pixelsPerGap / (totalHeight - marginTop - marginBottom);
-
-    const calculateDomain = useCallback(
-        (trackIndex) => {
-            let offset = 0;
-
-            if (trackIndex === 0) {
-                const start = 0;
-                const end = start + geneTrackDomainHeight;
-                return [start, Math.min(end, 1.0)];
+    // Dashed line shapes (if enabled)
+    const dashedLineShapes = useMemo(() => {
+        if (!gene || !getDisplayOption(displayOptions, "showDashedLine", true))
+            return [];
+        const lineColor = getDisplayOption(
+            displayOptions,
+            "dashedLineColor",
+            "#000000",
+        );
+        const lineOnTop = getDisplayOption(
+            displayOptions,
+            "dashedLineOnTop",
+            false,
+        );
+        const crossGap = getDisplayOption(
+            displayOptions,
+            "crossGapDashedLine",
+            true,
+        );
+        const x0 =
+            gene.strand === "-"
+                ? gene.position_end
+                : gene.strand === "+"
+                  ? gene.position_start
+                  : (gene.position_start + gene.position_end) / 2;
+        const x1 = x0;
+        if (crossGap) {
+            // Single line across all tracks using paper y‑reference
+            return [
+                {
+                    type: "line",
+                    xref: "x",
+                    yref: "paper",
+                    x0,
+                    x1,
+                    y0: 0,
+                    y1: 1,
+                    line: { color: lineColor, width: 1, dash: "dash" },
+                    layer: lineOnTop ? "above" : "below",
+                },
+            ];
+        } else {
+            // Separate lines per track
+            const lines = [];
+            // Gene track
+            lines.push({
+                type: "line",
+                xref: "x",
+                yref: "y",
+                x0,
+                x1,
+                y0: geneTrackYMin,
+                y1: geneTrackYMax,
+                line: { color: lineColor, width: 1, dash: "dash" },
+                layer: lineOnTop ? "above" : "below",
+            });
+            // GWAS tracks
+            for (let i = 0; i < nGwas; i++) {
+                lines.push({
+                    type: "line",
+                    xref: "x",
+                    yref: `y${i + 2}`,
+                    x0,
+                    x1,
+                    y0: initialGwasYRange[0],
+                    y1: initialGwasYRange[1],
+                    line: { color: lineColor, width: 1, dash: "dash" },
+                    layer: lineOnTop ? "above" : "below",
+                });
             }
-
-            offset += geneTrackDomainHeight + gapDomainHeight;
-
-            if (hasGwas && trackIndex === 1) {
-                const start = offset;
-                const end = start + normalTrackDomainHeight;
-                return [start, Math.min(end, 1.0)];
+            // Cell type tracks
+            for (let i = 0; i < nCell; i++) {
+                lines.push({
+                    type: "line",
+                    xref: "x",
+                    yref: `y${nGwas + 2 + i}`,
+                    x0,
+                    x1,
+                    y0: initialYRange[0],
+                    y1: initialYRange[1],
+                    line: { color: lineColor, width: 1, dash: "dash" },
+                    layer: lineOnTop ? "above" : "below",
+                });
             }
+            return lines;
+        }
+    }, [
+        gene,
+        displayOptions,
+        geneTrackYMin,
+        geneTrackYMax,
+        nGwas,
+        nCell,
+        initialGwasYRange,
+        initialYRange,
+    ]);
 
-            if (hasGwas) {
-                offset += normalTrackDomainHeight + gapDomainHeight;
-            }
-
-            const signalIndex = trackIndex - (hasGwas ? 2 : 1);
-            offset += signalIndex * (normalTrackDomainHeight + gapDomainHeight);
-
-            const start = offset;
-            const end = start + normalTrackDomainHeight;
-            return [start, Math.min(end, 1.0)];
-        },
-        [
-            geneTrackDomainHeight,
-            normalTrackDomainHeight,
-            gapDomainHeight,
-            hasGwas,
-        ],
-    );
+    // Track labels (annotations)
+    const trackAnnotations = useMemo(() => {
+        const ann = [];
+        // GWAS track labels
+        gwasDatasets.forEach((ds, i) => {
+            const domain = calculateDomain(i + 1);
+            ann.push({
+                text: ds.name,
+                font: { size: 14 },
+                xref: "paper",
+                yref: "paper",
+                x: 0.001,
+                y: domain[1],
+                showarrow: false,
+                xanchor: "left",
+                yanchor: "top",
+            });
+        });
+        // Cell type labels
+        cellTypes.forEach((ct, i) => {
+            const domain = calculateDomain(nGwas + 1 + i);
+            ann.push({
+                text: ct,
+                font: { size: 14 },
+                xref: "paper",
+                yref: "paper",
+                x: 0.001,
+                y: domain[1],
+                showarrow: false,
+                xanchor: "left",
+                yanchor: "top",
+            });
+        });
+        return ann;
+    }, [gwasDatasets, cellTypes, calculateDomain, nGwas]);
 
     const [xAxisRange, setXAxisRange] = useState(initialXRange);
 
@@ -738,11 +974,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     // Plotly layout
     const layout = useMemo(
         () => ({
-            title: {
-                text: `<b>${geneLabel}</b>`,
-                font: { size: 20 },
-            },
-            paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
+            title: { text: `<b>${geneLabel}</b>`, font: { size: 20 } },
+            paper_bgcolor: "rgba(0,0,0,0)",
             showlegend: false,
             margin: {
                 t: marginTop,
@@ -753,11 +986,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             height: totalHeight,
             autosize: true,
             dragmode: "pan",
-            grid: {
-                rows: cellTypes.length + (hasGwas ? 1 : 0) + 1, // +1 for the gene track
-                columns: 1,
-                roworder: "top to bottom",
-            },
             xaxis: {
                 title: { text: xAxisTitle },
                 range: xAxisRange || initialXRange,
@@ -778,355 +1006,24 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 side: "bottom",
                 anchor: "y",
             },
-            ...cellTypes.reduce((acc, celltype, i) => {
-                const baseIndex = hasGwas ? i + 2 : i + 1;
-                acc[`yaxis${baseIndex + 1}`] = {
-                    title: { text: `−log10(p)`, font: { size: 12 } },
-                    domain: calculateDomain(baseIndex),
-                    autorange: false,
-                    range: initialYRange,
-                    fixedrange: true, // Prevent zooming on y-axis
-                    showgrid: getDisplayOption(
-                        displayOptions,
-                        "showGrid",
-                        true,
-                    ),
-                    zeroline: false,
-                    ticks: "outside",
-                    ticklen: 6,
-                    tickwidth: 1,
-                    tickcolor: "black",
-                    showline: true,
-                    mirror: true,
-                    linewidth: 1,
-                    linecolor: "black",
-                    anchor: "x",
-                };
-                return acc;
-            }, {}),
-            ...(hasGwas
-                ? {
-                      [`yaxis2`]: {
-                          title: { text: `−log10(p)`, font: { size: 12 } },
-                          domain: calculateDomain(1), // Last track for GWAS
-                          autorange: false,
-                          range: initialGwasYRange,
-                          fixedrange: true,
-                          showgrid: getDisplayOption(
-                              displayOptions,
-                              "showGrid",
-                              true,
-                          ),
-                          zeroline: false,
-                          ticks: "outside",
-                          ticklen: 6,
-                          tickwidth: 1,
-                          tickcolor: "black",
-                          showline: true,
-                          mirror: true,
-                          linewidth: 1,
-                          linecolor: "black",
-                          anchor: "x",
-                      },
-                  }
-                : {}),
-            yaxis: {
-                autorange: false,
-                domain: calculateDomain(0), // 0th track is for SNP track
-                range: [geneTrackYMin, geneTrackYMax],
-                fixedrange: true, // Prevent zooming on y-axis
-                // minallowed: yMin,
-                // maxallowed: yMax,
-                showgrid: false,
-                zeroline: false,
-                ticks: "",
-                showticklabels: false,
-                showline: true,
-                mirror: true,
-                linewidth: 1,
-                linecolor: "black",
-                anchor: "x",
-            },
-            shapes: [
-                {
-                    type: "rect",
-                    xref: "paper",
-                    yref: "y",
-                    x0: 0,
-                    x1: 1,
-                    y0: geneTrackYMin,
-                    y1: geneTrackYMax,
-                    fillcolor: "lightgray",
-                    opacity: 0.3,
-                    layer: "below",
-                    line: { width: 0 },
-                },
-                ...(gene &&
-                getDisplayOption(displayOptions, "showDashedLine", true)
-                    ? getDisplayOption(
-                          displayOptions,
-                          "crossGapDashedLine",
-                          true,
-                      )
-                        ? [
-                              // Cross-gap mode (single line spanning all tracks)
-                              {
-                                  type: "line",
-                                  xref: "x",
-                                  yref: "paper",
-                                  x0:
-                                      gene.strand === "-"
-                                          ? gene.position_end
-                                          : gene.strand === "+"
-                                            ? gene.position_start
-                                            : (gene.position_start +
-                                                  gene.position_end) /
-                                              2,
-                                  x1:
-                                      gene.strand === "-"
-                                          ? gene.position_end
-                                          : gene.strand === "+"
-                                            ? gene.position_start
-                                            : (gene.position_start +
-                                                  gene.position_end) /
-                                              2,
-                                  y0: 0,
-                                  y1: 1,
-                                  line: {
-                                      color: getDisplayOption(
-                                          displayOptions,
-                                          "dashedLineColor",
-                                          "#000000",
-                                      ),
-                                      width: 1,
-                                      dash: "dash",
-                                  },
-                                  layer: getDisplayOption(
-                                      displayOptions,
-                                      "dashedLineOnTop",
-                                      false,
-                                  )
-                                      ? "above"
-                                      : "below",
-                              },
-                          ]
-                        : [
-                              // Track-only mode (separate lines per track)
-                              // Gene track
-                              {
-                                  type: "line",
-                                  xref: "x",
-                                  yref: "y",
-                                  x0:
-                                      gene.strand === "-"
-                                          ? gene.position_end
-                                          : gene.strand === "+"
-                                            ? gene.position_start
-                                            : (gene.position_start +
-                                                  gene.position_end) /
-                                              2,
-                                  x1:
-                                      gene.strand === "-"
-                                          ? gene.position_end
-                                          : gene.strand === "+"
-                                            ? gene.position_start
-                                            : (gene.position_start +
-                                                  gene.position_end) /
-                                              2,
-                                  y0: geneTrackYMin,
-                                  y1: geneTrackYMax,
-                                  line: {
-                                      color: getDisplayOption(
-                                          displayOptions,
-                                          "dashedLineColor",
-                                          "#000000",
-                                      ),
-                                      width: 1,
-                                      dash: "dash",
-                                  },
-                                  layer: getDisplayOption(
-                                      displayOptions,
-                                      "dashedLineOnTop",
-                                      false,
-                                  )
-                                      ? "above"
-                                      : "below",
-                              },
-                              // GWAS track
-                              ...(hasGwas
-                                  ? [
-                                        {
-                                            type: "line",
-                                            xref: "x",
-                                            yref: "y2",
-                                            x0:
-                                                gene.strand === "-"
-                                                    ? gene.position_end
-                                                    : gene.strand === "+"
-                                                      ? gene.position_start
-                                                      : (gene.position_start +
-                                                            gene.position_end) /
-                                                        2,
-                                            x1:
-                                                gene.strand === "-"
-                                                    ? gene.position_end
-                                                    : gene.strand === "+"
-                                                      ? gene.position_start
-                                                      : (gene.position_start +
-                                                            gene.position_end) /
-                                                        2,
-                                            y0: initialGwasYRange[0],
-                                            y1: initialGwasYRange[1],
-                                            line: {
-                                                color: getDisplayOption(
-                                                    displayOptions,
-                                                    "dashedLineColor",
-                                                    "#000000",
-                                                ),
-                                                width: 1,
-                                                dash: "dash",
-                                            },
-                                            layer: getDisplayOption(
-                                                displayOptions,
-                                                "dashedLineOnTop",
-                                                false,
-                                            )
-                                                ? "above"
-                                                : "below",
-                                        },
-                                    ]
-                                  : []),
-                              // Celltype tracks
-                              ...cellTypes.map((celltype, i) => ({
-                                  type: "line",
-                                  xref: "x",
-                                  yref: `y${i + (hasGwas ? 3 : 2)}`,
-                                  x0:
-                                      gene.strand === "-"
-                                          ? gene.position_end
-                                          : gene.strand === "+"
-                                            ? gene.position_start
-                                            : (gene.position_start +
-                                                  gene.position_end) /
-                                              2,
-                                  x1:
-                                      gene.strand === "-"
-                                          ? gene.position_end
-                                          : gene.strand === "+"
-                                            ? gene.position_start
-                                            : (gene.position_start +
-                                                  gene.position_end) /
-                                              2,
-                                  y0: initialYRange[0],
-                                  y1: initialYRange[1],
-                                  line: {
-                                      color: getDisplayOption(
-                                          displayOptions,
-                                          "dashedLineColor",
-                                          "#000000",
-                                      ),
-                                      width: 1,
-                                      dash: "dash",
-                                  },
-                                  layer: getDisplayOption(
-                                      displayOptions,
-                                      "dashedLineOnTop",
-                                      false,
-                                  )
-                                      ? "above"
-                                      : "below",
-                              })),
-                          ]
-                    : []),
-                ...cellTypes.flatMap((celltype, i) => [
-                    {
-                        type: "rect",
-                        xref: "paper",
-                        yref: `y${i + (hasGwas ? 3 : 2)}`,
-                        x0: 0,
-                        x1: 1,
-                        y0: -2,
-                        y1: 2,
-                        fillcolor: "lightgray",
-                        opacity: 0.3,
-                        // layer: "below",
-                        line: { width: 0 },
-                    },
-                ]),
-                ...(hasGwas
-                    ? [
-                          {
-                              type: "rect",
-                              xref: "paper",
-                              yref: "y2",
-                              x0: 0,
-                              x1: 1,
-                              y0: Math.log10(5e-8),
-                              y1: -Math.log10(5e-8),
-                              fillcolor: "lightgray",
-                              opacity: 0.3,
-                              // layer: "below",
-                              line: { width: 0 },
-                          },
-                      ]
-                    : []),
-            ],
-            annotations: [
-                ...cellTypes.map((celltype, i) => {
-                    const domain = calculateDomain(i + (hasGwas ? 2 : 1));
-
-                    return {
-                        text: celltype,
-                        font: {
-                            size: 16,
-                        },
-                        xref: "paper",
-                        yref: "paper",
-                        x: 0.001,
-                        y: domain[1],
-                        showarrow: false,
-                        xanchor: "left",
-                        yanchor: "top",
-                    };
-                }),
-                ...(hasGwas
-                    ? [
-                          {
-                              text: "GWAS",
-                              font: {
-                                  size: 16,
-                              },
-                              xref: "paper",
-                              yref: "paper",
-                              x: 0.001,
-                              y: calculateDomain(1)[1],
-                              showarrow: false,
-                              xanchor: "left",
-                              yanchor: "top",
-                          },
-                      ]
-                    : []),
-            ],
+            ...yAxes,
+            shapes: [...backgroundShapes, ...dashedLineShapes],
+            annotations: trackAnnotations,
         }),
         [
-            gene,
+            geneLabel,
             totalHeight,
-            cellTypes,
-            hasGwas,
-            chromosome,
-            initialXRange,
+            xAxisTitle,
             xAxisRange,
+            initialXRange,
             nearbyGenesRange,
             xMin,
             xMax,
-            xAxisTitle,
-            calculateDomain,
-            initialGwasYRange,
-            gene,
             displayOptions,
-            initialYRange,
-            geneTrackYMin,
-            geneTrackYMax,
+            yAxes,
+            backgroundShapes,
+            dashedLineShapes,
+            trackAnnotations,
         ],
     );
 
@@ -1140,7 +1037,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             <Plot
                 onClick={onClick}
                 onRelayout={handleRelayout}
-                data={[...geneTraces, ...snpTraces, ...gwasTrace]}
+                data={[...geneTraces, ...snpTraces, ...gwasTraces]}
                 style={{ width: "100%", height: "100%" }}
                 layout={layout}
                 useResizeHandler
@@ -1248,17 +1145,22 @@ GeneViewPlotlyPlot.propTypes = {
             strand: PropTypes.oneOf(["+", "-", "x"]).isRequired,
         }),
     ).isRequired,
-    gwasData: PropTypes.arrayOf(
+    gwasDatasets: PropTypes.arrayOf(
         PropTypes.shape({
             id: PropTypes.string.isRequired,
-            snp_id: PropTypes.string.isRequired,
-            position: PropTypes.number.isRequired,
-            x: PropTypes.number.isRequired,
-            y: PropTypes.number.isRequired,
-            beta: PropTypes.number.isRequired,
+            name: PropTypes.string.isRequired,
         }),
     ).isRequired,
-    hasGwas: PropTypes.bool.isRequired,
+    gwasData: PropTypes.objectOf(
+        PropTypes.arrayOf(
+            PropTypes.shape({
+                snp_id: PropTypes.string.isRequired,
+                position: PropTypes.number.isRequired,
+                beta: PropTypes.number.isRequired,
+                p_value: PropTypes.number.isRequired,
+            }),
+        ),
+    ).isRequired,
     snpData: PropTypes.objectOf(
         PropTypes.arrayOf(
             PropTypes.shape({

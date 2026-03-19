@@ -117,13 +117,24 @@ function XQTLView() {
         fetchSnpChromosome,
         fetchGeneLocations,
         fetchSnpLocations,
+        resetQtlState,
+        gwasDatasets,
+        selectedGwasDatasets,
+        setSelectedGwasDatasets,
+        fetchGwasDatasets,
         fetchGwasForGene,
         fetchGwasForSnp,
-        resetQtlState,
+        gwasData,
     } = useQtlStore();
     const { loading, error } = useQtlStore();
 
     const [dataLoading, setDataLoading] = useState(false);
+
+    useEffect(() => {
+        if (datasetId) {
+            fetchGwasDatasets(datasetId);
+        }
+    }, [datasetId]);
 
     const selectGeneOrSnp = (type, value) => {
         if (type === "gene") {
@@ -273,8 +284,7 @@ function XQTLView() {
 
     const [genes, setGenes] = useState([]);
     const [snps, setSnps] = useState([]);
-    const [gwasData, setGwasData] = useState([]); // Only used for gene view
-    const [hasGwas, setHasGwas] = useState(true);
+    // const [gwasData, setGwasData] = useState([]); // Only used for gene view
     const [selectionError, setSelectionError] = useState("");
 
     const fetchGeneOrSnpData = async () => {
@@ -307,39 +317,13 @@ function XQTLView() {
                 }
                 setGenes(locations);
 
-                let gwas;
-                if (hasGwas) {
-                    if (!(displayOptions?.showGwas ?? true)) {
-                        setGwasData([]);
-                        gwas = [];
-                    } else {
-                        try {
-                            gwas = await fetchGwasForGene(datasetId, 1500000);
-                            setHasGwas(gwas.length > 0);
-                            const gwasLocations = gwas.map(
-                                ({
-                                    snp_id,
-                                    p_value,
-                                    beta_value,
-                                    position,
-                                    ...rest
-                                }) => ({
-                                    ...rest,
-                                    id: snp_id,
-                                    y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-                                    beta: beta_value,
-                                    x: position,
-                                    snp_id,
-                                    p_value,
-                                    position,
-                                }),
-                            );
-                            setGwasData(gwasLocations);
-                        } catch (error) {
-                            console.error("Error fetching GWAS data:", error);
-                            setHasGwas(false);
-                            setGwasData([]);
-                        }
+                // Fetch GWAS data for selected datasets if toggle is on
+                if (activeGwasDatasets.length > 0) {
+                    try {
+                        await fetchGwasForGene(datasetId, 1500000);
+                    } catch (error) {
+                        console.error("Error fetching GWAS data:", error);
+                        // Store action already handles partial failures; we can ignore or show a message
                     }
                 }
 
@@ -359,44 +343,24 @@ function XQTLView() {
                 await fetchSnpChromosome(datasetId);
 
                 let locations = [];
-                if (hasGwas) {
-                    if (!(displayOptions?.showGwas ?? true)) {
-                        locations = await fetchSnpLocations(datasetId, 1500000);
-                    } else {
-                        try {
-                            locations = await fetchGwasForSnp(
-                                datasetId,
-                                1500000,
-                            );
-                            setHasGwas(locations.length > 0);
-                            locations = locations.map(
-                                ({
-                                    snp_id,
-                                    p_value,
-                                    beta_value,
-                                    position,
-                                    ...rest
-                                }) => ({
-                                    ...rest,
-                                    id: snp_id,
-                                    y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-                                    beta: beta_value,
-                                    x: position,
-                                    snp_id,
-                                    p_value,
-                                    position,
-                                }),
-                            );
-                        } catch (error) {
-                            console.error("Error fetching GWAS data:", error);
-                            locations = await fetchSnpLocations(
-                                datasetId,
-                                1500000,
-                            );
-                            setHasGwas(false);
-                        }
+
+                if (activeGwasDatasets.length > 0) {
+                    try {
+                        await fetchGwasForSnp(datasetId, 1500000);
+                        // TODO
+                        // After fetch, we'll use the stored gwasData to create SNP locations
+                        // But we still need locations for the target SNP itself and for the plot points.
+                        // We'll combine later. For now, we can just fetch SNP locations normally.
+                    } catch (error) {
+                        console.error("Error fetching GWAS data:", error);
                     }
                 }
+
+                const snpLocations = await fetchSnpLocations(
+                    datasetId,
+                    1500000,
+                );
+                locations = snpLocations;
 
                 const snp = await getSnpLocation(datasetId, selectedSnp);
 
@@ -421,15 +385,14 @@ function XQTLView() {
     };
 
     useEffect(() => {
-        if (selectedGene || selectedSnp) {
+        if ((selectedGene || selectedSnp) && datasetId) {
             fetchGeneOrSnpData();
         }
-    }, [selectedGene, selectedSnp, datasetId, hasGwas]);
+    }, [selectedGwasDatasets, datasetId, selectedGene, selectedSnp]);
 
     const handleDatasetChange = (event, newValue) => {
         setDataset(newValue);
         setDatasetId(newValue);
-        setHasGwas(true);
         selectGeneOrSnp("reset", null);
     };
 
@@ -538,6 +501,9 @@ function XQTLView() {
         ...displayOptions,
     });
 
+    const activeGwasDatasets =
+        (displayOptions.showGwas ?? true) ? selectedGwasDatasets || [] : [];
+
     const menuOpen = Boolean(anchorEl);
 
     useEffect(() => {
@@ -561,14 +527,6 @@ function XQTLView() {
             [option]: event.target.checked,
         });
     };
-
-    useEffect(() => {
-        if (displayOptions?.showGwas ?? true) {
-            setHasGwas(true);
-        } else {
-            setHasGwas(null);
-        }
-    }, [displayOptions.showGwas]);
 
     return (
         <div
@@ -724,6 +682,27 @@ function XQTLView() {
                     {/*   )} */}
                     {/* /> */}
                 </div>
+                <Autocomplete
+                    multiple
+                    sx={{ width: "300px" }}
+                    size="small"
+                    options={gwasDatasets.map((d) => d.id)}
+                    getOptionLabel={(id) => {
+                        const ds = gwasDatasets.find((d) => d.id === id);
+                        return ds ? ds.name : id;
+                    }}
+                    value={selectedGwasDatasets || []}
+                    onChange={(event, newValue) =>
+                        setSelectedGwasDatasets(newValue)
+                    }
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="GWAS Datasets"
+                            variant="standard"
+                        />
+                    )}
+                />
                 <div className="control-group">
                     {/* Button to fetch data and a loading indicator*/}
                     <Box
@@ -1127,7 +1106,6 @@ function XQTLView() {
                                     !dataLoading &&
                                     !loading &&
                                     selectedChromosome && (
-                                        // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
                                         <div
                                             key={`${selectedGene}-plot`}
                                             className="gene-plot"
@@ -1136,13 +1114,13 @@ function XQTLView() {
                                                 dataset={datasetId}
                                                 geneId={selectedGene}
                                                 genes={genes}
+                                                gwasDatasets={gwasDatasets.filter(
+                                                    (ds) =>
+                                                        activeGwasDatasets.includes(
+                                                            ds.id,
+                                                        ),
+                                                )}
                                                 gwasData={gwasData}
-                                                hasGwas={
-                                                    (displayOptions?.showGwas ??
-                                                    true)
-                                                        ? hasGwas
-                                                        : false
-                                                }
                                                 snpData={snpData}
                                                 chromosome={selectedChromosome}
                                                 cellTypes={selectedCellTypes}
@@ -1165,12 +1143,6 @@ function XQTLView() {
                                                 dataset={datasetId}
                                                 snpName={selectedSnp}
                                                 snps={snps}
-                                                hasGwas={
-                                                    (displayOptions?.showGwas ??
-                                                    true)
-                                                        ? hasGwas
-                                                        : false
-                                                }
                                                 geneData={geneData}
                                                 chromosome={selectedChromosome}
                                                 cellTypes={selectedCellTypes}

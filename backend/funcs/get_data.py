@@ -190,33 +190,39 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
             return "Error: Chromosome file not found for the specified dataset."
 
 
-def get_gwas_in_chromosome(dataset, chromosome, start, end):
-    if dataset == "all":
-        return "Error: Dataset is not specified."
-    else:
-        chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "gwas", chromosome + ".tsv"
-        )
-        # significant_snps_list = get_qtl_snp_list(dataset)
+def get_gwas_datasets(qtl_dataset):
+    """Return list of available GWAS datasets for the given QTL dataset."""
+    config_path = os.path.join("backend", "datasets", qtl_dataset, "gwas", "gwas_datasets.toml")
+    if not os.path.exists(config_path):
+        return [] 
+    with open(config_path, "r") as f:
+        config = toml.load(f)
+    return config.get("datasets", [])
 
-        if os.path.exists(chromosome_file):
-            df = pl.read_csv(chromosome_file, separator="\t").filter(
-                (pl.col("position") >= start) & (pl.col("position") <= end)
-            )
-            if not df.is_empty():
-                df = df.drop_nulls()
-                return {col: df.get_column(col).to_list() for col in df.columns}
-            else:
-                # return empty
-                return {
-                    "snp_id": [],
-                    "position": [],
-                    "beta_value": [],
-                    "p_value": [],
-                }
-        else:
-            print(chromosome_file + " not found")
-            return "Error: Chromosome file not found for the specified dataset."
+
+def get_gwas_in_chromosome(qtl_dataset, gwas_dataset, chromosome, start, end):
+    """Fetch GWAS data for a specific GWAS dataset."""
+    base_dir = os.path.join("backend", "datasets", qtl_dataset, "gwas", gwas_dataset)
+    file_path = os.path.join(base_dir, f"{chromosome}.tsv")
+    if not os.path.exists(file_path):
+        # Return empty
+        return {
+            "snp_id": [],
+            "position": [],
+            "beta_value": [],
+            "p_value": [],
+        }
+    df = pl.read_csv(file_path, separator="\t").filter(
+        (pl.col("position") >= start) & (pl.col("position") <= end)
+    )
+    if df.is_empty():
+        return {
+            "snp_id": [],
+            "position": [],
+            "beta_value": [],
+            "p_value": [],
+        }
+    return df.drop_nulls().to_dict(as_series=False)
 
 
 def get_gene_chromosome(dataset, gene):

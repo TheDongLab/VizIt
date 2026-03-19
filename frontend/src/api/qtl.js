@@ -178,11 +178,30 @@ export const getSnpLocationsInChromosome = async (
     }
 };
 
-export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
+export const getGwasDatasets = async (dataset) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgwasdatasets`, {
+            params: { dataset: dataset },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGwasDatasets:", error);
+        throw error;
+    }
+};
+
+export const getGwasInChromosome = async (
+    dataset,
+    gwas_dataset,
+    chromosome,
+    start,
+    end,
+) => {
     try {
         const response = await axios.get(`${QTL_URL}/getgwasinchromosome`, {
             params: {
                 dataset: dataset,
+                gwas_dataset: gwas_dataset,
                 chromosome: chromosome,
                 start: start,
                 end: end,
