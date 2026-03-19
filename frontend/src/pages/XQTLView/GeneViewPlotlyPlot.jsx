@@ -78,7 +78,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
     const geneLabel = gene ? gene.gene_name || gene.gene_id || geneId : geneId;
 
     // Calculate X and Y ranges
-    const radius = 1_000_000;
+    const radius = 1_500_000;
     const xValues = combinedSnpList.map((snp) => snp.x);
     const yValues = combinedSnpList.map((snp) => snp.y);
     const betaValues = combinedSnpList.map((snp) => snp.beta);
@@ -91,23 +91,48 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         Infinity,
     );
 
+    const dataMin = Math.min(...xValues, geneStart, geneEnd);
+    const dataMax = Math.max(...xValues, geneStart, geneEnd);
+    const paddingFactor = 0.05; // 5% padding
+
     const tss =
         gene?.strand === "+"
             ? geneStart
             : gene?.strand === "-"
               ? geneEnd
-              : (geneStart + geneEnd) / 2; // fallback for peaks or if strand unknown
+              : (geneStart + geneEnd) / 2; // fallback for peaks
 
-    const allPositions = [...xValues, geneStart, geneEnd];
+    const leftBoundary = geneStart - radius;
+    const rightBoundary = geneEnd + radius;
 
-    const distances = allPositions.map((pos) => Math.abs(pos - tss));
-    const maxDist = Math.max(...distances, 0); // ensure at least 0
+    let neededLeft = (tss - dataMin) * (1 + paddingFactor);
+    let neededRight = (dataMax - tss) * (1 + paddingFactor);
 
-    const padding = maxDist * 0.05;
-    const halfRange = Math.min(maxDist + padding, radius);
+    const availLeft = tss - leftBoundary;
+    const availRight = rightBoundary - tss;
 
-    const xMin = tss - halfRange;
-    const xMax = tss + halfRange;
+    neededLeft = Math.min(neededLeft, availLeft);
+    neededRight = Math.min(neededRight, availRight);
+
+    let L, R;
+    const lower = Math.max(neededLeft, neededRight);
+    const upper = Math.min(availLeft, availRight);
+    if (lower <= upper) {
+        // Perfectly symmetric
+        L = lower;
+        R = lower;
+    } else {
+        if (availLeft < neededRight) {
+            L = availLeft;
+            R = neededRight;
+        } else {
+            L = neededLeft;
+            R = availRight;
+        }
+    }
+
+    const xMin = tss - L;
+    const xMax = tss + R;
 
     const visibleGenes = useMemo(
         () =>
@@ -999,8 +1024,8 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             xaxis: {
                 title: { text: xAxisTitle },
                 range: xAxisRange || initialXRange,
-                minallowed: Math.min(nearbyGenesRange[0], xMin),
-                maxallowed: Math.max(nearbyGenesRange[1], xMax),
+                minallowed: geneStart - radius,
+                maxallowed: geneEnd + radius,
                 autorange: false,
                 tickfont: { size: 10 },
                 showgrid: getDisplayOption(displayOptions, "showGrid", true),
