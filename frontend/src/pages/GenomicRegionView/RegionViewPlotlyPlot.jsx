@@ -1082,9 +1082,14 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const signalTraces = useMemo(() => {
         const traces = [];
 
+        const reversedIndices = cellTypes.map(
+            (_, i) => cellTypes.length - 1 - i,
+        );
+
         cellTypes.forEach((celltype, i) => {
             const entry = signalData[celltype];
-            const baseHue = (i * 360) / cellTypes.length;
+            const reversedI = reversedIndices[i];
+            const baseHue = (reversedI * 360) / cellTypes.length;
             const plusColor = `hsl(${baseHue}, 70%, 45%)`;
             const minusColor = `hsla(${baseHue}, 70%, 75%, 0.7)`; // lighter and semi-transparent for minus strand
             const yaxisId = `y${i + (hasGwas ? 3 : 2)}`;

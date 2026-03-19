@@ -101,7 +101,8 @@ const useSignalStore = create((set, get) => ({
         try {
             const response = await getCellTypeList(dataset);
             const cellTypes = response.data;
-            set({ availableCellTypes: cellTypes, loading: false });
+            const reversedCellTypes = cellTypes.slice().reverse();
+            set({ availableCellTypes: reversedCellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
             throw error;

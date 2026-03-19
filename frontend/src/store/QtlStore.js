@@ -163,7 +163,8 @@ const useQtlStore = create((set, get) => ({
                 get().selectedGene,
             );
             const cellTypes = response.data;
-            set({ selectedCellTypes: cellTypes, loading: false });
+            const reversedCellTypes = cellTypes.slice().reverse();
+            set({ selectedCellTypes: reversedCellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
             throw error;
@@ -183,8 +184,8 @@ const useQtlStore = create((set, get) => ({
 
         try {
             const response = await getSnpCellTypes(dataset, get().selectedSnp);
-            const cellTypes = response.data;
-            set({ selectedCellTypes: cellTypes, loading: false });
+            const reversedCellTypes = cellTypes.slice().reverse();
+            set({ selectedCellTypes: reversedCellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
             throw error;
