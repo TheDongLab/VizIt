@@ -130,7 +130,6 @@ function getTrackRange(
     globalHalfRangeSym,
     globalMaxPosRange,
 ) {
-    const yPadding = 1;
     const perTrackY = displayOptions?.perTrackY ?? false;
     const trackYHeights = displayOptions?.trackYHeights ?? {};
     const yHeightGlobal = displayOptions?.yHeightGlobal ?? "";
@@ -167,11 +166,11 @@ function getTrackRange(
                     (max, y) => Math.max(max, Math.abs(y)),
                     0,
                 );
-                const H = dataMaxAbs + yPadding;
+                const H = dataMaxAbs <= 0 ? 0 : dataMaxAbs * 1.1; // add 10% padding
                 return [-H, H];
             } else {
                 const maxPos = yVals.reduce((max, y) => Math.max(max, y), 0);
-                const H = maxPos + yPadding;
+                const H = maxPos <= 0 ? 0 : maxPos * 1.1; // add 10% padding
                 return [0, H];
             }
         }
@@ -269,8 +268,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         )
         .map((snp) => snp.y)
         .filter((y) => Number.isFinite(y));
-
-    const yPadding = 1;
     const yHeightGlobalOpt = displayOptions?.yHeightGlobal ?? "";
 
     // Global symmetric range for plus/minus tracks ([-H, H])
@@ -282,7 +279,9 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const globalHalfRangeSym =
         yHeightGlobalOpt !== "" && yHeightGlobalOpt != null
             ? Number(yHeightGlobalOpt)
-            : globalDataMaxAbs + yPadding;
+            : globalDataMaxAbs <= 0
+              ? 0
+              : globalDataMaxAbs * 1.1; // add 10% padding
 
     // Global positive-only range for single-track tracks ([0, H])
     const yValuesPos = yValuesAll.filter((y) => y >= 0);
@@ -294,12 +293,13 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const globalMaxPosRange =
         yHeightGlobalOpt !== "" && yHeightGlobalOpt != null
             ? Number(yHeightGlobalOpt)
-            : globalMaxPos + yPadding;
+            : globalMaxPos <= 0
+              ? 0
+              : globalMaxPos * 1.1; // add 10% padding
 
     // GWAS ranges
     const gwasMin = gwasData.reduce((min, s) => Math.min(min, s.y), 0);
-    const gwasMax =
-        gwasData.reduce((max, s) => Math.max(max, s.y), 2) + yPadding;
+    const gwasMax = gwasData.reduce((max, s) => Math.max(max, s.y), 2);
 
     // X range for all tracks
     const initialXRange = useMemo(() => {
