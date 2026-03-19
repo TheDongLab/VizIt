@@ -682,27 +682,6 @@ function XQTLView() {
                     {/*   )} */}
                     {/* /> */}
                 </div>
-                <Autocomplete
-                    multiple
-                    sx={{ width: "300px" }}
-                    size="small"
-                    options={gwasDatasets.map((d) => d.id)}
-                    getOptionLabel={(id) => {
-                        const ds = gwasDatasets.find((d) => d.id === id);
-                        return ds ? ds.name : id;
-                    }}
-                    value={selectedGwasDatasets || []}
-                    onChange={(event, newValue) =>
-                        setSelectedGwasDatasets(newValue)
-                    }
-                    renderInput={(params) => (
-                        <TextField
-                            {...params}
-                            label="GWAS Datasets"
-                            variant="standard"
-                        />
-                    )}
-                />
                 <div className="control-group">
                     {/* Button to fetch data and a loading indicator*/}
                     <Box

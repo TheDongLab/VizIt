@@ -91,20 +91,23 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         Infinity,
     );
 
-    const snpMin = xValues.reduce((min, x) => Math.min(min, x), Infinity);
-    const snpMax = xValues.reduce((max, x) => Math.max(max, x), -Infinity);
+    const tss =
+        gene?.strand === "+"
+            ? geneStart
+            : gene?.strand === "-"
+              ? geneEnd
+              : (geneStart + geneEnd) / 2; // fallback for peaks or if strand unknown
 
-    const combinedMin = Math.min(snpMin, geneStart);
-    const combinedMax = Math.max(snpMax, geneEnd);
-    const combinedRange = combinedMax - combinedMin;
+    const allPositions = [...xValues, geneStart, geneEnd];
 
-    const xPadding = Math.round((combinedRange * 0.05) / 1000) * 1000; // 5% of range
+    const distances = allPositions.map((pos) => Math.abs(pos - tss));
+    const maxDist = Math.max(...distances, 0); // ensure at least 0
 
-    const paddedMin = combinedMin - xPadding;
-    const paddedMax = combinedMax + xPadding;
+    const padding = maxDist * 0.05;
+    const halfRange = Math.min(maxDist + padding, radius);
 
-    const xMin = Math.max(paddedMin, geneStart - radius);
-    const xMax = Math.min(paddedMax, geneEnd + radius);
+    const xMin = tss - halfRange;
+    const xMax = tss + halfRange;
 
     const visibleGenes = useMemo(
         () =>
@@ -147,7 +150,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         ];
     }, [nearbyXValues]);
 
-    // Global Y‑range for all GWAS tracks (if any)
+    const getGwasDisplayName = useCallback((ds) => {
+        console.log(ds);
+        if (ds.trait && ds.citation) {
+            return `GWAS for ${ds.trait} (${ds.citation})`;
+        }
+        return ds.name || ds.id;
+    }, []);
+
     const allGwasSnps = useMemo(() => {
         return Object.values(gwasData).flat();
     }, [gwasData]);
@@ -307,7 +317,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             }));
             return [
                 {
-                    name: ds.name,
+                    name: getGwasDisplayName(ds),
                     x: points.map((p) => p.x),
                     y: points.map((p) => p.y),
                     xaxis: "x",
@@ -904,7 +914,7 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         gwasDatasets.forEach((ds, i) => {
             const domain = calculateDomain(i + 1);
             ann.push({
-                text: ds.name,
+                text: getGwasDisplayName(ds),
                 font: { size: 14 },
                 xref: "paper",
                 yref: "paper",
@@ -1148,7 +1158,9 @@ GeneViewPlotlyPlot.propTypes = {
     gwasDatasets: PropTypes.arrayOf(
         PropTypes.shape({
             id: PropTypes.string.isRequired,
-            name: PropTypes.string.isRequired,
+            name: PropTypes.string,
+            trait: PropTypes.string,
+            citation: PropTypes.string,
         }),
     ).isRequired,
     gwasData: PropTypes.objectOf(

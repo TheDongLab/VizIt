@@ -334,7 +334,11 @@ const useQtlStore = create((set, get) => ({
         if (!dataset) return;
         try {
             const response = await getGwasDatasets(dataset);
-            set({ gwasDatasets: response.data });
+            const datasets = response.data;
+            set({
+                gwasDatasets: datasets,
+                selectedGwasDatasets: datasets.map((d) => d.id),
+            });
         } catch (error) {
             console.error("Error fetching GWAS datasets:", error);
         }
