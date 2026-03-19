@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
     Typography,
     Box,
@@ -153,6 +153,9 @@ function GenomicRegionView() {
         [setSelectedChromosome, setSelectedRange],
     );
 
+    const ignoreNextUrlRegionRef = useRef(false);
+    const firstRenderRef = useRef(true);
+
     const [combinedList, setCombinedList] = useState([]);
     const [filteredCombinedList, setFilteredCombinedList] = useState([]);
 
@@ -240,26 +243,12 @@ function GenomicRegionView() {
 
     const listLength = 500; // Limit the list length for performance
 
-    // useEffect(() => {
-    //     const newParams = new URLSearchParams();
-    //     if (datasetId) newParams.set("dataset", datasetId);
-    //     if (
-    //         selectedChromosome &&
-    //         selectedRange &&
-    //         selectedRange.start !== undefined &&
-    //         selectedRange.start !== null &&
-    //         selectedRange.end !== undefined &&
-    //         selectedRange.end !== null
-    //     ) {
-    //         newParams.set(
-    //             "region",
-    //             `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
-    //         );
-    //     }
-    //     setQueryParams(newParams);
-    // }, [datasetId, selectedChromosome, selectedRange, setQueryParams]);
-
     useEffect(() => {
+        if (firstRenderRef.current) {
+            firstRenderRef.current = false;
+            return;
+        }
+
         const newParams = new URLSearchParams();
 
         if (datasetId) newParams.set("dataset", datasetId);
@@ -274,7 +263,12 @@ function GenomicRegionView() {
             );
         }
 
-        setQueryParams(newParams);
+        const current = queryParams.toString();
+        const next = newParams.toString();
+        if (current !== next) {
+            ignoreNextUrlRegionRef.current = true;
+            setQueryParams(newParams);
+        }
     }, [
         datasetId,
         selectedChromosome,
@@ -389,7 +383,7 @@ function GenomicRegionView() {
             try {
                 const snp = await getSnpLocation(datasetId, text);
                 if (snp && snp.data) {
-                    const tart = Math.max(snp.data.position - 50000, 0);
+                    const start = Math.max(snp.data.position - 50000, 0);
                     const end = snp.data.position + 50000;
                     const chr = snp.data.chromosome;
                     setRegion(chr, start, end);
@@ -596,6 +590,13 @@ function GenomicRegionView() {
     useEffect(() => {
         if (!urlRegion) return;
 
+        // if we just changed URL ourselves, don't try to parse it again
+        if (ignoreNextUrlRegionRef.current) {
+            console.log("Ignoring URL region change:", urlRegion);
+            ignoreNextUrlRegionRef.current = false;
+            return;
+        }
+
         const init = async () => {
             const parsed = await parseRegionString(urlRegion);
             if (!parsed) return;
@@ -618,13 +619,13 @@ function GenomicRegionView() {
         init();
     }, [urlRegion]);
 
-    useEffect(() => {
-        // when the selectedchromosome or range changes, update the region search text
-        if (selectedChromosome && selectedRange)
-            setRegionSearchText(
-                `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
-            );
-    }, [selectedChromosome, selectedRange]);
+    // useEffect(() => {
+    //     // when the selectedchromosome or range changes, update the region search text
+    //     if (selectedChromosome && selectedRange)
+    //         setRegionSearchText(
+    //             `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+    //         );
+    // }, [selectedChromosome, selectedRange]);
 
     // TODO Clear zustand state on unmount
     // useEffect(() => {

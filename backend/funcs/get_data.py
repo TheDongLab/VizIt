@@ -42,45 +42,63 @@ def get_gene_file_name(gene: str) -> str:
 def get_gene_location(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
-        )
-
-    if os.path.exists(genes_file):
-        with open(genes_file, "r") as f:
-            data = json.load(f)
-
-            if gene.startswith("chr"):
-                # caQTL data is keyed by region string
-                gene_x = data.get(gene, None)
-                if not gene_x:
-                    return f"Error: Gene not found in dataset."
-            else:
-                gene_x = data
-
-        if gene_x:
-            name = gene_x.get("name", gene)
-            chromosome = gene_x.get("chromosome")
-            position_start = gene_x.get("position_start")
-            position_end = gene_x.get("position_end")
-
-            if position_start is not None and position_end is not None:
+    
+    if gene.startswith("chr") and "-" in gene:
+        try:
+            parts = gene.split("-")
+            if len(parts) == 3:
+                chromosome = parts[0]
+                start = int(parts[1])
+                end = int(parts[2])
+                
                 return {
                     "gene_id": gene,
-                    "gene_name": name,
+                    "gene_name": gene,
                     "chromosome": chromosome,
-                    "start": position_start,
-                    "end": position_end,
+                    "start": start,
+                    "end": end,
                 }
             else:
-                return f"Error: Gene does not have valid position data in dataset."
-        else:
-            return f"Error: Gene not found in dataset."
+                return f"Error: Invalid region format for gene {gene}. Expected format: chr#-start-end"
+        except ValueError as e:
+            return f"Error: Could not parse positions from gene {gene}: {str(e)}"
+    
+    # Case 2: eQTL dataset - need to look up in JSON file
+    genes_file = os.path.join(
+        "backend", "datasets", dataset, "gene_jsons", 
+        get_gene_file_name(safe_filename(gene)) + ".json"
+    )
 
-    else:
+    if not os.path.exists(genes_file):
         print(genes_file + " not found")
         return "Error: Gene list file not found for the specified dataset."
+    
+    with open(genes_file, "r") as f:
+        data = json.load(f)
+        
+        if isinstance(data, dict) and gene in data:
+            gene_x = data[gene]
+        else:
+            gene_x = data
+
+    if not gene_x:
+        return f"Error: Gene {gene} not found in dataset."
+
+    name = gene_x.get("name", gene)
+    chromosome = gene_x.get("chromosome")
+    position_start = gene_x.get("position_start")
+    position_end = gene_x.get("position_end")
+
+    if position_start is not None and position_end is not None:
+        return {
+            "gene_id": gene,
+            "gene_name": name,
+            "chromosome": chromosome,
+            "start": position_start,
+            "end": position_end,
+        }
+    else:
+        return f"Error: Gene does not have valid position data in dataset."
 
 
 def get_snp_location(dataset, snp):
@@ -204,27 +222,32 @@ def get_gwas_in_chromosome(dataset, chromosome, start, end):
 def get_gene_chromosome(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
-        )
+    
+    if gene.startswith("chr") and "-" in gene:
+        chromosome = gene.split("-")[0]
+        return chromosome
+    
+    genes_file = os.path.join(
+        "backend", "datasets", dataset, "gene_jsons", 
+        get_gene_file_name(safe_filename(gene)) + ".json"
+    )
 
     if os.path.exists(genes_file):
         with open(genes_file, "r") as f:
             data = json.load(f)
-
-            if gene.startswith("chr"):
-                gene_x = data.get(gene, None)
-            else:
-                gene_x = data
+            gene_x = data
 
         if gene_x:
-            return gene_x.get("chromosome")
+            chromosome = gene_x.get("chromosome")
+            if chromosome:
+                return chromosome
+            else:
+                return f"Error: Gene {gene} found but has no chromosome information in {dataset} dataset."
         else:
             return f"Error: Gene {gene} not found in {dataset} dataset."
     else:
         print(genes_file + " not found")
-        return "Error: Gene list file not found for the specified dataset."
+        return f"Error: Gene list file not found for the specified dataset {dataset}."
 
 
 def get_snp_chromosome(dataset, snp):

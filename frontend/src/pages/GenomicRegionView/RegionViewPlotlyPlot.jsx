@@ -306,7 +306,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         const start = Math.max(0, range.start);
         const end = Math.max(start + 1, range.end); // ensure non-zero width
         return [start, end];
-    }, [range.start, range.end]);
+    }, [range]);
 
     // Y range for GWAS track
     const initialGwasYRange = useMemo(
@@ -1276,7 +1276,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const layout = useMemo(
         () => ({
             title: {
-                text: "",
+                text: `<b>${chromosome}:${visibleRange.start}–${visibleRange.end}</b>`,
+                font: { size: 20 },
             },
             paper_bgcolor: "rgba(0,0,0,0)", // Transparent paper background
             showlegend: false,
@@ -1300,7 +1301,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 },
                 range: initialXRange,
                 // range: [range.start, range.end],
-                // minallowed: 0,
+                minallowed: 0,
                 // maxallowed: initialXRange[1],
                 // minallowed: Math.min(nearbyGenesRange[0], xMin),
                 // maxallowed: Math.max(nearbyGenesRange[1], xMax),
