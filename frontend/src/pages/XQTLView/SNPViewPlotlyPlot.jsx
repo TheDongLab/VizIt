@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
@@ -575,6 +575,44 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         [trackDomainHeight, gapDomainHeight],
     );
 
+    const [xAxisRange, setXAxisRange] = useState(initialXRange);
+
+    useEffect(() => {
+        setXAxisRange(initialXRange);
+    }, [initialXRange[0], initialXRange[1]]);
+
+    const xAxisTitle = useMemo(() => {
+        const range = xAxisRange || initialXRange;
+        const start = Math.round(Math.max(range[0], 0));
+        const end = Math.round(range[1]);
+        return `Genomic Position (${chromosome}:${start}–${end})`;
+    }, [chromosome, xAxisRange, initialXRange]);
+
+    const handleRelayout = useCallback(
+        (evt) => {
+            if (evt["xaxis.autorange"] === true) {
+                setXAxisRange(initialXRange);
+                return;
+            }
+
+            const x0 =
+                evt["xaxis.range[0]"] ??
+                (Array.isArray(evt["xaxis.range"])
+                    ? evt["xaxis.range"][0]
+                    : undefined);
+            const x1 =
+                evt["xaxis.range[1]"] ??
+                (Array.isArray(evt["xaxis.range"])
+                    ? evt["xaxis.range"][1]
+                    : undefined);
+
+            if (typeof x0 === "number" && typeof x1 === "number") {
+                setXAxisRange([x0, x1]);
+            }
+        },
+        [initialXRange],
+    );
+
     // Plotly layout
     const layout = useMemo(
         () => ({
@@ -599,8 +637,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
                 roworder: "top to bottom",
             },
             xaxis: {
-                title: { text: `Genomic Position (${chromosome})` },
-                range: initialXRange,
+                title: { text: xAxisTitle },
+                range: xAxisRange || initialXRange,
                 minallowed: Math.min(nearbySnpsRange[0], xMin),
                 maxallowed: Math.max(nearbySnpsRange[1], xMax),
                 autorange: false,
@@ -833,9 +871,11 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             cellTypes,
             chromosome,
             initialXRange,
+            xAxisRange,
             nearbySnpsRange,
             xMin,
             xMax,
+            xAxisTitle,
             hasGwas,
             calculateDomain,
             initialGwasYRange,
@@ -855,6 +895,7 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         >
             <Plot
                 onClick={onClick}
+                onRelayout={handleRelayout}
                 data={[...geneTraces, ...snpTraces]}
                 style={{ width: "100%", height: "100%" }}
                 layout={layout}
