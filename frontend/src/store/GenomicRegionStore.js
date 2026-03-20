@@ -8,6 +8,7 @@ import {
     getGeneList,
     getSnpList,
     getExonStructureInChromosome,
+    getGwasDatasets,
 } from "../api/signal.js";
 
 function columnToRow(data) {
@@ -49,6 +50,9 @@ const useSignalStore = create((set, get) => ({
     snpList: [],
     exonStructure: [],
     exonStructureTruncated: false,
+    gwasDatasets: [],
+    selectedGwasDatasets: [],
+    gwasData: {},
 
     setDataset: (dataset) => {
         set({ dataset: dataset });
@@ -207,49 +211,6 @@ const useSignalStore = create((set, get) => ({
         }
     },
 
-    fetchGwas: async (dataset, start, end) => {
-        dataset = dataset ?? get().dataset;
-        if (!dataset || dataset === "all") {
-            set({
-                error: "fetchGwas: No dataset selected",
-                loading: false,
-            });
-            return;
-        }
-
-        const chromosome = get().selectedChromosome;
-
-        if (
-            !chromosome ||
-            start === null ||
-            start === undefined ||
-            end === null ||
-            end === undefined
-        ) {
-            set({
-                error: "fetchGwas: No chromosome or range selected",
-                loading: false,
-            });
-            return;
-        }
-        set({ loading: true });
-
-        try {
-            const response = await getGwasInChromosome(
-                dataset,
-                chromosome,
-                start,
-                end,
-            );
-            const gwas = response.data;
-            const gwasRows = columnToRow(gwas);
-            return gwasRows;
-        } catch (error) {
-            console.error("Error fetching GWAS data:", error);
-            throw error;
-        }
-    },
-
     fetchGeneList: async (dataset, query_str = "all") => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
@@ -376,6 +337,77 @@ const useSignalStore = create((set, get) => ({
                 exonStructureTruncated: false,
                 loading: false,
             });
+            throw error;
+        }
+    },
+
+    fetchGwasDatasets: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset || dataset === "all") {
+            set({ error: "fetchGwasDatasets: No dataset selected" });
+            return;
+        }
+        set({ loading: true });
+        try {
+            const response = await getGwasDatasets(dataset);
+            const datasets = response.data;
+            set({
+                gwasDatasets: datasets,
+                selectedGwasDatasets: datasets.map((d) => d.id),
+            });
+        } catch (error) {
+            console.error("Error fetching GWAS datasets:", error);
+            throw error;
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    fetchGwasForRegion: async (dataset, chromosome, start, end) => {
+        dataset = dataset ?? get().dataset;
+        const selected = get().selectedGwasDatasets;
+        if (
+            !dataset ||
+            !chromosome ||
+            start == null ||
+            end == null ||
+            selected.length === 0
+        ) {
+            set({ gwasData: {} });
+            return;
+        }
+
+        set({ loading: true });
+        const promises = selected.map(async (gwasId) => {
+            const response = await getGwasInChromosome(
+                dataset,
+                gwasId,
+                chromosome,
+                start,
+                end,
+            );
+
+            const data = columnToRow(response.data.data).map(
+                ({ snp_id, p_value, beta_value, position }) => ({
+                    id: snp_id,
+                    x: position,
+                    y: -Math.log10(Math.max(p_value, 1e-20)),
+                    beta: beta_value,
+                    snp_id,
+                    p_value,
+                    position,
+                }),
+            );
+            return [gwasId, data];
+        });
+
+        try {
+            const results = await Promise.all(promises);
+            const gwasData = Object.fromEntries(results);
+            set({ gwasData, loading: false });
+        } catch (error) {
+            console.error("Error fetching GWAS data:", error);
+            set({ loading: false });
             throw error;
         }
     },

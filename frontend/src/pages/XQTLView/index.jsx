@@ -379,12 +379,6 @@ function XQTLView() {
         }
     };
 
-    useEffect(() => {
-        if ((selectedGene || selectedSnp) && datasetId) {
-            fetchGeneOrSnpData();
-        }
-    }, [selectedGwasDatasets, datasetId, selectedGene, selectedSnp]);
-
     const handleDatasetChange = (event, newValue) => {
         setDataset(newValue);
         setDatasetId(newValue);
@@ -496,8 +490,21 @@ function XQTLView() {
         ...displayOptions,
     });
 
-    const activeGwasDatasets =
-        (displayOptions.showGwas ?? true) ? selectedGwasDatasets || [] : [];
+    const activeGwasDatasets = useMemo(() => {
+        return displayOptions.showGwas ? selectedGwasDatasets || [] : [];
+    }, [displayOptions.showGwas, selectedGwasDatasets]);
+
+    useEffect(() => {
+        if ((selectedGene || selectedSnp) && datasetId) {
+            fetchGeneOrSnpData();
+        }
+    }, [
+        selectedGwasDatasets,
+        datasetId,
+        selectedGene,
+        selectedSnp,
+        activeGwasDatasets,
+    ]);
 
     const menuOpen = Boolean(anchorEl);
 

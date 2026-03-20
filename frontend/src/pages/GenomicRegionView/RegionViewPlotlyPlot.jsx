@@ -1,7 +1,8 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
+import { getGencodeVersion } from "../../api/signal.js";
 
 function getTranscriptColor(biotypeRaw) {
     const biotype = (biotypeRaw || "").toLowerCase();
@@ -195,8 +196,8 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     cellTypes,
     signalData,
     nearbyGenes,
+    gwasDatasets,
     gwasData,
-    hasGwas,
     handleSelect,
     useWebGL,
     displayOptions,
@@ -297,10 +298,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
               ? 0
               : globalMaxPos * 1.1; // add 10% padding
 
-    // GWAS ranges
-    const gwasMin = gwasData.reduce((min, s) => Math.min(min, s.y), 0);
-    const gwasMax = gwasData.reduce((max, s) => Math.max(max, s.y), 2);
-
     // X range for all tracks
     const initialXRange = useMemo(() => {
         const start = Math.max(0, range.start);
@@ -308,11 +305,23 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         return [start, end];
     }, [range]);
 
-    // Y range for GWAS track
+    const allGwasPoints = Object.values(gwasData).flat();
+    const gwasYValues = allGwasPoints.map((p) => p.y);
+    const gwasMin = gwasYValues.length ? Math.min(...gwasYValues, 0) : 0;
+    const gwasMax = gwasYValues.length ? Math.max(...gwasYValues, 2) + 1 : 3;
     const initialGwasYRange = useMemo(
         () => [gwasMin, gwasMax],
         [gwasMin, gwasMax],
     );
+
+    const nGwas = gwasDatasets.length;
+    const nCell = cellTypes.length;
+    const getGwasDisplayName = useCallback((ds) => {
+        if (ds.trait && ds.citation) {
+            return `GWAS for ${ds.trait} (${ds.citation})`;
+        }
+        return ds.name || ds.id;
+    }, []);
 
     const formatNumber = (num, precision) => {
         const rounded = round(num, precision);
@@ -321,41 +330,44 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             : rounded.toString();
     };
 
-    const gwasTrace = useMemo(() => {
-        return [
-            {
-                x: gwasData.map((s) => s.x),
-                y: gwasData.map((s) => s.y),
-                xaxis: "x",
-                yaxis: "y2", // Second track for GWAS
-                type: useWebGL ? "scattergl" : "scatter",
-                mode: "markers",
-                marker: {
-                    color: gwasData.map((s) =>
-                        s.beta > 0 ? "rgb(230, 80, 80)" : "rgb(80, 80, 230)",
-                    ),
-                    // color: gwasData.map((s) =>
-                    //   dataToRGB(s, minBetaMagnitude, maxBetaMagnitude),
-                    // ),
-                    opacity: 1,
-                    size: 6,
-                    line: {
-                        width: 0,
+    const gwasTraces = useMemo(() => {
+        if (nGwas === 0) return [];
+        return gwasDatasets.flatMap((ds, idx) => {
+            const points = gwasData[ds.id] || [];
+            const yaxis = `y${idx + 2}`;
+            return [
+                {
+                    name: getGwasDisplayName(ds),
+                    x: points.map((p) => p.position),
+                    y: points.map((p) => p.y),
+                    xaxis: "x",
+                    yaxis: yaxis,
+                    type: useWebGL ? "scattergl" : "scatter",
+                    mode: "markers",
+                    marker: {
+                        color: points.map((p) =>
+                            p.beta > 0
+                                ? "rgb(230,120,120)"
+                                : "rgb(120,120,230)",
+                        ),
+                        size: 6,
+                        line: { width: 0 },
                     },
+                    customdata: points.map((p) => p.snp_id),
+                    hoverinfo: "text",
+                    hovertext: points.map(
+                        (p) =>
+                            `<b>SNP:</b> ${p.snp_id}<br>` +
+                            `<b>Position:</b> ${p.position}<br>` +
+                            `<b>β (GWAS):</b> ${round(p.beta, 6)}<br>` +
+                            `<b>−log10(p):</b> ${round(p.y, 6)}`,
+                    ),
+                    pointType: "gwas",
+                    showlegend: false,
                 },
-                customdata: gwasData.map((s) => s.id),
-                pointType: "gwas",
-                hoverinfo: "text",
-                hovertext: gwasData.flatMap(
-                    (s) =>
-                        `<b>SNP:</b> ${s.snp_id}<br>` +
-                        `<b>Position:</b> ${s.position}<br>` +
-                        `<b>β (GWAS):</b> ${formatNumber(s.beta, 6)}<br>` +
-                        `<b>−log10(p) (GWAS):</b> ${formatNumber(s.y, 6)}`,
-                ),
-            },
-        ];
-    }, [gwasData, useWebGL]);
+            ];
+        });
+    }, [gwasDatasets, gwasData, useWebGL, getGwasDisplayName]);
 
     const GENE_TRACK_GAP_PIXELS = 20;
     const GENE_LABEL_OFFSET_PIXELS = 7;
@@ -1051,29 +1063,34 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             handleSelect(geneId, formattedData, "gene");
             return;
         } else if (pointType === "gwas") {
-            let data = gwasData.find((s) => s.id === name);
+            let data = null;
+            for (const ds of gwasDatasets) {
+                const found = (gwasData[ds.id] || []).find(
+                    (p) => p.snp_id === name,
+                );
+                if (found) {
+                    data = found;
+                    break;
+                }
+            }
             if (!data) return;
-
-            const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data.id)}`;
-
+            const gwasUrl = `https://www.ebi.ac.uk/gwas/search?query=${encodeURIComponent(data.snp_id)}`;
             const formattedData = (
                 <>
-                    <strong>SNP:</strong> {data.id}{" "}
+                    <strong>SNP:</strong> {data.snp_id}{" "}
                     <a href={gwasUrl} target="_blank" rel="noopener noreferrer">
                         (View in GWAS Catalog)
                     </a>
                     <br />
                     <strong>Chromosome:</strong> {chromosome}
                     <br />
-                    <strong>Position:</strong> {data.x}
+                    <strong>Position:</strong> {data.position}
                     <br />
                     <strong>β:</strong> {formatNumber(data.beta, 6)}
                     <br />
-                    <strong>−log10(p):</strong>{" "}
-                    {formatNumber(data.y * Math.sign(data.beta), 6)}
+                    <strong>−log10(p):</strong> {formatNumber(data.y, 6)}
                 </>
             );
-
             handleSelect(name, formattedData, "snp");
             return;
         }
@@ -1092,7 +1109,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             const baseHue = (reversedI * 360) / cellTypes.length;
             const plusColor = `hsl(${baseHue}, 70%, 45%)`;
             const minusColor = `hsla(${baseHue}, 70%, 75%, 0.7)`; // lighter and semi-transparent for minus strand
-            const yaxisId = `y${i + (hasGwas ? 3 : 2)}`;
+            const yaxisId = `y${nGwas + 2 + i}`;
 
             // Plus/minus case
             if (entry && !Array.isArray(entry) && (entry.plus || entry.minus)) {
@@ -1211,7 +1228,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         });
 
         return traces;
-    }, [binSize, cellTypes, hasGwas, signalData, useWebGL]);
+    }, [binSize, cellTypes, signalData, useWebGL, nGwas]);
 
     // Calculate layout dimensions
     const pixelsPerTrack = getDisplayOption(displayOptions, "trackHeight", 120);
@@ -1221,14 +1238,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const marginLeft = 80;
     const marginRight = 80;
 
-    const nSignalTracks = cellTypes.length;
-    const nGwasTracks = hasGwas ? 1 : 0;
-
     const totalInnerHeight =
-        exonTrackPixels + // special for exon track
-        nGwasTracks * pixelsPerTrack +
-        nSignalTracks * pixelsPerTrack +
-        (1 + nGwasTracks + nSignalTracks - 1) * pixelsPerGap;
+        exonTrackPixels +
+        nGwas * pixelsPerTrack +
+        nCell * pixelsPerTrack +
+        (1 + nGwas + nCell - 1) * pixelsPerGap;
 
     const totalHeight = marginTop + marginBottom + totalInnerHeight;
 
@@ -1242,40 +1256,113 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
 
     const calculateDomain = useCallback(
         (trackIndex) => {
-            let offset = 0;
-
             if (trackIndex === 0) {
-                const start = 0;
-                const end = start + exonTrackDomainHeight;
-                return [start, Math.min(end, 1.0)];
+                return [0, exonTrackDomainHeight];
             }
-
-            offset += exonTrackDomainHeight + gapDomainHeight;
-
-            if (hasGwas && trackIndex === 1) {
-                const start = offset;
-                const end = start + normalTrackDomainHeight;
-                return [start, Math.min(end, 1.0)];
+            let offset = exonTrackDomainHeight + gapDomainHeight;
+            if (trackIndex <= nGwas) {
+                const start =
+                    offset +
+                    (trackIndex - 1) *
+                        (normalTrackDomainHeight + gapDomainHeight);
+                return [start, start + normalTrackDomainHeight];
             }
-
-            if (hasGwas) {
-                offset += normalTrackDomainHeight + gapDomainHeight;
-            }
-
-            const signalIndex = trackIndex - (hasGwas ? 2 : 1);
-            offset += signalIndex * (normalTrackDomainHeight + gapDomainHeight);
-
-            const start = offset;
-            const end = start + normalTrackDomainHeight;
-            return [start, Math.min(end, 1.0)];
+            offset += nGwas * (normalTrackDomainHeight + gapDomainHeight);
+            const cellIndex = trackIndex - nGwas - 1;
+            const start =
+                offset +
+                cellIndex * (normalTrackDomainHeight + gapDomainHeight);
+            return [start, start + normalTrackDomainHeight];
         },
         [
             exonTrackDomainHeight,
             normalTrackDomainHeight,
             gapDomainHeight,
-            hasGwas,
+            nGwas,
         ],
     );
+
+    const [gencodeVersion, setGencodeVersion] = useState("");
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const v = await getGencodeVersion(dataset);
+                if (!cancelled) setGencodeVersion(v);
+            } catch (e) {
+                console.error("Error loading GENCODE version:", e);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [dataset]);
+
+    const geneTrackLabel = useMemo(
+        () =>
+            gencodeVersion
+                ? `Gene Track (GENCODE ${gencodeVersion})`
+                : "Gene Track",
+        [gencodeVersion],
+    );
+
+    const yAxes = {};
+
+    // GWAS
+    for (let i = 0; i < nGwas; i++) {
+        const yaxisId = `yaxis${i + 2}`;
+        yAxes[yaxisId] = {
+            title: { text: `−log10(p)`, font: { size: 10 } },
+            domain: calculateDomain(i + 1),
+            range: initialGwasYRange,
+            fixedrange: true,
+            showgrid: getDisplayOption(displayOptions, "showGrid", true),
+            zeroline: false,
+            ticks: "outside",
+            ticklen: 6,
+            tickwidth: 1,
+            tickcolor: "black",
+            tickfont: { size: 8 },
+            showline: true,
+            mirror: true,
+            linewidth: 1,
+            linecolor: "black",
+            anchor: "x",
+        };
+    }
+
+    // Cell types
+    for (let i = 0; i < nCell; i++) {
+        const yaxisId = `yaxis${nGwas + 2 + i}`;
+        const [yMin, yMax] = getTrackRange(
+            cellTypes[i],
+            signalList,
+            visibleRange,
+            displayOptions,
+            trackTypes,
+            globalHalfRangeSym,
+            globalMaxPosRange,
+        );
+        yAxes[yaxisId] = {
+            title: { text: `Signal`, font: { size: 10 } },
+            domain: calculateDomain(nGwas + 1 + i),
+            autorange: false,
+            range: [yMin, yMax],
+            fixedrange: true,
+            showgrid: getDisplayOption(displayOptions, "showGrid", true),
+            zeroline: false,
+            ticks: "outside",
+            ticklen: 6,
+            tickwidth: 1,
+            tickcolor: "black",
+            tickfont: { size: 8 },
+            showline: true,
+            mirror: true,
+            linewidth: 1,
+            linecolor: "black",
+            anchor: "x",
+        };
+    }
 
     // Plotly layout
     const layout = useMemo(
@@ -1295,11 +1382,11 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             height: totalHeight,
             autosize: true,
             dragmode: "pan",
-            grid: {
-                rows: cellTypes.length + (hasGwas ? 1 : 0) + 1, // +1 for the gene track
-                columns: 1,
-                roworder: "top to bottom",
-            },
+            // grid: {
+            //     rows: cellTypes.length + (hasGwas ? 1 : 0) + 1, // +1 for the gene track
+            //     columns: 1,
+            //     roworder: "top to bottom",
+            // },
             xaxis: {
                 title: {
                     text: `Genomic Position (${chromosome}:${Math.max(0, visibleRange.start)}–${visibleRange.end})`,
@@ -1325,70 +1412,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 side: "bottom",
                 anchor: "y",
             },
-            ...cellTypes.reduce((acc, celltype, i) => {
-                const baseIndex = hasGwas ? i + 2 : i + 1;
-                const [yMin, yMax] = getTrackRange(
-                    celltype,
-                    signalList,
-                    visibleRange,
-                    displayOptions,
-                    trackTypes,
-                    globalHalfRangeSym,
-                    globalMaxPosRange,
-                );
-
-                acc[`yaxis${baseIndex + 1}`] = {
-                    title: { text: `Signal`, font: { size: 10 } },
-                    domain: calculateDomain(baseIndex),
-                    autorange: false,
-                    range: [yMin, yMax],
-                    fixedrange: true,
-                    showgrid: getDisplayOption(
-                        displayOptions,
-                        "showGrid",
-                        true,
-                    ),
-                    zeroline: false,
-                    ticks: "outside",
-                    ticklen: 6,
-                    tickwidth: 1,
-                    tickcolor: "black",
-                    tickfont: { size: 8 },
-                    showline: true,
-                    mirror: true,
-                    linewidth: 1,
-                    linecolor: "black",
-                    anchor: "x",
-                };
-                return acc;
-            }, {}),
-            ...(hasGwas
-                ? {
-                      [`yaxis2`]: {
-                          title: { text: `−log10(p)`, font: { size: 10 } },
-                          domain: calculateDomain(1), // Last track for GWAS
-                          autorange: false,
-                          range: initialGwasYRange,
-                          fixedrange: true,
-                          showgrid: getDisplayOption(
-                              displayOptions,
-                              "showGrid",
-                              true,
-                          ),
-                          zeroline: false,
-                          ticks: "outside",
-                          ticklen: 6,
-                          tickwidth: 1,
-                          tickcolor: "black",
-                          tickfont: { size: 8 },
-                          showline: true,
-                          mirror: true,
-                          linewidth: 1,
-                          linecolor: "black",
-                          anchor: "x",
-                      },
-                  }
-                : {}),
+            ...yAxes,
             yaxis: {
                 autorange: false,
                 domain: calculateDomain(0), // 0th track is for SNP track
@@ -1420,34 +1444,41 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                     layer: "below",
                     line: { width: 0 },
                 },
-
-                ...(hasGwas
-                    ? [
-                          {
-                              type: "rect",
-                              xref: "paper",
-                              yref: "y2",
-                              x0: 0,
-                              x1: 1,
-                              y0: Math.log10(5e-8),
-                              y1: -Math.log10(5e-8),
-                              fillcolor: "lightgray",
-                              opacity: 0.3,
-                              layer: "below",
-                              line: { width: 0 },
-                          },
-                      ]
+                ...(nGwas > 0
+                    ? Array.from({ length: nGwas }, (_, i) => ({
+                          type: "rect",
+                          xref: "paper",
+                          yref: `y${i + 2}`,
+                          x0: 0,
+                          x1: 1,
+                          y0: Math.log10(5e-8),
+                          y1: -Math.log10(5e-8),
+                          fillcolor: "lightgray",
+                          opacity: 0.3,
+                          layer: "below",
+                          line: { width: 0 },
+                      }))
                     : []),
             ],
             annotations: [
-                ...cellTypes.map((celltype, i) => {
-                    const domain = calculateDomain(i + (hasGwas ? 2 : 1));
-
+                // Gene track label
+                {
+                    text: geneTrackLabel,
+                    font: { size: 14 },
+                    xref: "paper",
+                    yref: "paper",
+                    x: 0.001,
+                    y: calculateDomain(0)[1],
+                    showarrow: false,
+                    xanchor: "left",
+                    yanchor: "top",
+                },
+                // GWAS track labels
+                ...gwasDatasets.map((ds, i) => {
+                    const domain = calculateDomain(i + 1);
                     return {
-                        text: celltype,
-                        font: {
-                            size: 13,
-                        },
+                        text: getGwasDisplayName(ds),
+                        font: { size: 14 },
                         xref: "paper",
                         yref: "paper",
                         x: 0.001,
@@ -1457,23 +1488,21 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                         yanchor: "top",
                     };
                 }),
-                ...(hasGwas
-                    ? [
-                          {
-                              text: "GWAS",
-                              font: {
-                                  size: 13,
-                              },
-                              xref: "paper",
-                              yref: "paper",
-                              x: 0.001,
-                              y: calculateDomain(1)[1],
-                              showarrow: false,
-                              xanchor: "left",
-                              yanchor: "top",
-                          },
-                      ]
-                    : []),
+                // Cell type labels
+                ...cellTypes.map((celltype, i) => {
+                    const domain = calculateDomain(nGwas + 1 + i);
+                    return {
+                        text: celltype,
+                        font: { size: 14 },
+                        xref: "paper",
+                        yref: "paper",
+                        x: 0.001,
+                        y: domain[1],
+                        showarrow: false,
+                        xanchor: "left",
+                        yanchor: "top",
+                    };
+                }),
             ],
         }),
         [
@@ -1482,7 +1511,6 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             selectedRange.end,
             totalHeight,
             cellTypes,
-            hasGwas,
             visibleRange,
             initialXRange,
             displayOptions,
@@ -1494,6 +1522,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             trackTypes,
             globalHalfRangeSym,
             globalMaxPosRange,
+            nGwas,
         ],
     );
 
@@ -1508,7 +1537,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 onUpdate={handlePlotUpdate}
                 onInitialized={handlePlotUpdate}
                 onClick={onClick}
-                data={[...geneTrackTraces, ...gwasTrace, ...signalTraces]}
+                data={[...geneTrackTraces, ...gwasTraces, ...signalTraces]}
                 style={{ width: "100%", height: "100%" }}
                 layout={layout}
                 useResizeHandler
@@ -1672,17 +1701,25 @@ RegionViewPlotlyPlot.propTypes = {
             PropTypes.oneOf([null]),
         ]),
     ).isRequired,
-    gwasData: PropTypes.arrayOf(
+    gwasDatasets: PropTypes.arrayOf(
         PropTypes.shape({
             id: PropTypes.string.isRequired,
-            snp_id: PropTypes.string.isRequired,
-            position: PropTypes.number.isRequired,
-            x: PropTypes.number.isRequired,
-            y: PropTypes.number.isRequired,
-            beta: PropTypes.number.isRequired,
+            name: PropTypes.string,
+            trait: PropTypes.string,
+            citation: PropTypes.string,
         }),
     ).isRequired,
-    hasGwas: PropTypes.bool.isRequired,
+    gwasData: PropTypes.objectOf(
+        PropTypes.arrayOf(
+            PropTypes.shape({
+                snp_id: PropTypes.string.isRequired,
+                position: PropTypes.number.isRequired,
+                beta: PropTypes.number.isRequired,
+                p_value: PropTypes.number.isRequired,
+                y: PropTypes.number,
+            }),
+        ),
+    ).isRequired,
     chromosome: PropTypes.string.isRequired,
     cellTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
     handleSelect: PropTypes.func.isRequired,

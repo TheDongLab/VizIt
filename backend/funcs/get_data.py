@@ -190,9 +190,8 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
             return "Error: Chromosome file not found for the specified dataset."
 
 
-def get_gwas_datasets(qtl_dataset):
-    """Return list of available GWAS datasets for the given QTL dataset."""
-    config_path = os.path.join("backend", "datasets", qtl_dataset, "gwas", "gwas_datasets.toml")
+def get_gwas_datasets(dataset):
+    config_path = os.path.join("backend", "datasets", dataset, "gwas", "gwas_datasets.toml")
     if not os.path.exists(config_path):
         return [] 
     with open(config_path, "r") as f:
@@ -201,7 +200,6 @@ def get_gwas_datasets(qtl_dataset):
 
 
 def get_gwas_in_chromosome(qtl_dataset, gwas_dataset, chromosome, start, end):
-    """Fetch GWAS data for a specific GWAS dataset."""
     base_dir = os.path.join("backend", "datasets", qtl_dataset, "gwas", gwas_dataset)
     file_path = os.path.join(base_dir, f"{chromosome}.tsv")
     if not os.path.exists(file_path):
@@ -228,6 +226,9 @@ def get_gwas_in_chromosome(qtl_dataset, gwas_dataset, chromosome, start, end):
 def get_gene_chromosome(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
+
+    if gene is None:
+        return "Error: Gene is not specified."
     
     if gene.startswith("chr") and "-" in gene:
         chromosome = gene.split("-")[0]

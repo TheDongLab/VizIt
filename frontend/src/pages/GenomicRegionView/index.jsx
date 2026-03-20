@@ -101,12 +101,16 @@ function GenomicRegionView() {
         fetchCellTypes,
         fetchSignalData,
         fetchGeneLocations,
-        fetchGwas,
         fetchGeneList,
         fetchSnpList,
         fetchExonStructure,
         exonStructure,
         exonStructureTruncated,
+        gwasDatasets,
+        selectedGwasDatasets,
+        fetchGwasDatasets,
+        fetchGwasForRegion,
+        gwasData,
     } = useSignalStore();
     const { loading, error } = useSignalStore();
 
@@ -422,8 +426,12 @@ function GenomicRegionView() {
         }
     };
 
-    const [gwasData, setGwasData] = useState([]);
-    const [hasGwas, setHasGwas] = useState(true);
+    useEffect(() => {
+        if (datasetId) {
+            fetchGwasDatasets(datasetId);
+        }
+    }, [datasetId]);
+
     const [selectionError, setSelectionError] = useState("");
 
     const fetchData = async (range, binSizeOverride = null) => {
@@ -446,41 +454,16 @@ function GenomicRegionView() {
 
             await fetchExonStructure(datasetId, start, end);
 
-            let gwas;
-            if (hasGwas !== false) {
-                if (!(displayOptions?.showGwas ?? true)) {
-                    setGwasData([]);
-                    gwas = [];
-                } else {
-                    try {
-                        gwas = await fetchGwas(datasetId, start, end);
-                        setHasGwas(true);
-                        setGwasData(
-                            gwas.map(
-                                ({
-                                    snp_id,
-                                    p_value,
-                                    beta_value,
-                                    position,
-                                    ...rest
-                                }) => ({
-                                    ...rest,
-                                    id: snp_id,
-                                    y: -Math.log10(Math.max(p_value, 1e-20)),
-                                    beta: beta_value,
-                                    x: position,
-                                    snp_id,
-                                    p_value,
-                                    position,
-                                }),
-                            ),
-                        );
-                        // console.log(gwasData);
-                    } catch (err) {
-                        console.error("Error fetching GWAS data:", err);
-                        setHasGwas(false);
-                        setGwasData([]);
-                    }
+            if (activeGwasDatasets.length > 0) {
+                try {
+                    await fetchGwasForRegion(
+                        datasetId,
+                        selectedChromosome,
+                        start,
+                        end,
+                    );
+                } catch (err) {
+                    console.error("Error fetching GWAS data:", err);
                 }
             }
 
@@ -598,7 +581,7 @@ function GenomicRegionView() {
         }
 
         const init = async () => {
-            const parsed = await parseRegionString(urlRegion);
+            const parsed = parseRegionString(urlRegion);
             if (!parsed) return;
 
             const {
@@ -648,6 +631,10 @@ function GenomicRegionView() {
     });
 
     const menuOpen = Boolean(anchorEl);
+
+    const activeGwasDatasets = useMemo(() => {
+        return displayOptions.showGwas ? selectedGwasDatasets || [] : [];
+    }, [displayOptions.showGwas, selectedGwasDatasets]);
 
     useEffect(() => {
         if (menuOpen) {
@@ -744,6 +731,7 @@ function GenomicRegionView() {
         selectedChromosome,
         selectedRange?.start,
         selectedRange?.end,
+        activeGwasDatasets,
     ]);
 
     useEffect(() => {
@@ -774,16 +762,8 @@ function GenomicRegionView() {
         datasetId,
         currentBinSize,
         selectedRange,
-        hasGwas,
+        activeGwasDatasets,
     ]);
-
-    useEffect(() => {
-        if (displayOptions?.showGwas ?? true) {
-            setHasGwas(true);
-        } else {
-            setHasGwas(null);
-        }
-    }, [displayOptions.showGwas]);
 
     return (
         <div
@@ -1340,13 +1320,13 @@ function GenomicRegionView() {
                                                 cellTypes={availableCellTypes}
                                                 signalData={signalData}
                                                 nearbyGenes={nearbyGenes}
+                                                gwasDatasets={gwasDatasets.filter(
+                                                    (ds) =>
+                                                        activeGwasDatasets.includes(
+                                                            ds.id,
+                                                        ),
+                                                )}
                                                 gwasData={gwasData}
-                                                hasGwas={
-                                                    (displayOptions?.showGwas ??
-                                                    true)
-                                                        ? hasGwas
-                                                        : false
-                                                }
                                                 handleSelect={handleSelect}
                                                 useWebGL={webGLSupported}
                                                 displayOptions={displayOptions}

@@ -84,23 +84,6 @@ export const getGeneLocationsInChromosome = async (
     }
 };
 
-export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
-    try {
-        const response = await axios.get(`${SIGNAL_URL}/getgwasinchromosome`, {
-            params: {
-                dataset: dataset,
-                chromosome: chromosome,
-                start: start,
-                end: end,
-            },
-        });
-        return response;
-    } catch (error) {
-        console.error("Error getGwasInChromosome:", error);
-        throw error;
-    }
-};
-
 export const getGeneList = async (dataset, query_str) => {
     try {
         const response = await axios.get(`${SIGNAL_URL}/getgenelist`, {
@@ -146,6 +129,55 @@ export const getExonStructureInChromosome = async (
         return response;
     } catch (error) {
         console.error("Error getExonStructureInChromosome:", error);
+        throw error;
+    }
+};
+
+export const getGwasDatasets = async (dataset) => {
+    try {
+        const response = await axios.get(`${SIGNAL_URL}/getgwasdatasets`, {
+            params: { dataset: dataset },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGwasDatasets:", error);
+        throw error;
+    }
+};
+
+export const getGwasInChromosome = async (
+    dataset,
+    gwas_dataset,
+    chromosome,
+    start,
+    end,
+) => {
+    try {
+        const response = await axios.get(`${SIGNAL_URL}/getgwasinchromosome`, {
+            params: {
+                dataset: dataset,
+                gwas_dataset: gwas_dataset,
+                chromosome: chromosome,
+                start: start,
+                end: end,
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGwasInChromosome:", error);
+        throw error;
+    }
+};
+
+export const getGencodeVersion = async (dataset) => {
+    try {
+        const response = await axios.get(`${SIGNAL_URL}/getgencodeversion`, {
+            params: { dataset: dataset },
+        });
+        console.log("Gencode version response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error getGencodeVersion:", error);
         throw error;
     }
 };
