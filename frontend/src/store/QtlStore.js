@@ -188,6 +188,7 @@ const useQtlStore = create((set, get) => ({
 
         try {
             const response = await getSnpCellTypes(dataset, get().selectedSnp);
+            const cellTypes = response.data;
             const reversedCellTypes = cellTypes.slice().reverse();
             set({ selectedCellTypes: reversedCellTypes, loading: false });
         } catch (error) {
@@ -360,6 +361,7 @@ const useQtlStore = create((set, get) => ({
             dataset,
             get().selectedGene,
         );
+        console.log(positionResponse.data);
         const start = positionResponse.data.start - radius;
         const end = positionResponse.data.end + radius;
 
@@ -404,8 +406,9 @@ const useQtlStore = create((set, get) => ({
             dataset,
             get().selectedSnp,
         );
-        const start = positionResponse.data.start - radius;
-        const end = positionResponse.data.end + radius;
+        const position = positionResponse.data.position;
+        const start = position - radius;
+        const end = position + radius;
 
         const promises = selectedGwasDatasets.map(async (gwasId) => {
             const response = await getGwasInChromosome(
@@ -414,6 +417,17 @@ const useQtlStore = create((set, get) => ({
                 selectedChromosome,
                 start,
                 end,
+            );
+            const data = columnToRow(response.data.data).map(
+                ({ snp_id, p_value, beta_value, position }) => ({
+                    id: snp_id,
+                    x: position,
+                    y: -Math.log10(Math.max(p_value, 1e-20)),
+                    beta: beta_value,
+                    snp_id,
+                    p_value,
+                    position,
+                }),
             );
             return [gwasId, data];
         });

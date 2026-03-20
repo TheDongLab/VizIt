@@ -835,7 +835,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         initialYRange,
     ]);
 
-    // Dashed line shapes (if enabled)
     const dashedLineShapes = useMemo(() => {
         if (!gene || !getDisplayOption(displayOptions, "showDashedLine", true))
             return [];
@@ -862,7 +861,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                   : (gene.position_start + gene.position_end) / 2;
         const x1 = x0;
         if (crossGap) {
-            // Single line across all tracks using paper y‑reference
             return [
                 {
                     type: "line",
@@ -877,7 +875,6 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
                 },
             ];
         } else {
-            // Separate lines per track
             const lines = [];
             // Gene track
             lines.push({

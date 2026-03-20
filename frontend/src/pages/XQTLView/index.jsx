@@ -120,7 +120,6 @@ function XQTLView() {
         resetQtlState,
         gwasDatasets,
         selectedGwasDatasets,
-        setSelectedGwasDatasets,
         fetchGwasDatasets,
         fetchGwasForGene,
         fetchGwasForSnp,
@@ -190,11 +189,7 @@ function XQTLView() {
         initialize();
     }, [datasetId, setDataset]);
 
-    const [geneSearchText, setGeneSearchText] = useState("");
-    const [snpSearchText, setSnpSearchText] = useState("");
     const [combinedSearchText, setCombinedSearchText] = useState("");
-    const [filteredGeneList, setFilteredGeneList] = useState([]);
-    const [filteredSnpList, setFilteredSnpList] = useState([]);
     const [filteredCombinedList, setFilteredCombinedList] = useState([]);
 
     useEffect(() => {
@@ -1122,6 +1117,13 @@ function XQTLView() {
                                                 dataset={datasetId}
                                                 snpName={selectedSnp}
                                                 snps={snps}
+                                                gwasDatasets={gwasDatasets.filter(
+                                                    (ds) =>
+                                                        activeGwasDatasets.includes(
+                                                            ds.id,
+                                                        ),
+                                                )}
+                                                gwasData={gwasData}
                                                 geneData={geneData}
                                                 chromosome={selectedChromosome}
                                                 cellTypes={selectedCellTypes}
