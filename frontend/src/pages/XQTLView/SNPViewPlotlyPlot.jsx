@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
+import { getGencodeVersion } from "../../api/qtl.js";
 
 function dataToRGB({ beta, y }, min = 2, max = 3) {
     const maxLevel = 230;
@@ -615,6 +616,22 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         initialYRange,
     ]);
 
+    const [gencodeVersion, setGencodeVersion] = useState("");
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const v = await getGencodeVersion(dataset);
+                if (!cancelled) setGencodeVersion(v);
+            } catch (e) {
+                console.error("Error loading GENCODE version:", e);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [dataset]);
+
     const trackAnnotations = useMemo(() => {
         const ann = [];
         // GWAS track labels
@@ -636,7 +653,8 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
         cellTypes.forEach((ct, i) => {
             const domain = calculateDomain(nGwas + i);
             ann.push({
-                text: ct,
+                text:
+                    ct + (gencodeVersion ? ` (GENCODE ${gencodeVersion})` : ""),
                 font: { size: 14 },
                 xref: "paper",
                 yref: "paper",
@@ -648,7 +666,14 @@ const SNPViewPlotlyPlot = React.memo(function SNPViewPlotlyPlot({
             });
         });
         return ann;
-    }, [gwasDatasets, cellTypes, calculateDomain, nGwas]);
+    }, [
+        gwasDatasets,
+        cellTypes,
+        calculateDomain,
+        nGwas,
+        gencodeVersion,
+        getGwasDisplayName,
+    ]);
 
     useEffect(() => {
         setXAxisRange(initialXRange);

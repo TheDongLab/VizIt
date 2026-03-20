@@ -1265,6 +1265,33 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
         return f"Error processing data: {str(e)}"
 
 
+def get_gene_annotation_info(dataset):
+    if dataset == "all":
+        return {}
+
+    ann_file = os.path.join(
+        "backend", "datasets", dataset, "gene_locations", "gene_annotations.toml"
+    )
+    if not os.path.exists(ann_file):
+        return {}
+
+    with open(ann_file, "r") as f:
+        try:
+            cfg = toml.load(f)
+        except Exception as e:
+            print(f"Error reading {ann_file}: {e}")
+            return {}
+
+    return cfg or {}
+
+
+def get_gencode_version(dataset):
+    if dataset == "all":
+        return ""
+    ann_info = get_gene_annotation_info(dataset)
+    return ann_info.get("gene_locations", {}).get("gencode_version", "")
+
+
 def get_celltype_list(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."

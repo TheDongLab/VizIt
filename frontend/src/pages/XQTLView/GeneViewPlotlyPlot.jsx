@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 import Plotly from "plotly.js-dist";
 import PropTypes from "prop-types";
+import { getGencodeVersion } from "../../api/qtl.js";
 
 function dataToRGB({ beta, y }, min = 2, max = 3) {
     const maxLevel = 230;
@@ -929,9 +930,45 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
         initialYRange,
     ]);
 
-    // Track labels (annotations)
+    const [gencodeVersion, setGencodeVersion] = useState("");
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const v = await getGencodeVersion(dataset);
+                if (!cancelled) setGencodeVersion(v);
+            } catch (e) {
+                console.error("Error loading GENCODE version:", e);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [dataset]);
+
+    const geneTrackLabel = useMemo(
+        () =>
+            gencodeVersion
+                ? `Gene Track (GENCODE ${gencodeVersion})`
+                : "Gene Track",
+        [gencodeVersion],
+    );
+
+    // Track labels
     const trackAnnotations = useMemo(() => {
         const ann = [];
+        // Gene track label
+        ann.push({
+            text: geneTrackLabel,
+            font: { size: 14 },
+            xref: "paper",
+            yref: "paper",
+            x: 0.001,
+            y: calculateDomain(0)[1],
+            showarrow: false,
+            xanchor: "left",
+            yanchor: "top",
+        });
         // GWAS track labels
         gwasDatasets.forEach((ds, i) => {
             const domain = calculateDomain(i + 1);
@@ -963,7 +1000,14 @@ const GeneViewPlotlyPlot = React.memo(function GeneViewPlotlyPlot({
             });
         });
         return ann;
-    }, [gwasDatasets, cellTypes, calculateDomain, nGwas]);
+    }, [
+        gwasDatasets,
+        cellTypes,
+        calculateDomain,
+        nGwas,
+        geneTrackLabel,
+        getGwasDisplayName,
+    ]);
 
     const [xAxisRange, setXAxisRange] = useState(initialXRange);
 

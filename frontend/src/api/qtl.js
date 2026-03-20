@@ -213,3 +213,16 @@ export const getGwasInChromosome = async (
         throw error;
     }
 };
+
+export const getGencodeVersion = async (dataset) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgencodeversion`, {
+            params: { dataset: dataset },
+        });
+        console.log("Gencode version response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error getGencodeVersion:", error);
+        throw error;
+    }
+};

@@ -18,6 +18,7 @@ from backend.funcs.get_data import (
     get_snp_locations_in_chromosome,
     get_gwas_datasets,
     get_gwas_in_chromosome,
+    get_gencode_version,
 )
 
 router = APIRouter()
@@ -229,4 +230,15 @@ async def getgenedataforsnp(request: Request):
     response = get_gene_data_for_snp(dataset_id, is_caqtl, snp, celltype)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene data.")
+    return response
+
+
+@router.get("/getgencodeversion")
+async def getgencodeversion(request: Request):
+    print("getgencodeversion() called================")
+    dataset_id = request.query_params.get("dataset")
+
+    response = get_gencode_version(dataset_id)
+    if "Error" in response:
+        raise HTTPException(status_code=404, detail="Error in getting GENCODE version.")
     return response
