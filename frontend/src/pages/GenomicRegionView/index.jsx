@@ -1309,7 +1309,7 @@ function GenomicRegionView() {
                                     selectedRange && (
                                         // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
                                         <div
-                                            key={`${selectedChromosome}-${selectedRange.start}-${selectedRange.end}-plot`}
+                                            key={"region-plot"}
                                             className="region-plot"
                                         >
                                             <RegionViewPlotlyPlot
