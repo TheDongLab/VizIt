@@ -1,4 +1,4 @@
-import {useEffect, useState, useMemo, useCallback} from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
     Typography,
     Box,
@@ -22,12 +22,12 @@ import {
     IconButton,
     Tooltip,
 } from "@mui/material";
-import {PropTypes} from "prop-types";
-import {debounce} from "@mui/material/utils";
+import { PropTypes } from "prop-types";
+import { debounce } from "@mui/material/utils";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import SettingsIcon from "@mui/icons-material/Settings";
-import {useSearchParams} from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import "./XQTLView.css";
 
@@ -37,22 +37,22 @@ import useQtlStore from "../../store/QtlStore.js";
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
 
-import {ListboxComponent, StyledPopper} from "../../components/Listbox";
+import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
-import {supportsWebGL} from "../../utils/webgl.js";
+import { supportsWebGL } from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
 console.log("WebGL supported:", webGLSupported);
 
-import {getGeneLocation, getSnpLocation} from "../../api/qtl.js";
+import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 
 function ConfirmationDialog({
-                                isOpen,
-                                handleClose,
-                                handleConfirm,
-                                title,
-                                description,
-                            }) {
+    isOpen,
+    handleClose,
+    handleConfirm,
+    title,
+    description,
+}) {
     return (
         <Dialog
             open={isOpen}
@@ -78,17 +78,22 @@ function XQTLView() {
     const urlSnp = queryParams.get("snp") ?? "";
     const urlDataset = queryParams.get("dataset") ?? "";
 
-    const {datasetRecords, fetchDatasetList} = useDataStore();
+    const { datasetRecords, fetchDatasetList } = useDataStore();
     useEffect(() => {
         fetchDatasetList();
     }, []);
 
     const datasetOptions = datasetRecords
-    .filter((d) => d.assay.toLowerCase().endsWith("qtl"))
-    .map((d) => d.dataset_id);
+        .filter((d) => d.assay.toLowerCase().endsWith("qtl"))
+        .map((d) => d.dataset_id);
 
     const [datasetId, setDatasetId] = useState(urlDataset);
     const [datasetSearchText, setDatasetSearchText] = useState("");
+
+    const isCaQTL = useMemo(() => {
+        const dataset = datasetRecords.find((d) => d.dataset_id === datasetId);
+        return dataset?.assay.toLowerCase().startsWith("ca");
+    }, [datasetId, datasetRecords]);
 
     const {
         setDataset,
@@ -112,13 +117,23 @@ function XQTLView() {
         fetchSnpChromosome,
         fetchGeneLocations,
         fetchSnpLocations,
+        resetQtlState,
+        gwasDatasets,
+        selectedGwasDatasets,
+        fetchGwasDatasets,
         fetchGwasForGene,
         fetchGwasForSnp,
-        resetQtlState,
+        gwasData,
     } = useQtlStore();
-    const {loading, error} = useQtlStore();
+    const { loading, error } = useQtlStore();
 
     const [dataLoading, setDataLoading] = useState(false);
+
+    useEffect(() => {
+        if (datasetId) {
+            fetchGwasDatasets(datasetId);
+        }
+    }, [datasetId]);
 
     const selectGeneOrSnp = (type, value) => {
         if (type === "gene") {
@@ -143,11 +158,16 @@ function XQTLView() {
                 const snps = await fetchSnpList(datasetId);
 
                 if (urlGene) {
-                    if (genes.includes(urlGene)) {
-                        setSelectedGene(urlGene);
+                    const geneMatch = (genes || []).find(
+                        (g) => g.id === urlGene || g.name === urlGene,
+                    );
+                    if (geneMatch) {
+                        setSelectedGene(geneMatch.id);
                     } else {
                         setSelectedGene("");
-                        setSelectionError("Please enter a valid gene, peak, or SNP");
+                        setSelectionError(
+                            "Please enter a valid gene, peak, or SNP",
+                        );
                     }
                 }
 
@@ -156,7 +176,9 @@ function XQTLView() {
                         setSelectedSnp(urlSnp);
                     } else {
                         setSelectedSnp("");
-                        setSelectionError("Please enter a valid gene, peak, or SNP");
+                        setSelectionError(
+                            "Please enter a valid gene, peak, or SNP",
+                        );
                     }
                 }
             } catch (error) {
@@ -167,11 +189,7 @@ function XQTLView() {
         initialize();
     }, [datasetId, setDataset]);
 
-    const [geneSearchText, setGeneSearchText] = useState("");
-    const [snpSearchText, setSnpSearchText] = useState("");
     const [combinedSearchText, setCombinedSearchText] = useState("");
-    const [filteredGeneList, setFilteredGeneList] = useState([]);
-    const [filteredSnpList, setFilteredSnpList] = useState([]);
     const [filteredCombinedList, setFilteredCombinedList] = useState([]);
 
     useEffect(() => {
@@ -184,8 +202,15 @@ function XQTLView() {
 
     const combinedList = useMemo(() => {
         return [
-            ...geneList.map((gene) => ({type: "gene", id: gene})),
-            ...snpList.map((snp) => ({type: "snp", id: snp})),
+            ...(geneList || []).map((gene) => ({
+                type: "gene",
+                id: gene.id, // Ensembl ID
+                name: gene.name, // Symbol
+            })),
+            ...(snpList || []).map((snp) => ({
+                type: "snp",
+                id: snp,
+            })),
         ];
     }, [geneList, snpList]);
 
@@ -203,7 +228,8 @@ function XQTLView() {
         () =>
             combinedList.map((item) => ({
                 original: item,
-                lowercaseId: item.id.toLowerCase(),
+                lowercaseId: (item.id || "").toLowerCase(),
+                lowercaseName: (item.name || "").toLowerCase(),
             })),
         [combinedList],
     );
@@ -211,9 +237,14 @@ function XQTLView() {
     const debouncedFilter = useMemo(
         () =>
             debounce((value, setFn) => {
+                const q = value.toLowerCase();
                 const results = indexedList
-                .filter((item) => item.lowercaseId.includes(value.toLowerCase()))
-                .map((item) => item.original);
+                    .filter(
+                        (item) =>
+                            item.lowercaseId.includes(q) ||
+                            item.lowercaseName.includes(q),
+                    )
+                    .map((item) => item.original);
                 setFn(results.slice(0, listLength));
             }, 120),
         [indexedList],
@@ -233,18 +264,22 @@ function XQTLView() {
     };
 
     const handleCombinedAutocompleteOpen = () => {
-        if (
-            combinedSearchText === selectedGene ||
-            combinedSearchText === selectedSnp
-        ) {
+        const curr = currentValue;
+        const label =
+            curr && curr.type === "gene"
+                ? curr.name && curr.id
+                    ? `${curr.name} (${curr.id})`
+                    : curr.name || curr.id || ""
+                : curr && curr.id;
+
+        if (!combinedSearchText || combinedSearchText === label) {
             setFilteredCombinedList(initialSlicedCombinedList);
         }
     };
 
     const [genes, setGenes] = useState([]);
     const [snps, setSnps] = useState([]);
-    const [gwasData, setGwasData] = useState([]); // Only used for gene view
-    const [hasGwas, setHasGwas] = useState(true);
+    // const [gwasData, setGwasData] = useState([]); // Only used for gene view
     const [selectionError, setSelectionError] = useState("");
 
     const fetchGeneOrSnpData = async () => {
@@ -265,43 +300,25 @@ function XQTLView() {
                 const locations = await fetchGeneLocations(datasetId, 10000000);
                 const gene = await getGeneLocation(datasetId, selectedGene);
 
-                if (locations.some((g) => g.id === selectedGene)) {
+                if (!locations.some((g) => g.id === selectedGene)) {
                     locations.push({
                         gene_id: selectedGene,
+                        gene_name: gene.data.name || selectedGene,
                         position_start: gene.data.start,
                         position_end: gene.data.end,
-                        strand: gene.data.strand,
+                        strand: gene.data.strand || "x",
+                        biotype: gene.data.biotype,
                     });
                 }
                 setGenes(locations);
 
-                let gwas;
-                if (hasGwas) {
-                    if (!(displayOptions?.showGwas ?? true)) {
-                        setGwasData([]);
-                        gwas = [];
-                    } else {
-                        try {
-                            gwas = await fetchGwasForGene(datasetId, 1500000);
-                            setHasGwas(gwas.length > 0);
-                            const gwasLocations = gwas.map(
-                                ({snp_id, p_value, beta_value, position, ...rest}) => ({
-                                    ...rest,
-                                    id: snp_id,
-                                    y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-                                    beta: beta_value,
-                                    x: position,
-                                    snp_id,
-                                    p_value,
-                                    position,
-                                }),
-                            );
-                            setGwasData(gwasLocations);
-                        } catch (error) {
-                            console.error("Error fetching GWAS data:", error);
-                            setHasGwas(false);
-                            setGwasData([]);
-                        }
+                // Fetch GWAS data for selected datasets if toggle is on
+                if (activeGwasDatasets.length > 0) {
+                    try {
+                        await fetchGwasForGene(datasetId, 1500000);
+                    } catch (error) {
+                        console.error("Error fetching GWAS data:", error);
+                        // Store action already handles partial failures; we can ignore or show a message
                     }
                 }
 
@@ -320,37 +337,29 @@ function XQTLView() {
                 await fetchSnpCellTypes(datasetId);
                 await fetchSnpChromosome(datasetId);
 
-                let locations=[];
-                if (hasGwas) {
-                    if (!(displayOptions?.showGwas ?? true)) {
-                        locations = await fetchSnpLocations(datasetId, 1500000);
-                    } else {
-                        try {
-                            locations = await fetchGwasForSnp(datasetId, 1500000);
-                            setHasGwas(locations.length > 0);
-                            locations = locations.map(
-                                ({snp_id, p_value, beta_value, position, ...rest}) => ({
-                                    ...rest,
-                                    id: snp_id,
-                                    y: -Math.log10(Math.max(p_value, 1e-20)), // Avoid log10(0)
-                                    beta: beta_value,
-                                    x: position,
-                                    snp_id,
-                                    p_value,
-                                    position,
-                                }),
-                            );
-                        } catch (error) {
-                            console.error("Error fetching GWAS data:", error);
-                            locations = await fetchSnpLocations(datasetId, 1500000);
-                            setHasGwas(false);
-                        }
+                let locations = [];
+
+                if (activeGwasDatasets.length > 0) {
+                    try {
+                        await fetchGwasForSnp(datasetId, 1500000);
+                        // TODO
+                        // After fetch, we'll use the stored gwasData to create SNP locations
+                        // But we still need locations for the target SNP itself and for the plot points.
+                        // We'll combine later. For now, we can just fetch SNP locations normally.
+                    } catch (error) {
+                        console.error("Error fetching GWAS data:", error);
                     }
                 }
 
+                const snpLocations = await fetchSnpLocations(
+                    datasetId,
+                    1500000,
+                );
+                locations = snpLocations;
+
                 const snp = await getSnpLocation(datasetId, selectedSnp);
 
-                if (locations.some((s) => s.id === selectedSnp)) {
+                if (!locations.some((s) => s.id === selectedSnp)) {
                     locations.push({
                         snp_id: selectedSnp,
                         position: snp.data.position,
@@ -358,7 +367,7 @@ function XQTLView() {
                 }
                 setSnps(locations);
 
-                await fetchGeneData(datasetId);
+                await fetchGeneData(datasetId, isCaQTL);
                 setSelectionError("");
                 setDataLoading(false);
             } catch (error) {
@@ -370,16 +379,9 @@ function XQTLView() {
         }
     };
 
-    useEffect(() => {
-        if (selectedGene || selectedSnp) {
-            fetchGeneOrSnpData();
-        }
-    }, [selectedGene, selectedSnp, datasetId, hasGwas]);
-
     const handleDatasetChange = (event, newValue) => {
         setDataset(newValue);
         setDatasetId(newValue);
-        setHasGwas(true);
         selectGeneOrSnp("reset", null);
     };
 
@@ -488,11 +490,27 @@ function XQTLView() {
         ...displayOptions,
     });
 
+    const activeGwasDatasets = useMemo(() => {
+        return displayOptions.showGwas ? selectedGwasDatasets || [] : [];
+    }, [displayOptions.showGwas, selectedGwasDatasets]);
+
+    useEffect(() => {
+        if ((selectedGene || selectedSnp) && datasetId) {
+            fetchGeneOrSnpData();
+        }
+    }, [
+        selectedGwasDatasets,
+        datasetId,
+        selectedGene,
+        selectedSnp,
+        activeGwasDatasets,
+    ]);
+
     const menuOpen = Boolean(anchorEl);
 
     useEffect(() => {
         if (menuOpen) {
-            setTempDisplayOptions({...displayOptions});
+            setTempDisplayOptions({ ...displayOptions });
         }
     }, [displayOptions, menuOpen]);
 
@@ -501,7 +519,7 @@ function XQTLView() {
     };
 
     const handleMenuClose = () => {
-        setDisplayOptions({...tempDisplayOptions});
+        setDisplayOptions({ ...tempDisplayOptions });
         setAnchorEl(null);
     };
 
@@ -510,39 +528,24 @@ function XQTLView() {
             ...tempDisplayOptions,
             [option]: event.target.checked,
         });
-        // Update immediately for switches
-        if (option !== "dashedLineColor") {
-            setDisplayOptions({
-                ...displayOptions,
-                [option]: event.target.checked,
-            });
-        }
     };
-
-    useEffect(() => {
-        if (displayOptions?.showGwas ?? true) {
-            setHasGwas(true);
-        } else {
-            setHasGwas(null);
-        }
-    }, [displayOptions.showGwas]);
 
     return (
         <div
             className="plot-page-container"
-            style={{display: "flex", flexDirection: "column", flex: 1}}
+            style={{ display: "flex", flexDirection: "column", flex: 1 }}
         >
             {/* Title Row */}
             <Box className="title-row">
                 <Typography variant="h6">xQTL View</Typography>
             </Box>
-            <Divider/>
+            <Divider />
             <div className="selection-row">
                 <div className="control-group">
                     {/* <Typography variant="subtitle1">Select a Dataset:</Typography> */}
                     {/* Dataset Selection */}
                     <Autocomplete
-                        sx={{width: "400px"}}
+                        sx={{ width: "400px" }}
                         size="small"
                         disableListWrap
                         options={datasetOptions}
@@ -561,7 +564,7 @@ function XQTLView() {
                             },
                         }}
                         renderOption={(props, option) => {
-                            const {key, ...rest} = props;
+                            const { key, ...rest } = props;
                             return (
                                 <li key={key} {...rest}>
                                     {option}
@@ -586,7 +589,7 @@ function XQTLView() {
                     {/* Gene Selection */}
                     <Autocomplete
                         /* multiple */
-                        sx={{width: "400px"}}
+                        sx={{ width: "400px" }}
                         disableListWrap
                         size="small"
                         options={filteredCombinedList}
@@ -604,9 +607,37 @@ function XQTLView() {
                                 component: ListboxComponent,
                             },
                         }}
-                        getOptionLabel={(option) => option.id || ""}
+                        getOptionLabel={(option) => {
+                            if (typeof option === "string") return option;
+                            if (option.type === "gene") {
+                                if (isCaQTL) {
+                                    return option.name || option.id || "";
+                                }
+                                if (option.name && option.id) {
+                                    return `${option.name} (${option.id})`;
+                                }
+                                return option.name || option.id || "";
+                            }
+                            return option.id || "";
+                        }}
                         renderOption={(props, option) => {
-                            const {key, ...rest} = props;
+                            const { key, ...rest } = props;
+                            if (option.type === "gene") {
+                                if (isCaQTL) {
+                                    return (
+                                        <li key={key} {...rest}>
+                                            {option.name || option.id}
+                                        </li>
+                                    );
+                                }
+                                return (
+                                    <li key={key} {...rest}>
+                                        {option.name
+                                            ? `${option.name} (${option.id})`
+                                            : option.id}
+                                    </li>
+                                );
+                            }
                             return (
                                 <li key={key} {...rest}>
                                     {option.id}
@@ -656,19 +687,21 @@ function XQTLView() {
                 <div className="control-group">
                     {/* Button to fetch data and a loading indicator*/}
                     <Box
-                        /* sx={{ */
-                        /*   display: "flex", */
-                        /*   justifyContent: "center", */
-                        /*   /\* margin: "20px 0px", *\/ */
-                        /* }} */
+                    /* sx={{ */
+                    /*   display: "flex", */
+                    /*   justifyContent: "center", */
+                    /*   /\* margin: "20px 0px", *\/ */
+                    /* }} */
                     >
                         <Button
                             variant="outlined"
-                            endIcon={<ScatterPlotIcon/>}
+                            endIcon={<ScatterPlotIcon />}
                             disabled={loading || dataLoading}
                             onClick={handleLoadPlot}
                         >
-                            {loading || dataLoading ? "Loading plots..." : "Refresh Plots"}
+                            {loading || dataLoading
+                                ? "Loading plots..."
+                                : "Refresh Plots"}
                         </Button>
                     </Box>
                 </div>
@@ -679,16 +712,17 @@ function XQTLView() {
                             color="inherit"
                             aria-label="display options"
                         >
-                            <SettingsIcon/>
+                            <SettingsIcon />
                         </IconButton>
                     </Tooltip>
                     <Menu
                         anchorEl={anchorEl}
                         open={menuOpen}
                         onClose={handleMenuClose}
+                        marginThreshold={50}
                         PaperProps={{
                             style: {
-                                width: "500px",
+                                width: "400px",
                                 padding: "10px",
                             },
                         }}
@@ -697,8 +731,12 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showDashedLine}
-                                        onChange={handleOptionChange("showDashedLine")}
+                                        checked={
+                                            tempDisplayOptions.showDashedLine
+                                        }
+                                        onChange={handleOptionChange(
+                                            "showDashedLine",
+                                        )}
                                     />
                                 }
                                 label="Show dashed line"
@@ -708,8 +746,12 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.crossGapDashedLine}
-                                        onChange={handleOptionChange("crossGapDashedLine")}
+                                        checked={
+                                            tempDisplayOptions.crossGapDashedLine
+                                        }
+                                        onChange={handleOptionChange(
+                                            "crossGapDashedLine",
+                                        )}
                                     />
                                 }
                                 label="Cross-gap dashed line"
@@ -724,8 +766,16 @@ function XQTLView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Dashed line color:</Typography>
-                                <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
+                                <Typography variant="body">
+                                    Dashed line color:
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                    }}
+                                >
                                     <input
                                         type="color"
                                         value={
@@ -751,7 +801,9 @@ function XQTLView() {
                                     />
                                     <TextField
                                         size="small"
-                                        value={tempDisplayOptions.dashedLineColor}
+                                        value={
+                                            tempDisplayOptions.dashedLineColor
+                                        }
                                         onChange={(e) => {
                                             setTempDisplayOptions({
                                                 ...tempDisplayOptions,
@@ -772,18 +824,6 @@ function XQTLView() {
                                             },
                                         }}
                                     />
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        onClick={() => {
-                                            setDisplayOptions({
-                                                ...tempDisplayOptions,
-                                            });
-                                        }}
-                                        sx={{height: "30px"}}
-                                    >
-                                        Save
-                                    </Button>
                                 </Box>
                             </Box>
                         </MenuItem>
@@ -791,8 +831,12 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.dashedLineOnTop}
-                                        onChange={handleOptionChange("dashedLineOnTop")}
+                                        checked={
+                                            tempDisplayOptions.dashedLineOnTop
+                                        }
+                                        onChange={handleOptionChange(
+                                            "dashedLineOnTop",
+                                        )}
                                     />
                                 }
                                 label="Dashed line on top"
@@ -802,8 +846,10 @@ function XQTLView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showGrid}
-                                        onChange={handleOptionChange("showGrid")}
+                                        checked={tempDisplayOptions.showGrid}
+                                        onChange={handleOptionChange(
+                                            "showGrid",
+                                        )}
                                     />
                                 }
                                 label="Show grid"
@@ -818,7 +864,9 @@ function XQTLView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Track height:</Typography>
+                                <Typography variant="body">
+                                    Track height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -843,18 +891,6 @@ function XQTLView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -866,7 +902,9 @@ function XQTLView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Gap height:</Typography>
+                                <Typography variant="body">
+                                    Gap height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -891,18 +929,6 @@ function XQTLView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -914,7 +940,9 @@ function XQTLView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Y-axis height:</Typography>
+                                <Typography variant="body">
+                                    Y-axis height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -923,7 +951,9 @@ function XQTLView() {
                                         setTempDisplayOptions({
                                             ...tempDisplayOptions,
                                             yHeight:
-                                                e.target.value === "" ? "" : Number(e.target.value),
+                                                e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
                                         })
                                     }
                                     onKeyPress={(e) => {
@@ -943,28 +973,35 @@ function XQTLView() {
                                         step: 0.1,
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
                             <FormControlLabel
                                 control={
-                                    <Switch checked={displayOptions.showGwas} onChange={handleOptionChange("showGwas")}/>
+                                    <Switch
+                                        checked={tempDisplayOptions.showGwas}
+                                        onChange={handleOptionChange(
+                                            "showGwas",
+                                        )}
+                                    />
                                 }
                                 label="Show GWAS data"
                             />
                         </MenuItem>
+                        <Box sx={{ mt: 1, p: 1, pb: 0.5 }}>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                    setDisplayOptions({
+                                        ...tempDisplayOptions,
+                                    });
+                                    setAnchorEl(null); // close the menu
+                                }}
+                            >
+                                Apply changes
+                            </Button>
+                        </Box>
                     </Menu>
                 </div>
             </div>
@@ -974,28 +1011,39 @@ function XQTLView() {
                     handleClose={handleClose}
                     handleConfirm={handleConfirm}
                     title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
-                    description={selectedPointData ?? "No additional data available."}
+                    description={
+                        selectedPointData ?? "No additional data available."
+                    }
                 />
 
                 {/* Plot Area */}
                 <div className="plot-main">
                     {dataLoading && (
                         <>
-                            <Box sx={{width: "100%"}}>
-                                <LinearProgress/>
+                            <Box sx={{ width: "100%" }}>
+                                <LinearProgress />
                             </Box>
                         </>
                     )}
 
-                    {datasetId === "" || datasetId === "all" || datasetId == null ? (
+                    {datasetId === "" ||
+                    datasetId === "all" ||
+                    datasetId == null ? (
                         <Typography
-                            sx={{color: "text.secondary", paddingTop: "100px"}}
+                            sx={{
+                                color: "text.secondary",
+                                paddingTop: "100px",
+                            }}
                             variant="h5"
                         >
                             No dataset selected for exploration
                         </Typography>
                     ) : error ? (
-                        <Typography sx={{paddingTop: "100px"}} variant="h5" color="error">
+                        <Typography
+                            sx={{ paddingTop: "100px" }}
+                            variant="h5"
+                            color="error"
+                        >
                             {error}
                         </Typography>
                     ) : (
@@ -1005,16 +1053,21 @@ function XQTLView() {
                                 key={`${selectedGene || selectedSnp || "plot"}-view`}
                                 className={`view-container`}
                             >
-                                {!selectedGene && !selectedSnp && !selectionError ? (
+                                {!selectedGene &&
+                                !selectedSnp &&
+                                !selectionError ? (
                                     <Typography
-                                        sx={{color: "text.secondary", paddingTop: "100px"}}
+                                        sx={{
+                                            color: "text.secondary",
+                                            paddingTop: "100px",
+                                        }}
                                         variant="h5"
                                     >
                                         No gene or SNP selected for exploration
                                     </Typography>
                                 ) : selectionError ? (
                                     <Typography
-                                        sx={{paddingTop: "100px"}}
+                                        sx={{ paddingTop: "100px" }}
                                         variant="h5"
                                         color="error"
                                     >
@@ -1022,7 +1075,10 @@ function XQTLView() {
                                     </Typography>
                                 ) : selectedCellTypes.length === 0 ? (
                                     <Typography
-                                        sx={{color: "text.secondary", paddingTop: "100px"}}
+                                        sx={{
+                                            color: "text.secondary",
+                                            paddingTop: "100px",
+                                        }}
                                         variant="h5"
                                     >
                                         No cell types available
@@ -1031,16 +1087,21 @@ function XQTLView() {
                                     !dataLoading &&
                                     !loading &&
                                     selectedChromosome && (
-                                        // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
-                                        <div key={`${selectedGene}-plot`} className="gene-plot">
+                                        <div
+                                            key={`${selectedGene}-plot`}
+                                            className="gene-plot"
+                                        >
                                             <GeneViewPlotlyPlot
                                                 dataset={datasetId}
-                                                geneName={selectedGene}
+                                                geneId={selectedGene}
                                                 genes={genes}
+                                                gwasDatasets={gwasDatasets.filter(
+                                                    (ds) =>
+                                                        activeGwasDatasets.includes(
+                                                            ds.id,
+                                                        ),
+                                                )}
                                                 gwasData={gwasData}
-                                                hasGwas={
-                                                    (displayOptions?.showGwas ?? true) ? hasGwas : false
-                                                }
                                                 snpData={snpData}
                                                 chromosome={selectedChromosome}
                                                 cellTypes={selectedCellTypes}
@@ -1055,14 +1116,21 @@ function XQTLView() {
                                     !dataLoading &&
                                     !loading &&
                                     selectedChromosome && (
-                                        <div key={`${selectedSnp}-plot`} className="snp-plot">
+                                        <div
+                                            key={`${selectedSnp}-plot`}
+                                            className="snp-plot"
+                                        >
                                             <SNPViewPlotlyPlot
                                                 dataset={datasetId}
                                                 snpName={selectedSnp}
                                                 snps={snps}
-                                                hasGwas={
-                                                    (displayOptions?.showGwas ?? true) ? hasGwas : false
-                                                }
+                                                gwasDatasets={gwasDatasets.filter(
+                                                    (ds) =>
+                                                        activeGwasDatasets.includes(
+                                                            ds.id,
+                                                        ),
+                                                )}
+                                                gwasData={gwasData}
                                                 geneData={geneData}
                                                 chromosome={selectedChromosome}
                                                 cellTypes={selectedCellTypes}

@@ -12,6 +12,7 @@ import {
     getSnpLocation,
     getGeneLocationsInChromosome,
     getSnpLocationsInChromosome,
+    getGwasDatasets,
     getGwasInChromosome,
 } from "../api/qtl.js";
 
@@ -41,6 +42,9 @@ const useQtlStore = create((set, get) => ({
     selectedCellTypes: [],
     snpData: {},
     geneData: {},
+    gwasDatasets: [],
+    selectedGwasDatasets: null,
+    gwasData: [],
     loading: false,
     // loadingCellTypes: new Map(),
     error: null,
@@ -70,7 +74,7 @@ const useQtlStore = create((set, get) => ({
 
         try {
             const response = await getGeneList(dataset, query_str);
-            const geneList = response.data;
+            const geneList = columnToRow(response.data);
             set({ geneList: geneList, loading: false });
             return geneList;
         } catch (error) {
@@ -163,7 +167,8 @@ const useQtlStore = create((set, get) => ({
                 get().selectedGene,
             );
             const cellTypes = response.data;
-            set({ selectedCellTypes: cellTypes, loading: false });
+            const reversedCellTypes = cellTypes.slice().reverse();
+            set({ selectedCellTypes: reversedCellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
             throw error;
@@ -184,7 +189,8 @@ const useQtlStore = create((set, get) => ({
         try {
             const response = await getSnpCellTypes(dataset, get().selectedSnp);
             const cellTypes = response.data;
-            set({ selectedCellTypes: cellTypes, loading: false });
+            const reversedCellTypes = cellTypes.slice().reverse();
+            set({ selectedCellTypes: reversedCellTypes, loading: false });
         } catch (error) {
             console.error("Error fetching cell types:", error);
             throw error;
@@ -223,7 +229,7 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
-    fetchGeneData: async (dataset) => {
+    fetchGeneData: async (dataset, isCaQtl) => {
         dataset = dataset ?? get().dataset;
         if (!dataset || dataset === "all") {
             set({
@@ -234,12 +240,13 @@ const useQtlStore = create((set, get) => ({
         }
         set({ loading: true, geneData: {} });
         const snp = get().selectedSnp;
+
         // const loadingMap = new Map();
         // cellTypes.forEach((c) => loadingMap.set(c, true));
         // set({ loadingCellTypes: loadingMap, loading: false });
 
         const promises = get().selectedCellTypes.map(async (c) => {
-            const response = await getGeneDataForSnp(dataset, snp, c);
+            const response = await getGeneDataForSnp(dataset, isCaQtl, snp, c);
             const geneData = response.data;
             const geneDataRows = columnToRow(geneData);
             return [c, geneDataRows];
@@ -323,79 +330,111 @@ const useQtlStore = create((set, get) => ({
         }
     },
 
+    fetchGwasDatasets: async (dataset) => {
+        dataset = dataset ?? get().dataset;
+        if (!dataset) return;
+        try {
+            const response = await getGwasDatasets(dataset);
+            const datasets = response.data;
+            set({
+                gwasDatasets: datasets,
+                selectedGwasDatasets: datasets.map((d) => d.id),
+            });
+        } catch (error) {
+            console.error("Error fetching GWAS datasets:", error);
+        }
+    },
+
+    setSelectedGwasDatasets: (selected) => {
+        set({ selectedGwasDatasets: selected });
+    },
+
     fetchGwasForGene: async (dataset, radius) => {
         dataset = dataset ?? get().dataset;
-        if (!dataset || dataset === "all") {
-            set({
-                error: "fetchGwas: No dataset selected",
-                loading: false,
-            });
+        const { selectedGwasDatasets, selectedChromosome } = get();
+        if (!dataset || selectedGwasDatasets.length === 0) {
+            set({ gwasData: {} });
             return;
         }
-        set({ loading: true });
 
-        try {
-            const positionResponse = await getGeneLocation(
-                dataset,
-                get().selectedGene,
-            );
-            const startPosition = positionResponse.data.start;
-            const endPosition = positionResponse.data.end;
+        const positionResponse = await getGeneLocation(
+            dataset,
+            get().selectedGene,
+        );
+        console.log(positionResponse.data);
+        const start = positionResponse.data.start - radius;
+        const end = positionResponse.data.end + radius;
 
+        const promises = selectedGwasDatasets.map(async (gwasId) => {
             const response = await getGwasInChromosome(
                 dataset,
-                get().selectedChromosome,
-                startPosition - radius,
-                endPosition + radius,
+                gwasId,
+                selectedChromosome,
+                start,
+                end,
             );
-            const hasGwas = response.data.hasGwas;
-            if (!hasGwas) {
-                return [];
-            }
-            const gwas = response.data.data;
-            const gwasRows = columnToRow(gwas);
-            return gwasRows;
-        } catch (error) {
-            console.error("Error fetching GWAS data:", error);
-            throw error;
-        }
+            console.log(response);
+            const data = columnToRow(response.data.data).map(
+                ({ snp_id, p_value, beta_value, position }) => ({
+                    id: snp_id,
+                    x: position,
+                    y: -Math.log10(Math.max(p_value, 1e-20)),
+                    beta: beta_value,
+                    snp_id,
+                    p_value,
+                    position,
+                }),
+            );
+            console.log(data);
+            return [gwasId, data];
+        });
+
+        const results = await Promise.all(promises);
+        const gwasData = Object.fromEntries(results);
+        set({ gwasData });
     },
 
     fetchGwasForSnp: async (dataset, radius) => {
         dataset = dataset ?? get().dataset;
-        if (!dataset || dataset === "all") {
-            set({
-                error: "fetchGwas: No dataset selected",
-                loading: false,
-            });
+        const { selectedGwasDatasets, selectedChromosome } = get();
+        if (!dataset || selectedGwasDatasets.length === 0) {
+            set({ gwasData: {} });
             return;
         }
-        set({ loading: true });
 
-        try {
-            const positionResponse = await getSnpLocation(
-                dataset,
-                get().selectedSnp,
-            );
-            const position = positionResponse.data.position;
+        const positionResponse = await getSnpLocation(
+            dataset,
+            get().selectedSnp,
+        );
+        const position = positionResponse.data.position;
+        const start = position - radius;
+        const end = position + radius;
 
+        const promises = selectedGwasDatasets.map(async (gwasId) => {
             const response = await getGwasInChromosome(
                 dataset,
-                get().selectedChromosome,
-                position - radius,
-                position + radius,
+                gwasId,
+                selectedChromosome,
+                start,
+                end,
             );
-            const hasGwas = response.data.hasGwas;
-            if (!hasGwas) {
-                return [];
-            }
-            const gwas = response.data.data;
-            const gwasRows = columnToRow(gwas);
-            return gwasRows;
-        } catch (error) {
-            console.error("Error fetching GWAS data:", error);
-            throw error;
-        }
+            const data = columnToRow(response.data.data).map(
+                ({ snp_id, p_value, beta_value, position }) => ({
+                    id: snp_id,
+                    x: position,
+                    y: -Math.log10(Math.max(p_value, 1e-20)),
+                    beta: beta_value,
+                    snp_id,
+                    p_value,
+                    position,
+                }),
+            );
+            return [gwasId, data];
+        });
+
+        const results = await Promise.all(promises);
+        const gwasData = Object.fromEntries(results);
+        set({ gwasData });
     },
 
     resetQtlState: () => {

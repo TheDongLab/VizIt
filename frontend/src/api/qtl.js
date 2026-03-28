@@ -111,10 +111,15 @@ export const getSnpDataForGene = async (dataset, gene, celltype) => {
     }
 };
 
-export const getGeneDataForSnp = async (dataset, snp, celltype) => {
+export const getGeneDataForSnp = async (dataset, isCaQtl, snp, celltype) => {
     try {
         const response = await axios.get(`${QTL_URL}/getgenedataforsnp`, {
-            params: { dataset: dataset, snp: snp, celltype: celltype },
+            params: {
+                dataset: dataset,
+                is_caqtl: isCaQtl,
+                snp: snp,
+                celltype: celltype,
+            },
         });
         return response;
     } catch (error) {
@@ -173,11 +178,30 @@ export const getSnpLocationsInChromosome = async (
     }
 };
 
-export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
+export const getGwasDatasets = async (dataset) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgwasdatasets`, {
+            params: { dataset: dataset },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error getGwasDatasets:", error);
+        throw error;
+    }
+};
+
+export const getGwasInChromosome = async (
+    dataset,
+    gwas_dataset,
+    chromosome,
+    start,
+    end,
+) => {
     try {
         const response = await axios.get(`${QTL_URL}/getgwasinchromosome`, {
             params: {
                 dataset: dataset,
+                gwas_dataset: gwas_dataset,
                 chromosome: chromosome,
                 start: start,
                 end: end,
@@ -186,6 +210,19 @@ export const getGwasInChromosome = async (dataset, chromosome, start, end) => {
         return response;
     } catch (error) {
         console.error("Error getGwasInChromosome:", error);
+        throw error;
+    }
+};
+
+export const getGencodeVersion = async (dataset) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/getgencodeversion`, {
+            params: { dataset: dataset },
+        });
+        console.log("Gencode version response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error getGencodeVersion:", error);
         throw error;
     }
 };
