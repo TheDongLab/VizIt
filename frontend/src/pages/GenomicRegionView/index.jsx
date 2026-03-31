@@ -1,4 +1,4 @@
-import {useEffect, useState, useMemo, useCallback} from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
     Typography,
     Box,
@@ -22,12 +22,12 @@ import {
     IconButton,
     Tooltip,
 } from "@mui/material";
-import {PropTypes} from "prop-types";
-import {debounce} from "@mui/material/utils";
+import { PropTypes } from "prop-types";
+import { debounce } from "@mui/material/utils";
 
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import SettingsIcon from "@mui/icons-material/Settings";
-import {useSearchParams} from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import "./GenomicRegionView.css";
 
@@ -36,22 +36,22 @@ import useSignalStore from "../../store/GenomicRegionStore.js";
 
 import RegionViewPlotlyPlot from "./RegionViewPlotlyPlot.jsx";
 
-import {ListboxComponent, StyledPopper} from "../../components/Listbox";
+import { ListboxComponent, StyledPopper } from "../../components/Listbox";
 
-import {getGeneLocation, getSnpLocation} from "../../api/qtl.js";
+import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 
-import {supportsWebGL} from "../../utils/webgl.js";
+import { supportsWebGL } from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
 // console.log("WebGL supported:", webGLSupported);
 
 function ConfirmationDialog({
-                                isOpen,
-                                handleClose,
-                                handleConfirm,
-                                title,
-                                description,
-                            }) {
+    isOpen,
+    handleClose,
+    handleConfirm,
+    title,
+    description,
+}) {
     return (
         <Dialog
             open={isOpen}
@@ -76,16 +76,15 @@ function GenomicRegionView() {
     const urlDataset = queryParams.get("dataset") ?? "";
     const urlRegion = queryParams.get("region") ?? "";
 
-    const {datasetRecords, fetchDatasetList,setDatasetRecords} = useDataStore();
-    const {checkBWDataExists} = useSignalStore()
+    const { datasetRecords, fetchDatasetList } = useDataStore();
 
     useEffect(() => {
         fetchDatasetList();
     }, []);
 
     const datasetOptions = datasetRecords
-    .filter((d) => d.assay.toLowerCase().endsWith("qtl") && d.has_bw)
-    .map((d) => d.dataset_id);
+        .filter((d) => /[A-Za-z]*?(RNAseq|ATACseq)$/i.test(d.assay) && d.has_bw)
+        .map((d) => d.dataset_id);
 
     const [datasetId, setDatasetId] = useState(urlDataset);
     const [datasetSearchText, setDatasetSearchText] = useState("");
@@ -102,13 +101,22 @@ function GenomicRegionView() {
         fetchCellTypes,
         fetchSignalData,
         fetchGeneLocations,
-        fetchGwas,
+        fetchGeneList,
+        fetchSnpList,
+        fetchExonStructure,
+        exonStructure,
+        exonStructureTruncated,
+        gwasDatasets,
+        selectedGwasDatasets,
+        fetchGwasDatasets,
+        fetchGwasForRegion,
+        gwasData,
     } = useSignalStore();
-    const {loading, error} = useSignalStore();
+    const { loading, error } = useSignalStore();
 
     const [dataLoading, setDataLoading] = useState(false);
 
-    const parseRegionString = async (str) => {
+    const parseRegionString = (str) => {
         if (str === null || str === undefined || str.trim() === "") {
             console.log("inside parseRegionString: empty string");
         }
@@ -121,51 +129,43 @@ function GenomicRegionView() {
                 start: parseInt(match[3].replace(/,/g, "")),
                 end: parseInt(match[4].replace(/,/g, "")),
             };
-        }else if (str.toLowerCase().startsWith("rs")) {
-            // If the string doesn't match the expected format, check if it's a SNP and try to resolve it to a region
-            try {
-                const snp = await getSnpLocation(datasetId, str);
-                if(snp && snp.data){
-                    return {
-                        chromosome: snp.data.chromosome,
-                        start: snp.data.position - 50000,
-                        end: snp.data.position + 50000,
-                    }
-                }
-            } catch (error) {
-                console.warn("SNP not found:", str, error);
-            }
-        } else {
-            // if it doesn't match the expected format, check if it's a gene symbol and try to resolve it to a region
-            try {
-                const gene = await getGeneLocation(datasetId, str);
-                if(gene && gene.data){
-                    return {
-                        chromosome: gene.data.chromosome,
-                        start: gene.data.start - 50000,
-                        end: gene.data.end + 50000,
-                    }
-                }
-            } catch (error) {
-                console.warn("Gene not found:", str, error);
-            }
-        }   
-        return null;  
+        }
+        return null;
     };
+
+    const [visibleRange, setVisibleRange] = useState({
+        start: null,
+        end: null,
+    });
 
     const setRegion = useCallback(
         (chromosome, start, end) => {
             if (!chromosome || start === null || end === null) {
-                console.warn("Invalid region parameters:", chromosome, start, end);
+                console.warn(
+                    "Invalid region parameters:",
+                    chromosome,
+                    start,
+                    end,
+                );
                 return;
             }
             // Update both chromosome and range in a single operation
             setSelectedChromosome(chromosome);
             setSelectedRange(start, end);
-            setVisibleRange({start, end});
+            setVisibleRange({ start, end });
         },
         [setSelectedChromosome, setSelectedRange],
     );
+
+    const ignoreNextUrlRegionRef = useRef(false);
+    const firstRenderRef = useRef(true);
+
+    const [combinedList, setCombinedList] = useState([]);
+    const [filteredCombinedList, setFilteredCombinedList] = useState([]);
+
+    useEffect(() => {
+        console.log("filteredCombinedList", filteredCombinedList);
+    }, [filteredCombinedList]);
 
     useEffect(() => {
         const initialize = async () => {
@@ -174,6 +174,24 @@ function GenomicRegionView() {
             try {
                 await setDataset(datasetId);
                 await fetchCellTypes(datasetId);
+
+                const genes = await fetchGeneList(datasetId);
+                const snps = await fetchSnpList(datasetId);
+
+                const combined = [
+                    ...(genes || []).map((gene) => ({
+                        type: "gene",
+                        id: gene.id, // Ensembl ID
+                        name: gene.name, // Symbol
+                    })),
+                    ...(snps || []).map((snp) => ({
+                        type: "snp",
+                        id: snp,
+                    })),
+                ];
+
+                setCombinedList(combined);
+                setFilteredCombinedList(combined.slice(0, listLength));
 
                 // if (urlRegion) {
                 //   const parsedRegion = parseRegionString(urlRegion);
@@ -201,62 +219,225 @@ function GenomicRegionView() {
     const [nearbyGenes, setNearbyGenes] = useState([]);
     const [regionSearchText, setRegionSearchText] = useState("");
 
+    const indexedList = useMemo(
+        () =>
+            combinedList.map((item) => ({
+                original: item,
+                lowercaseId: (item.id || "").toLowerCase(),
+                lowercaseName: (item.name || "").toLowerCase(),
+            })),
+        [combinedList],
+    );
+
+    const debouncedFilter = useMemo(
+        () =>
+            debounce((value, setFn) => {
+                const q = value.toLowerCase();
+                const results = indexedList
+                    .filter(
+                        (item) =>
+                            item.lowercaseId.includes(q) ||
+                            item.lowercaseName.includes(q),
+                    )
+                    .map((item) => item.original);
+                setFn(results.slice(0, listLength));
+            }, 120),
+        [indexedList],
+    );
+
+    const listLength = 500; // Limit the list length for performance
+
     useEffect(() => {
+        if (firstRenderRef.current) {
+            firstRenderRef.current = false;
+            return;
+        }
+
         const newParams = new URLSearchParams();
+
         if (datasetId) newParams.set("dataset", datasetId);
-        if (
-            selectedChromosome &&
-            selectedRange &&
-            selectedRange.start !== undefined &&
-            selectedRange.start !== null &&
-            selectedRange.end !== undefined &&
-            selectedRange.end !== null
-        ) {
+
+        const regionStart = visibleRange?.start ?? selectedRange?.start ?? null;
+        const regionEnd = visibleRange?.end ?? selectedRange?.end ?? null;
+
+        if (selectedChromosome && regionStart != null && regionEnd != null) {
             newParams.set(
                 "region",
-                `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+                `${selectedChromosome}:${regionStart}-${regionEnd}`,
             );
         }
-        setQueryParams(newParams);
-    }, [datasetId, selectedChromosome, selectedRange, setQueryParams]);
 
-    const handleRegionChange = (event) => {
-        setRegionSearchText(event.target.value);
+        const current = queryParams.toString();
+        const next = newParams.toString();
+        if (current !== next) {
+            ignoreNextUrlRegionRef.current = true;
+            setQueryParams(newParams);
+        }
+    }, [
+        datasetId,
+        selectedChromosome,
+        visibleRange,
+        selectedRange,
+        setQueryParams,
+    ]);
+
+    const handleCombinedInputChange = (event, value, reason) => {
+        // always reflect the current text
+        setRegionSearchText(value);
+
+        if (!value) {
+            setFilteredCombinedList(combinedList.slice(0, listLength));
+        } else {
+            debouncedFilter(value, setFilteredCombinedList);
+        }
     };
 
-    const handleRegionSubmit = async () => {
-        const region = await parseRegionString(regionSearchText);
-        if (region) {
-            setSelectionError("");
-            setRegion(region.chromosome, region.start, region.end);
-        } else {
-            // Clear existing plot data
-            setSelectedChromosome(null);
-            setSelectedRange(null, null);
-            setNearbyGenes([]);
-            setGwasData([]);
-            setVisibleRange({start: null, end: null});
+    const handleCombinedAutocompleteOpen = () => {
+        if (!regionSearchText) {
+            setFilteredCombinedList(combinedList.slice(0, listLength));
+        }
+    };
 
-            // Show descriptive error message
-            const input = regionSearchText.trim();
-            if (input.toLowerCase().startsWith("rs")) {
-                setSelectionError(`SNP "${input}" not found in this dataset.`);
-            } else if (input.match(/(chr)?(\w+)[:\s]+([\d,]+)[-\s]+([\d,]+)/i)) {
-                setSelectionError("Invalid region format. Use: chr1:1000000-2000000");
-            } else {
-                setSelectionError(`Gene "${input}" not found in this dataset.`);
+    const handleCombinedChange = async (event, newValue) => {
+        if (!newValue) {
+            setRegionSearchText("");
+            return;
+        }
+
+        if (typeof newValue === "string") {
+            setRegionSearchText(newValue);
+            return;
+        }
+
+        const id = newValue.id;
+
+        if (newValue.type === "snp") {
+            try {
+                const snp = await getSnpLocation(datasetId, id);
+                if (snp && snp.data) {
+                    const start = Math.max(snp.data.position - 50000, 0);
+                    const end = snp.data.position + 50000;
+                    const chr = snp.data.chromosome;
+                    setRegion(chr, start, end);
+                    setRegionSearchText(`${chr}:${start}-${end}`);
+                    setSelectionError("");
+                } else {
+                    setSelectionError(`SNP "${id}" not found in this dataset.`);
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`SNP "${id}" not found in this dataset.`);
+            }
+        } else if (newValue.type === "gene") {
+            try {
+                const gene = await getGeneLocation(datasetId, id);
+                if (gene && gene.data) {
+                    const { chromosome, start, end } = gene.data;
+                    const paddedStart = Math.max(start - 50000, 0);
+                    const paddedEnd = end + 50000;
+
+                    setRegion(chromosome, paddedStart, paddedEnd);
+                    setRegionSearchText(
+                        `${chromosome}:${paddedStart}-${paddedEnd}`,
+                    );
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `Gene "${newValue.name || id}" not found in this dataset.`,
+                    );
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(
+                    `Gene "${newValue.name || id}" not found in this dataset.`,
+                );
             }
         }
     };
 
-    const [gwasData, setGwasData] = useState([]);
-    const [hasGwas, setHasGwas] = useState(true);
+    const handleEnterSubmit = async () => {
+        const text = regionSearchText.trim();
+        if (!text) return;
+
+        const textLower = text.toLowerCase();
+
+        const match = combinedList.find((item) => {
+            const idMatch = (item.id || "").toLowerCase() === textLower;
+            const nameMatch =
+                item.type === "gene" &&
+                (item.name || "").toLowerCase() === textLower;
+            return idMatch || nameMatch;
+        });
+        if (match) {
+            await handleCombinedChange(null, match, "selectOption");
+            return;
+        }
+
+        const region = parseRegionString(text);
+        if (region) {
+            setSelectionError("");
+            setRegion(region.chromosome, region.start, region.end);
+            setRegionSearchText(
+                `${region.chromosome}:${region.start}-${region.end}`,
+            );
+            return;
+        }
+
+        if (textLower.startsWith("rs")) {
+            try {
+                const snp = await getSnpLocation(datasetId, text);
+                if (snp && snp.data) {
+                    const start = Math.max(snp.data.position - 50000, 0);
+                    const end = snp.data.position + 50000;
+                    const chr = snp.data.chromosome;
+                    setRegion(chr, start, end);
+                    setRegionSearchText(`${chr}:${start}-${end}`);
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `SNP "${text}" not found in this dataset.`,
+                    );
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`SNP "${text}" not found in this dataset.`);
+            }
+        } else {
+            try {
+                const gene = await getGeneLocation(datasetId, text);
+                if (gene && gene.data) {
+                    const { chromosome, start, end } = gene.data;
+                    const paddedStart = Math.max(start - 50000, 0);
+                    const paddedEnd = end + 50000;
+                    setRegion(chromosome, paddedStart, paddedEnd);
+                    setRegionSearchText(
+                        `${chromosome}:${paddedStart}-${paddedEnd}`,
+                    );
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `Gene "${text}" not found in this dataset.`,
+                    );
+                }
+            } catch (e) {
+                console.error(e);
+                setSelectionError(`Gene "${text}" not found in this dataset.`);
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (datasetId) {
+            fetchGwasDatasets(datasetId);
+        }
+    }, [datasetId]);
+
     const [selectionError, setSelectionError] = useState("");
 
     const fetchData = async (range, binSizeOverride = null) => {
         if (!datasetId || !selectedChromosome || !range) return;
 
-        const {start, end} = range;
+        const { start, end } = range;
         if (start == null || end == null || start >= end) {
             setSelectionError("Invalid region range");
             return;
@@ -271,35 +452,18 @@ function GenomicRegionView() {
             const locations = await fetchGeneLocations(datasetId, start, end);
             setNearbyGenes(locations);
 
-            let gwas;
-            if (hasGwas !== false) {
-                if (!(displayOptions?.showGwas ?? true)) {
-                    setGwasData([]);
-                    gwas = [];
-                } else {
-                    try {
-                        gwas = await fetchGwas(datasetId, start, end);
-                        setHasGwas(true);
-                        setGwasData(
-                            gwas.map(
-                                ({snp_id, p_value, beta_value, position, ...rest}) => ({
-                                    ...rest,
-                                    id: snp_id,
-                                    y: -Math.log10(Math.max(p_value, 1e-20)),
-                                    beta: beta_value,
-                                    x: position,
-                                    snp_id,
-                                    p_value,
-                                    position,
-                                }),
-                            ),
-                        );
-                        // console.log(gwasData);
-                    } catch (err) {
-                        console.error("Error fetching GWAS data:", err);
-                        setHasGwas(false);
-                        setGwasData([]);
-                    }
+            await fetchExonStructure(datasetId, start, end);
+
+            if (activeGwasDatasets.length > 0) {
+                try {
+                    await fetchGwasForRegion(
+                        datasetId,
+                        selectedChromosome,
+                        start,
+                        end,
+                    );
+                } catch (err) {
+                    console.error("Error fetching GWAS data:", err);
                 }
             }
 
@@ -361,20 +525,46 @@ function GenomicRegionView() {
         setSelectedPointData(null);
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         setIsDialogOpen(false);
-        if (selectedPoint) {
-            if (type === "gene") {
-                console.warn("Clicked on gene. Not implemented!");
-                return;
-            } else if (type === "signal") {
-                const parts = selectedPoint.split("–");
-                if (parts.length == 2) {
-                    const start = parseInt(parts[0]);
-                    const end = parseInt(parts[1]);
-                    setSelectedRange(start, end);
-                    setVisibleRange({start, end});
+        if (!selectedPoint) return;
+
+        if (type === "gene") {
+            try {
+                const gene = await getGeneLocation(datasetId, selectedPoint);
+
+                if (gene && gene.data) {
+                    const { chromosome, start, end } = gene.data;
+
+                    const paddedStart = Math.max(start - 50000, 0);
+                    const paddedEnd = end + 50000;
+
+                    setRegion(chromosome, paddedStart, paddedEnd);
+                    setRegionSearchText(
+                        `${chromosome}:${paddedStart}-${paddedEnd}`,
+                    );
+                    setSelectionError("");
+                } else {
+                    setSelectionError(
+                        `Gene "${selectedPoint}" not found in this dataset.`,
+                    );
                 }
+            } catch (err) {
+                console.error("Error resolving gene from click:", err);
+                setSelectionError(
+                    `Error resolving gene "${selectedPoint}". Please try again.`,
+                );
+            }
+            return;
+        } else if (type === "signal") {
+            const parts = selectedPoint.split("–");
+            if (parts.length === 2) {
+                const start = parseInt(parts[0]);
+                const end = parseInt(parts[1]);
+                setSelectedRange(start, end);
+                setVisibleRange({ start, end });
+                setRegionSearchText(`${selectedChromosome}:${start}-${end}`);
+                setSelectionError("");
             }
         }
     };
@@ -383,11 +573,22 @@ function GenomicRegionView() {
     useEffect(() => {
         if (!urlRegion) return;
 
+        // if we just changed URL ourselves, don't try to parse it again
+        if (ignoreNextUrlRegionRef.current) {
+            console.log("Ignoring URL region change:", urlRegion);
+            ignoreNextUrlRegionRef.current = false;
+            return;
+        }
+
         const init = async () => {
-            const parsed = await parseRegionString(urlRegion);
+            const parsed = parseRegionString(urlRegion);
             if (!parsed) return;
 
-            const {chromosome: urlChromosome, start: urlStart, end: urlEnd} = parsed;
+            const {
+                chromosome: urlChromosome,
+                start: urlStart,
+                end: urlEnd,
+            } = parsed;
 
             if (
                 urlChromosome !== selectedChromosome ||
@@ -401,13 +602,13 @@ function GenomicRegionView() {
         init();
     }, [urlRegion]);
 
-    useEffect(() => {
-        // when the selectedchromosome or range changes, update the region search text
-        if (selectedChromosome && selectedRange)
-            setRegionSearchText(
-                `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
-            );
-    }, [selectedChromosome, selectedRange]);
+    // useEffect(() => {
+    //     // when the selectedchromosome or range changes, update the region search text
+    //     if (selectedChromosome && selectedRange)
+    //         setRegionSearchText(
+    //             `${selectedChromosome}:${selectedRange.start}-${selectedRange.end}`,
+    //         );
+    // }, [selectedChromosome, selectedRange]);
 
     // TODO Clear zustand state on unmount
     // useEffect(() => {
@@ -421,8 +622,9 @@ function GenomicRegionView() {
         showGrid: true,
         trackHeight: 120,
         gapHeight: 10,
-        yHeight: "",
+        yHeightGlobal: "",
         showGwas: true,
+        perTrackY: true,
     });
     const [tempDisplayOptions, setTempDisplayOptions] = useState({
         ...displayOptions,
@@ -430,9 +632,13 @@ function GenomicRegionView() {
 
     const menuOpen = Boolean(anchorEl);
 
+    const activeGwasDatasets = useMemo(() => {
+        return displayOptions.showGwas ? selectedGwasDatasets || [] : [];
+    }, [displayOptions.showGwas, selectedGwasDatasets]);
+
     useEffect(() => {
         if (menuOpen) {
-            setTempDisplayOptions({...displayOptions});
+            setTempDisplayOptions({ ...displayOptions });
         }
     }, [displayOptions, menuOpen]);
 
@@ -441,7 +647,7 @@ function GenomicRegionView() {
     };
 
     const handleMenuClose = () => {
-        setDisplayOptions({...tempDisplayOptions});
+        setDisplayOptions({ ...tempDisplayOptions });
         setAnchorEl(null);
     };
 
@@ -450,16 +656,8 @@ function GenomicRegionView() {
             ...tempDisplayOptions,
             [option]: event.target.checked,
         });
-        // Update immediately for switches
-        if (option !== "dashedLineColor") {
-            setDisplayOptions({
-                ...displayOptions,
-                [option]: event.target.checked,
-            });
-        }
     };
 
-    const [visibleRange, setVisibleRange] = useState({start: null, end: null});
     const [currentBinSize, setCurrentBinSize] = useState(1000);
 
     // const debounce = (func, wait) => {
@@ -484,8 +682,19 @@ function GenomicRegionView() {
                     figure.layout.xaxis &&
                     figure.layout.xaxis.range
                 ) {
-                    const [start, end] = figure.layout.xaxis.range;
-                    const newRange = {start: Math.floor(start), end: Math.ceil(end)};
+                    let [start, end] = figure.layout.xaxis.range;
+
+                    // Clamp at 0
+                    if (start < 0) {
+                        const width = end - start;
+                        start = 0;
+                        end = width;
+                    }
+
+                    const newRange = {
+                        start: Math.floor(start),
+                        end: Math.ceil(end),
+                    };
 
                     if (
                         !visibleRange ||
@@ -506,6 +715,24 @@ function GenomicRegionView() {
         },
         [debouncedUpdate],
     );
+
+    // Refetch data when dataset, chromosome, or selected range changes
+    useEffect(() => {
+        if (
+            datasetId &&
+            selectedChromosome &&
+            selectedRange?.start != null &&
+            selectedRange?.end != null
+        ) {
+            fetchData(selectedRange);
+        }
+    }, [
+        datasetId,
+        selectedChromosome,
+        selectedRange?.start,
+        selectedRange?.end,
+        activeGwasDatasets,
+    ]);
 
     useEffect(() => {
         if (
@@ -535,33 +762,25 @@ function GenomicRegionView() {
         datasetId,
         currentBinSize,
         selectedRange,
-        hasGwas,
+        activeGwasDatasets,
     ]);
-
-    useEffect(() => {
-        if (displayOptions?.showGwas ?? true) {
-            setHasGwas(true);
-        } else {
-            setHasGwas(null);
-        }
-    }, [displayOptions.showGwas]);
 
     return (
         <div
             className="plot-page-container"
-            style={{display: "flex", flexDirection: "column", flex: 1}}
+            style={{ display: "flex", flexDirection: "column", flex: 1 }}
         >
             {/* Title Row */}
             <Box className="title-row">
                 <Typography variant="h6">Genomic Region View</Typography>
             </Box>
-            <Divider/>
+            <Divider />
             <div className="selection-row">
                 <div className="control-group">
                     {/* <Typography variant="subtitle1">Select a Dataset:</Typography> */}
                     {/* Dataset Selection */}
                     <Autocomplete
-                        sx={{width: "400px"}}
+                        sx={{ width: "400px" }}
                         size="small"
                         disableListWrap
                         options={datasetOptions}
@@ -580,7 +799,7 @@ function GenomicRegionView() {
                             },
                         }}
                         renderOption={(props, option) => {
-                            const {key, ...rest} = props;
+                            const { key, ...rest } = props;
                             return (
                                 <li key={key} {...rest}>
                                     {option}
@@ -601,22 +820,68 @@ function GenomicRegionView() {
                     />
                 </div>
                 <div className="control-group">
-                    {/* <label>Select Gene or SNP:</label> */}
-                    {/* Gene Selection */}
-                    <TextField
-                        sx={{width: "400px"}}
+                    <Autocomplete
+                        sx={{ width: "400px" }}
                         size="small"
-                        value={regionSearchText}
-                        onChange={handleRegionChange}
-                        onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                                handleRegionSubmit();
+                        freeSolo
+                        disableListWrap
+                        options={filteredCombinedList}
+                        onChange={handleCombinedChange}
+                        inputValue={regionSearchText}
+                        onInputChange={handleCombinedInputChange}
+                        onOpen={handleCombinedAutocompleteOpen}
+                        getOptionLabel={(option) => {
+                            if (typeof option === "string") return option;
+                            if (option.type === "gene") {
+                                if (option.name && option.id) {
+                                    return `${option.name} (${option.id})`;
+                                }
+                                return option.name || option.id || "";
                             }
+                            return option.id || "";
                         }}
-                        placeholder="chr1:1000000-2000000 or SNCA"
-                        label="Enter genomic region or gene symbol"
-                        variant="standard"
-                        /* helperText="Format: chromosome:start-end or chromosome start end" */
+                        isOptionEqualToValue={(option, value) =>
+                            (option.id || option) === (value.id || value)
+                        }
+                        slots={{
+                            popper: StyledPopper,
+                        }}
+                        slotProps={{
+                            listbox: {
+                                component: ListboxComponent,
+                            },
+                        }}
+                        renderOption={(props, option) => {
+                            const { key, ...rest } = props;
+                            if (option.type === "gene") {
+                                return (
+                                    <li key={key} {...rest}>
+                                        {option.name
+                                            ? `${option.name} (${option.id})`
+                                            : option.id}
+                                    </li>
+                                );
+                            }
+                            return (
+                                <li key={key} {...rest}>
+                                    {option.id}
+                                </li>
+                            );
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="chr:start-end, gene symbol or SNP rsID"
+                                variant="standard"
+                                // Pressing Enter should parse as region/gene/SNP
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleEnterSubmit();
+                                    }
+                                }}
+                            />
+                        )}
                     />
 
                     {/* SNP Selection */}
@@ -653,19 +918,21 @@ function GenomicRegionView() {
                 <div className="control-group">
                     {/* Button to fetch data and a loading indicator*/}
                     <Box
-                        /* sx={{ */
-                        /*   display: "flex", */
-                        /*   justifyContent: "center", */
-                        /*   /\* margin: "20px 0px", *\/ */
-                        /* }} */
+                    /* sx={{ */
+                    /*   display: "flex", */
+                    /*   justifyContent: "center", */
+                    /*   /\* margin: "20px 0px", *\/ */
+                    /* }} */
                     >
                         <Button
                             variant="outlined"
-                            endIcon={<ScatterPlotIcon/>}
+                            endIcon={<ScatterPlotIcon />}
                             disabled={loading || dataLoading}
                             onClick={handleLoadPlot}
                         >
-                            {loading || dataLoading ? "Loading plots..." : "Refresh Plots"}
+                            {loading || dataLoading
+                                ? "Loading plots..."
+                                : "Refresh Plots"}
                         </Button>
                     </Box>
                 </div>
@@ -676,16 +943,17 @@ function GenomicRegionView() {
                             color="inherit"
                             aria-label="display options"
                         >
-                            <SettingsIcon/>
+                            <SettingsIcon />
                         </IconButton>
                     </Tooltip>
                     <Menu
                         anchorEl={anchorEl}
                         open={menuOpen}
                         onClose={handleMenuClose}
+                        marginThreshold={50}
                         PaperProps={{
                             style: {
-                                width: "500px",
+                                width: "400px",
                                 padding: "10px",
                             },
                         }}
@@ -694,8 +962,10 @@ function GenomicRegionView() {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showGrid}
-                                        onChange={handleOptionChange("showGrid")}
+                                        checked={tempDisplayOptions.showGrid}
+                                        onChange={handleOptionChange(
+                                            "showGrid",
+                                        )}
                                     />
                                 }
                                 label="Show grid"
@@ -710,7 +980,9 @@ function GenomicRegionView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Track height:</Typography>
+                                <Typography variant="body">
+                                    Track height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -735,18 +1007,6 @@ function GenomicRegionView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
                         <MenuItem>
@@ -758,7 +1018,9 @@ function GenomicRegionView() {
                                     width: "100%",
                                 }}
                             >
-                                <Typography variant="body">Gap height:</Typography>
+                                <Typography variant="body">
+                                    Gap height:
+                                </Typography>
                                 <TextField
                                     size="small"
                                     type="number"
@@ -783,83 +1045,181 @@ function GenomicRegionView() {
                                         },
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
                             </Box>
                         </MenuItem>
-                        <MenuItem>
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 1,
-                                    width: "100%",
-                                }}
-                            >
-                                <Typography variant="body">Y-axis height:</Typography>
-                                <TextField
-                                    size="small"
-                                    type="number"
-                                    value={tempDisplayOptions.yHeight}
-                                    onChange={(e) =>
-                                        setTempDisplayOptions({
-                                            ...tempDisplayOptions,
-                                            yHeight:
-                                                e.target.value === "" ? "" : Number(e.target.value),
-                                        })
-                                    }
-                                    onKeyPress={(e) => {
-                                        if (e.key === "Enter") {
-                                            setDisplayOptions({
+                        {!displayOptions.perTrackY && (
+                            <MenuItem>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                        width: "100%",
+                                    }}
+                                >
+                                    <Typography variant="body">
+                                        Global y-axis height:
+                                    </Typography>
+                                    <TextField
+                                        size="small"
+                                        type="number"
+                                        value={tempDisplayOptions.yHeightGlobal}
+                                        onChange={(e) =>
+                                            setTempDisplayOptions({
                                                 ...tempDisplayOptions,
-                                            });
+                                                yHeightGlobal:
+                                                    e.target.value === ""
+                                                        ? ""
+                                                        : Number(
+                                                              e.target.value,
+                                                          ),
+                                            })
                                         }
-                                    }}
-                                    placeholder="Auto"
-                                    inputProps={{
-                                        style: {
-                                            width: "80px",
-                                            padding: "5px",
-                                        },
-                                        min: 0,
-                                        step: 0.1,
-                                    }}
-                                />
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => {
-                                        setDisplayOptions({
-                                            ...tempDisplayOptions,
-                                        });
-                                    }}
-                                    sx={{height: "30px"}}
-                                >
-                                    Save
-                                </Button>
-                            </Box>
-                        </MenuItem>
+                                        onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                                setDisplayOptions({
+                                                    ...tempDisplayOptions,
+                                                });
+                                            }
+                                        }}
+                                        placeholder="Auto"
+                                        inputProps={{
+                                            style: {
+                                                width: "80px",
+                                                padding: "5px",
+                                            },
+                                            min: 0,
+                                            step: 0.1,
+                                        }}
+                                    />
+                                </Box>
+                            </MenuItem>
+                        )}
                         <MenuItem>
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={displayOptions.showGwas}
-                                        onChange={handleOptionChange("showGwas")}
+                                        checked={tempDisplayOptions.perTrackY}
+                                        onChange={(e) =>
+                                            setTempDisplayOptions({
+                                                ...tempDisplayOptions,
+                                                perTrackY: e.target.checked,
+                                            })
+                                        }
+                                    />
+                                }
+                                label="Separate y-axis height per track"
+                            />
+                        </MenuItem>
+                        {tempDisplayOptions.perTrackY && (
+                            <MenuItem disableGutters>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: 0.5,
+                                        width: "100%",
+                                        px: 2,
+                                        pb: 1,
+                                    }}
+                                >
+                                    <Typography
+                                        variant="subtitle2"
+                                        sx={{ fontWeight: 600, mb: 0.5 }}
+                                    >
+                                        Per-track y-axis overrides
+                                    </Typography>
+
+                                    {availableCellTypes.map((ct) => (
+                                        <Box
+                                            key={ct}
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 1,
+                                                pl: 1.5, // Indent rows under heading
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    flex: 1,
+                                                    minWidth: 0,
+                                                    whiteSpace: "nowrap",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                }}
+                                            >
+                                                {ct}:
+                                            </Typography>
+                                            <TextField
+                                                size="small"
+                                                type="number"
+                                                value={
+                                                    tempDisplayOptions
+                                                        .trackYHeights?.[ct] ??
+                                                    ""
+                                                }
+                                                onChange={(e) => {
+                                                    const value =
+                                                        e.target.value === ""
+                                                            ? ""
+                                                            : Number(
+                                                                  e.target
+                                                                      .value,
+                                                              );
+                                                    setTempDisplayOptions(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            trackYHeights: {
+                                                                ...prev.trackYHeights,
+                                                                [ct]: value,
+                                                            },
+                                                        }),
+                                                    );
+                                                }}
+                                                placeholder="Auto"
+                                                inputProps={{
+                                                    style: {
+                                                        width: "80px",
+                                                        padding: "5px",
+                                                    },
+                                                    min: 0,
+                                                    step: 0.1,
+                                                }}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </MenuItem>
+                        )}
+                        <MenuItem>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={tempDisplayOptions.showGwas}
+                                        onChange={handleOptionChange(
+                                            "showGwas",
+                                        )}
                                     />
                                 }
                                 label="Show GWAS data"
                             />
                         </MenuItem>
+                        <Box sx={{ mt: 1, p: 1, pb: 0.5 }}>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                    setDisplayOptions({
+                                        ...tempDisplayOptions,
+                                    });
+                                    setAnchorEl(null); // close the menu
+                                }}
+                            >
+                                Apply changes
+                            </Button>
+                        </Box>
                     </Menu>
                 </div>
             </div>
@@ -869,44 +1229,64 @@ function GenomicRegionView() {
                     handleClose={handleClose}
                     handleConfirm={handleConfirm}
                     title={`Do you want to open details for ${selectedPoint ?? "point"}?`}
-                    description={selectedPointData ?? "No additional data available."}
+                    description={
+                        selectedPointData ?? "No additional data available."
+                    }
                 />
 
                 {/* Plot Area */}
                 <div className="plot-main">
                     {dataLoading && (
                         <>
-                            <Box sx={{width: "100%"}}>
-                                <LinearProgress/>
+                            <Box sx={{ width: "100%" }}>
+                                <LinearProgress />
                             </Box>
                         </>
                     )}
 
-                    {datasetId === "" || datasetId === "all" || datasetId == null ? (
+                    {datasetId === "" ||
+                    datasetId === "all" ||
+                    datasetId == null ? (
                         <Typography
-                            sx={{color: "text.secondary", paddingTop: "100px"}}
+                            sx={{
+                                color: "text.secondary",
+                                paddingTop: "100px",
+                            }}
                             variant="h5"
                         >
                             No dataset selected for exploration
                         </Typography>
                     ) : error ? (
-                        <Typography sx={{paddingTop: "100px"}} variant="h5" color="error">
+                        <Typography
+                            sx={{ paddingTop: "100px" }}
+                            variant="h5"
+                            color="error"
+                        >
                             {error}
                         </Typography>
                     ) : (
                         <div className="qtl-container">
                             {/* Plot Container */}
-                            <div key={"signal-view"} className={`view-container`}>
-                                {!selectedChromosome && !selectedRange && !selectionError ? (
+                            <div
+                                key={"signal-view"}
+                                className={`view-container`}
+                            >
+                                {!selectedChromosome &&
+                                !selectedRange &&
+                                !selectionError ? (
                                     <Typography
-                                        sx={{color: "text.secondary", paddingTop: "100px"}}
+                                        sx={{
+                                            color: "text.secondary",
+                                            paddingTop: "100px",
+                                        }}
                                         variant="h5"
                                     >
-                                        No genomic region selected for exploration
+                                        No genomic region selected for
+                                        exploration
                                     </Typography>
                                 ) : selectionError ? (
                                     <Typography
-                                        sx={{paddingTop: "100px"}}
+                                        sx={{ paddingTop: "100px" }}
                                         variant="h5"
                                         color="error"
                                     >
@@ -914,7 +1294,10 @@ function GenomicRegionView() {
                                     </Typography>
                                 ) : availableCellTypes.length === 0 ? (
                                     <Typography
-                                        sx={{color: "text.secondary", paddingTop: "100px"}}
+                                        sx={{
+                                            color: "text.secondary",
+                                            paddingTop: "100px",
+                                        }}
                                         variant="h5"
                                     >
                                         No cell types available
@@ -926,7 +1309,7 @@ function GenomicRegionView() {
                                     selectedRange && (
                                         // ((hasGwas && gwasData.length > 0) || !hasGwas) && (
                                         <div
-                                            key={`${selectedChromosome}-${selectedRange.start}-${selectedRange.end}-plot`}
+                                            key={"region-plot"}
                                             className="region-plot"
                                         >
                                             <RegionViewPlotlyPlot
@@ -937,15 +1320,24 @@ function GenomicRegionView() {
                                                 cellTypes={availableCellTypes}
                                                 signalData={signalData}
                                                 nearbyGenes={nearbyGenes}
+                                                gwasDatasets={gwasDatasets.filter(
+                                                    (ds) =>
+                                                        activeGwasDatasets.includes(
+                                                            ds.id,
+                                                        ),
+                                                )}
                                                 gwasData={gwasData}
-                                                hasGwas={
-                                                    (displayOptions?.showGwas ?? true) ? hasGwas : false
-                                                }
                                                 handleSelect={handleSelect}
                                                 useWebGL={webGLSupported}
                                                 displayOptions={displayOptions}
-                                                handlePlotUpdate={handlePlotUpdate}
+                                                handlePlotUpdate={
+                                                    handlePlotUpdate
+                                                }
                                                 binSize={currentBinSize}
+                                                exonStructure={exonStructure}
+                                                exonStructureTruncated={
+                                                    exonStructureTruncated
+                                                }
                                             />
                                         </div>
                                     )
