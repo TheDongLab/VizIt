@@ -14,13 +14,14 @@ function dataToRGB({ beta, y }, min = 2, max = 3) {
     let intensity;
 
     if (min >= max) {
-        intensity = absBeta >= max ? 1 : 0;
+    intensity = absBeta >= max ? 1 : 0; // Treat min/max as single threshold
     } else {
         if (absBeta < min) intensity = 0;
         else if (absBeta > max) intensity = 1;
-        else intensity = (absBeta - min) / (max - min);
+    else intensity = (absBeta - min) / (max - min); // Normalize to [0,1]
     }
 
+  // const channelValue = Math.round(maxLevel * (1 - intensity));
     const channelValue = 80;
 
     return beta > 0
