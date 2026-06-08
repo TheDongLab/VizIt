@@ -87,6 +87,12 @@ function XQTLView() {
         .filter((d) => d.assay.toLowerCase().endsWith("qtl"))
         .map((d) => d.dataset_id);
 
+    // Map dataset_id to display name
+    const datasetLabel = (id) => {
+        const ds = datasetRecords.find((d) => d.dataset_id === id);
+        return (ds && ds.dataset_name) || id || "";
+    };
+
     const [datasetId, setDatasetId] = useState(urlDataset);
     const [datasetSearchText, setDatasetSearchText] = useState("");
 
@@ -551,6 +557,7 @@ function XQTLView() {
                         options={datasetOptions}
                         value={datasetId ?? null}
                         onChange={handleDatasetChange}
+                        getOptionLabel={(option) => datasetLabel(option)}
                         inputValue={datasetSearchText}
                         onInputChange={(event, newInputValue) =>
                             setDatasetSearchText(newInputValue)
@@ -567,7 +574,7 @@ function XQTLView() {
                             const { key, ...rest } = props;
                             return (
                                 <li key={key} {...rest}>
-                                    {option}
+                                    {datasetLabel(option)}
                                 </li>
                                 // <ListItem key={key} {...rest}>
                                 //   {option}
