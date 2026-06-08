@@ -580,26 +580,23 @@ function GenomicRegionView() {
             return;
         }
 
-        const init = async () => {
-            const parsed = parseRegionString(urlRegion);
-            if (!parsed) return;
+        const parsed = parseRegionString(urlRegion);
+        if (!parsed) return;
 
-            const {
-                chromosome: urlChromosome,
-                start: urlStart,
-                end: urlEnd,
-            } = parsed;
+        const {
+            chromosome: urlChromosome,
+            start: urlStart,
+            end: urlEnd,
+        } = parsed;
 
-            if (
-                urlChromosome !== selectedChromosome ||
-                urlStart !== selectedRange?.start ||
-                urlEnd !== selectedRange?.end
-            ) {
-                setRegion(urlChromosome, urlStart, urlEnd);
-                setRegionSearchText(`${urlChromosome}:${urlStart}-${urlEnd}`);
-            }
-        };
-        init();
+        if (
+            urlChromosome !== selectedChromosome ||
+            urlStart !== selectedRange?.start ||
+            urlEnd !== selectedRange?.end
+        ) {
+            setRegion(urlChromosome, urlStart, urlEnd);
+            setRegionSearchText(`${urlChromosome}:${urlStart}-${urlEnd}`);
+        }
     }, [urlRegion]);
 
     // useEffect(() => {
