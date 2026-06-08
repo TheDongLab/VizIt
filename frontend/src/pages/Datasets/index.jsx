@@ -3,6 +3,7 @@ import {Box, Typography, Divider, Button, Link} from "@mui/material";
 
 import FilterPanel from "./FilterPanel";
 import DatasetDisplay from "./DatasetDisplay.jsx";
+import LoadRemoteDatasetDialog from "./LoadRemoteDatasetDialog.jsx";
 import "./DatasetPage.css";
 import useDatatableStore from "../../store/DatatableStore.js";
 
@@ -123,6 +124,8 @@ const DatasetsPage = () => {
         setDeleteMode(!deleteMode);
     }
 
+    const [loadUrlOpen, setLoadUrlOpen] = useState(false);
+
     return (
         <div className="data-page-container" style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
             {/* Title Row */}
@@ -141,12 +144,18 @@ const DatasetsPage = () => {
                     {/*    {deleteMode ? "Cancel Delete" : "- Delete Dataset"}*/}
                     {/*</Button>*/}
 
+                    <Button variant="outlined" color="primary" onClick={() => setLoadUrlOpen(true)}>
+                        Load from URL
+                    </Button>
+
                     <Button variant="contained" color="primary">
                         <Link href="/datasetmanager" color="inherit" underline="hover">+ Add Dataset</Link>
                     </Button>
                 </Box>
             </Box>
             <Divider/>
+
+            <LoadRemoteDatasetDialog open={loadUrlOpen} onClose={() => setLoadUrlOpen(false)}/>
 
             {/* Main Content */}
             <Box className="main-content" style={{flex: 2, display: 'flex', flexDirection: 'row'}}>

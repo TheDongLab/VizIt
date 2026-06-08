@@ -9,6 +9,17 @@ import toml
 import re
 from functools import lru_cache
 
+from backend.funcs.remote_io import (
+    is_remote,
+    ds_locator,
+    ds_exists,
+    ds_read_json,
+    ds_read_text,
+    ds_read_toml,
+    ds_text_stream,
+    ds_bytes_stream,
+)
+
 
 def safe_filename(name):
     return re.sub(r"[^a-zA-Z0-9_\-]", "_", name)
@@ -64,22 +75,17 @@ def get_gene_location(dataset, gene):
             return f"Error: Could not parse positions from gene {gene}: {str(e)}"
     
     # Case 2: eQTL dataset - need to look up in JSON file
-    genes_file = os.path.join(
-        "backend", "datasets", dataset, "gene_jsons", 
-        get_gene_file_name(safe_filename(gene)) + ".json"
-    )
+    gene_file = get_gene_file_name(safe_filename(gene)) + ".json"
+    data = ds_read_json(dataset, "gene_jsons", gene_file)
 
-    if not os.path.exists(genes_file):
-        print(genes_file + " not found")
+    if data is None:
+        print(f"gene_jsons/{gene_file} not found for {dataset}")
         return "Error: Gene list file not found for the specified dataset."
-    
-    with open(genes_file, "r") as f:
-        data = json.load(f)
-        
-        if isinstance(data, dict) and gene in data:
-            gene_x = data[gene]
-        else:
-            gene_x = data
+
+    if isinstance(data, dict) and gene in data:
+        gene_x = data[gene]
+    else:
+        gene_x = data
 
     if not gene_x:
         return f"Error: Gene {gene} not found in dataset."
@@ -105,19 +111,10 @@ def get_snp_location(dataset, snp):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
-    def load_snp_from_file(file_path):
-        if os.path.exists(file_path):
-            with open(file_path, "r") as f:
-                data = json.load(f)
-            return data.get(snp, None)
-        return None
-
     try:
         group = get_snp_group(snp)
-        snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons_merged", group + ".json"
-        )
-        snp_data = load_snp_from_file(snps_file)
+        group_map = ds_read_json(dataset, "snp_jsons_merged", group + ".json")
+        snp_data = group_map.get(snp) if isinstance(group_map, dict) else None
         if snp_data:
             return {
                 "chromosome": snp_data["chromosome"],
@@ -128,12 +125,14 @@ def get_snp_location(dataset, snp):
         pass
 
     default_file = os.path.join("backend", "datasets", "snp_locations.json")
-    snp_data = load_snp_from_file(default_file)
-    if snp_data:
-        return {
-            "chromosome": snp_data["chromosome"],
-            "position": snp_data["position"],
-        }
+    if os.path.exists(default_file):
+        with open(default_file, "r") as f:
+            snp_data = json.load(f).get(snp, None)
+        if snp_data:
+            return {
+                "chromosome": snp_data["chromosome"],
+                "position": snp_data["position"],
+            }
 
     return None
 
@@ -142,13 +141,11 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
-        chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "gene_locations", chromosome + ".parquet"
-        )
+        rel = ("gene_locations", chromosome + ".parquet")
         # significant_genes_list = get_qtl_gene_list(dataset)
 
-        if os.path.exists(chromosome_file):
-            df = pl.read_parquet(chromosome_file).filter(
+        if ds_exists(dataset, *rel):
+            df = pl.read_parquet(ds_locator(dataset, *rel)).filter(
                 (pl.col("position_end") >= start)
                 & (pl.col("position_start") <= end)
                 # & pl.col("gene_id").is_in(significant_genes_list)
@@ -161,7 +158,7 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
             else:
                 return f"No genes found in the region."
         else:
-            print(chromosome_file + " not found")
+            print(f"gene_locations/{chromosome}.parquet not found for {dataset}")
             return "Error: Chromosome file not found for the specified dataset."
 
 
@@ -169,13 +166,11 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
-        chromosome_file = os.path.join(
-            "backend", "datasets", dataset, "snp_locations", chromosome + ".parquet"
-        )
+        rel = ("snp_locations", chromosome + ".parquet")
         significant_snps_list = get_qtl_snp_list(dataset)
 
-        if os.path.exists(chromosome_file):
-            df = pl.read_parquet(chromosome_file).filter(
+        if ds_exists(dataset, *rel):
+            df = pl.read_parquet(ds_locator(dataset, *rel)).filter(
                 (pl.col("position") >= start)
                 & (pl.col("position") <= end)
                 & pl.col("snp_id").is_in(significant_snps_list)
@@ -186,31 +181,28 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
             else:
                 return f"No SNPs found in the region."
         else:
-            print(chromosome_file + " not found")
+            print(f"snp_locations/{chromosome}.parquet not found for {dataset}")
             return "Error: Chromosome file not found for the specified dataset."
 
 
 def get_gwas_datasets(dataset):
-    config_path = os.path.join("backend", "datasets", dataset, "gwas", "gwas_datasets.toml")
-    if not os.path.exists(config_path):
-        return [] 
-    with open(config_path, "r") as f:
-        config = toml.load(f)
+    config = ds_read_toml(dataset, "gwas", "gwas_datasets.toml")
+    if config is None:
+        return []
     return config.get("datasets", [])
 
 
 def get_gwas_in_chromosome(qtl_dataset, gwas_dataset, chromosome, start, end):
-    base_dir = os.path.join("backend", "datasets", qtl_dataset, "gwas", gwas_dataset)
-    file_path = os.path.join(base_dir, f"{chromosome}.tsv")
-    if not os.path.exists(file_path):
-        # Return empty
-        return {
-            "snp_id": [],
-            "position": [],
-            "beta_value": [],
-            "p_value": [],
-        }
-    df = pl.read_csv(file_path, separator="\t").filter(
+    empty = {
+        "snp_id": [],
+        "position": [],
+        "beta_value": [],
+        "p_value": [],
+    }
+    tsv_stream = ds_bytes_stream(qtl_dataset, "gwas", gwas_dataset, f"{chromosome}.tsv")
+    if tsv_stream is None:
+        return empty
+    df = pl.read_csv(tsv_stream, separator="\t").filter(
         (pl.col("position") >= start) & (pl.col("position") <= end)
     )
     if df.is_empty():
@@ -234,16 +226,10 @@ def get_gene_chromosome(dataset, gene):
         chromosome = gene.split("-")[0]
         return chromosome
     
-    genes_file = os.path.join(
-        "backend", "datasets", dataset, "gene_jsons", 
-        get_gene_file_name(safe_filename(gene)) + ".json"
-    )
+    gene_file = get_gene_file_name(safe_filename(gene)) + ".json"
+    gene_x = ds_read_json(dataset, "gene_jsons", gene_file)
 
-    if os.path.exists(genes_file):
-        with open(genes_file, "r") as f:
-            data = json.load(f)
-            gene_x = data
-
+    if gene_x is not None:
         if gene_x:
             chromosome = gene_x.get("chromosome")
             if chromosome:
@@ -253,7 +239,7 @@ def get_gene_chromosome(dataset, gene):
         else:
             return f"Error: Gene {gene} not found in {dataset} dataset."
     else:
-        print(genes_file + " not found")
+        print(f"gene_jsons/{gene_file} not found for {dataset}")
         return f"Error: Gene list file not found for the specified dataset {dataset}."
 
 
@@ -261,32 +247,28 @@ def get_snp_chromosome(dataset, snp):
     if dataset == "all":
         return "Error: Dataset is not specified."
     else:
-        snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons_merged", get_snp_group(snp) + ".json"
-        )
+        snps_file = ("snp_jsons_merged", get_snp_group(snp) + ".json")
 
-    if os.path.exists(snps_file):
-        with open(snps_file, "r") as f:
-            data = json.load(f)
-            snp = data.get(snp, None)
+    data = ds_read_json(dataset, *snps_file)
+    if data is not None:
+        snp = data.get(snp, None)
         if data and snp:
             return snp["chromosome"]
         else:
             return f"Error: SNP {snp} not found in {dataset} dataset."
     else:
-        print(snps_file + " not found")
+        print(f"{'/'.join(snps_file)} not found for {dataset}")
         return "Error: SNP list file not found for the specified dataset."
 
 
 def get_gene_list(dataset, query_str="AB"):
     if dataset == "all":
         genes_file = os.path.join("backend", "datasets", "gene_list.json")
+        data = json.load(open(genes_file)) if os.path.exists(genes_file) else None
     else:
-        genes_file = os.path.join("backend", "datasets", dataset, "gene_list.json")
+        data = ds_read_json(dataset, "gene_list.json")
 
-    if os.path.exists(genes_file):
-        with open(genes_file, "r") as f:
-            data = json.load(f)
+    if data is not None:
         if query_str == "all":
             return data
         elif query_str == "default":
@@ -294,22 +276,16 @@ def get_gene_list(dataset, query_str="AB"):
         else:
             return [gene for gene in data if gene.lower().startswith(query_str.lower())]
     else:
-        print(genes_file + " not found")
+        print(f"gene_list.json not found for {dataset}")
         return "Error: Gene list file not found"
 
 
 def get_qtl_gene_list(dataset, query_str="all"):
     if dataset == "all":
         return "Error: Gene dataset not specified."
-    else:
-        genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_list.json"
-        )
 
-    if os.path.exists(genes_file):
-        with open(genes_file, "r") as f:
-            data = json.load(f)
-
+    data = ds_read_json(dataset, "gene_list.json")
+    if data is not None:
         data = _normalize_gene_list(data)
 
         if query_str == "all":
@@ -329,72 +305,62 @@ def get_qtl_gene_list(dataset, query_str="all"):
             "name": [g["name"] for g in filtered],
         }
     else:
-        print(genes_file + " not found")
+        print(f"gene_list.json not found for {dataset}")
         return "Error: Gene list file not found"
 
 
 def get_qtl_snp_list(dataset, query_str="all"):
     if dataset == "all":
         return "Error: SNP dataset not specified."
-    else:
-        snps_file = os.path.join("backend", "datasets", dataset, "snp_list.json")
 
-    if os.path.exists(snps_file):
-        with open(snps_file, "r") as f:
-            data = json.load(f)
+    data = ds_read_json(dataset, "snp_list.json")
+    if data is not None:
         if query_str == "all":
             return data
         else:
             return [snp for snp in data if snp.lower().startswith(query_str.lower())]
     else:
-        print(snps_file + " not found")
+        print(f"snp_list.json not found for {dataset}")
         return "Error: SNP list file not found"
 
 
 def get_gene_celltypes(dataset, gene):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        genes_file = os.path.join(
-            "backend", "datasets", dataset, "gene_jsons", get_gene_file_name(safe_filename(gene)) + ".json"
-        )
 
-    if os.path.exists(genes_file):
-        with open(genes_file, "r") as f:
-            data = json.load(f)
+    gene_file = get_gene_file_name(safe_filename(gene)) + ".json"
+    data = ds_read_json(dataset, "gene_jsons", gene_file)
 
-            if gene.startswith("chr"):
-                gene_x = data.get(gene, None)
-            else:
-                gene_x = data
+    if data is not None:
+        if gene.startswith("chr"):
+            gene_x = data.get(gene, None)
+        else:
+            gene_x = data
 
         if gene_x:
             return gene_x.get("celltypes", [])
         else:
             return f"Error: Gene not found in dataset."
     else:
-        print(genes_file + " not found")
+        print(f"gene_jsons/{gene_file} not found for {dataset}")
         return "Error: Gene list file not found for the specified dataset."
 
 
 def get_snp_celltypes(dataset, snp):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        snps_file = os.path.join(
-            "backend", "datasets", dataset, "snp_jsons_merged", get_snp_group(snp) + ".json"
-        )
 
-    if os.path.exists(snps_file):
-        with open(snps_file, "r") as f:
-            data = json.load(f)
-            snp = data.get(snp, None)
+    snps_file = ("snp_jsons_merged", get_snp_group(snp) + ".json")
+    data = ds_read_json(dataset, *snps_file)
+
+    if data is not None:
+        snp = data.get(snp, None)
         if data and snp:
             return snp["celltypes"]
         else:
             return f"Error: SNP not found in dataset."
     else:
-        print(snps_file + " not found")
+        print(f"{'/'.join(snps_file)} not found for {dataset}")
         return "Error: SNP list file not found for the specified dataset."
 
 
@@ -411,22 +377,16 @@ def get_snp_data_for_gene(dataset, gene, celltype=""):
     gene_start = gene_loc["start"]
     gene_end = gene_loc["end"]
 
-    celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset, "celltypes", "celltype_parquet.json"
-    )
-    if not os.path.exists(celltype_mapping_file):
-        print(celltype_mapping_file + " not found")
+    celltype_mapping = ds_read_json(dataset, "celltypes", "celltype_parquet.json")
+    if celltype_mapping is None:
+        print(f"celltypes/celltype_parquet.json not found for {dataset}")
         return "Error: Celltype mapping file not found for the specified dataset."
 
-    with open(celltype_mapping_file, "r") as f:
-        celltype_mapping = json.load(f)
-
     celltype_file = celltype_mapping.get(celltype, celltype)
-    data_file = os.path.join("backend", "datasets", dataset, "celltypes", celltype_file)
-
-    if not os.path.exists(data_file):
-        print(data_file + " not found")
+    if not ds_exists(dataset, "celltypes", celltype_file):
+        print(f"celltypes/{celltype_file} not found for {dataset}")
         return "Error: QTL data file not found for the specified dataset and cell type."
+    data_file = ds_locator(dataset, "celltypes", celltype_file)
 
     gene_df = (
         pl.scan_parquet(data_file)
@@ -475,22 +435,16 @@ def get_gene_data_for_snp(dataset, is_caqtl, snp, celltype=""):
         return f"Error: {snp_loc}"
     chrom = snp_loc["chromosome"]
 
-    celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset, "celltypes", "celltype_parquet.json"
-    )
-    if not os.path.exists(celltype_mapping_file):
-        print(celltype_mapping_file + " not found")
+    celltype_mapping = ds_read_json(dataset, "celltypes", "celltype_parquet.json")
+    if celltype_mapping is None:
+        print(f"celltypes/celltype_parquet.json not found for {dataset}")
         return "Error: Celltype mapping file not found for the specified dataset."
 
-    with open(celltype_mapping_file, "r") as f:
-        celltype_mapping = json.load(f)
-
     celltype_file = celltype_mapping.get(celltype, celltype)
-    data_file = os.path.join("backend", "datasets", dataset, "celltypes", celltype_file)
-
-    if not os.path.exists(data_file):
-        print(data_file + " not found")
+    if not ds_exists(dataset, "celltypes", celltype_file):
+        print(f"celltypes/{celltype_file} not found for {dataset}")
         return "Error: QTL data file not found for the specified dataset and cell type."
+    data_file = ds_locator(dataset, "celltypes", celltype_file)
 
     snp_df = (
         pl.scan_parquet(data_file)
@@ -528,14 +482,11 @@ def get_gene_data_for_snp(dataset, is_caqtl, snp, celltype=""):
         )
         return snp_df.to_dict(as_series=False)
 
-    gene_loc_file = os.path.join(
-        "backend", "datasets", dataset, "gene_locations", f"{chrom}.parquet"
-    )
-    if not os.path.exists(gene_loc_file):
-        print(gene_loc_file + " not found")
+    if not ds_exists(dataset, "gene_locations", f"{chrom}.parquet"):
+        print(f"gene_locations/{chrom}.parquet not found for {dataset}")
         return "Error: Gene locations file not found for the specified dataset."
 
-    gene_loc_df = pl.read_parquet(gene_loc_file)
+    gene_loc_df = pl.read_parquet(ds_locator(dataset, "gene_locations", f"{chrom}.parquet"))
 
     if "gene_name" not in gene_loc_df.columns:
         return "Error: gene_locations parquet has no gene_name column for eQTL dataset."
@@ -623,15 +574,12 @@ def get_meta_list(dataset, query_str="all"):
 def get_config_info(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."
-    else:
-        config_file = os.path.join("backend", "datasets", dataset, "dataset_info.toml")
 
-    if os.path.exists(config_file):
-        with open(config_file, "r") as f:
-            config = toml.load(f)
+    config = ds_read_toml(dataset, "dataset_info.toml")
+    if config is not None:
         return config
     else:
-        print(config_file + " not found")
+        print(f"dataset_info.toml not found for {dataset}")
         return "Error: Config info file not found"
 
 
@@ -1040,6 +988,11 @@ def get_bw_data_exists(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
+    # For remote datasets there is no listable folder; we use the bigwig
+    # celltype mapping file to determine if signal tracks are available
+    if is_remote(dataset):
+        return ds_exists(dataset, "bigwig", "celltype_bigwig.json")
+
     bw_folder = os.path.join("backend", "datasets", dataset,"bigwig")
     if not os.path.exists(bw_folder):
         return False
@@ -1047,15 +1000,10 @@ def get_bw_data_exists(dataset):
 
 @lru_cache(maxsize=128)
 def get_cached_bigwig_handle(dataset, celltype, strand=None):
-    celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset,"bigwig","celltype_bigwig.json"
-    )
-    if not os.path.exists(celltype_mapping_file):
-        print(celltype_mapping_file + " not found")
+    celltype_mapping = ds_read_json(dataset, "bigwig", "celltype_bigwig.json")
+    if celltype_mapping is None:
+        print(f"bigwig/celltype_bigwig.json not found for {dataset}")
         return None
-
-    with open(celltype_mapping_file, "r") as f:
-        celltype_mapping = json.load(f)
 
     entry = celltype_mapping.get(celltype, celltype)
 
@@ -1073,13 +1021,7 @@ def get_cached_bigwig_handle(dataset, celltype, strand=None):
             print(f"No matching bigWig for celltype={celltype}, strand={strand}")
             return None
 
-    bw_path = os.path.join(
-        "backend",
-        "datasets",
-        dataset,
-        "bigwig",
-        celltype_file,
-    )
+    bw_path = ds_locator(dataset, "bigwig", celltype_file)
 
     try:
         return pyBigWig.open(bw_path)
@@ -1110,15 +1052,10 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
 
     try:
         # Read mapping once here to know if we have plus/minus
-        celltype_mapping_file = os.path.join(
-            "backend", "datasets", dataset, "bigwig", "celltype_bigwig.json"
-        )
-        if not os.path.exists(celltype_mapping_file):
-            print(celltype_mapping_file + " not found")
+        celltype_mapping = ds_read_json(dataset, "bigwig", "celltype_bigwig.json")
+        if celltype_mapping is None:
+            print(f"bigwig/celltype_bigwig.json not found for {dataset}")
             return "Error: BigWig mapping file not found"
-
-        with open(celltype_mapping_file, "r") as f:
-            celltype_mapping = json.load(f)
 
         entry = celltype_mapping.get(celltype, celltype)
 
@@ -1270,18 +1207,11 @@ def get_gene_annotation_info(dataset):
     if dataset == "all":
         return {}
 
-    ann_file = os.path.join(
-        "backend", "datasets", dataset, "gene_locations", "gene_annotations.toml"
-    )
-    if not os.path.exists(ann_file):
+    try:
+        cfg = ds_read_toml(dataset, "gene_locations", "gene_annotations.toml")
+    except Exception as e:
+        print(f"Error reading gene_annotations.toml for {dataset}: {e}")
         return {}
-
-    with open(ann_file, "r") as f:
-        try:
-            cfg = toml.load(f)
-        except Exception as e:
-            print(f"Error reading {ann_file}: {e}")
-            return {}
 
     return cfg or {}
 
@@ -1297,15 +1227,10 @@ def get_celltype_list(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
-    celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset,'celltypes', "celltype_parquet.json"
-    )
-    if not os.path.exists(celltype_mapping_file):
-        print(celltype_mapping_file + " not found")
+    celltype_mapping = ds_read_json(dataset, "celltypes", "celltype_parquet.json")
+    if celltype_mapping is None:
+        print(f"celltypes/celltype_parquet.json not found for {dataset}")
         return f"Error: Celltype mapping file not found for the dataset"
-
-    with open(celltype_mapping_file, "r") as f:
-        celltype_mapping = json.load(f)
 
     return list(celltype_mapping.keys())
 
@@ -1314,17 +1239,57 @@ def get_bigwig_celltype_list(dataset):
     if dataset == "all":
         return "Error: Dataset is not specified."
 
-    celltype_mapping_file = os.path.join(
-        "backend", "datasets", dataset, "bigwig", "celltype_bigwig.json"
-    )
-    if not os.path.exists(celltype_mapping_file):
-        print(celltype_mapping_file + " not found")
+    celltype_mapping = ds_read_json(dataset, "bigwig", "celltype_bigwig.json")
+    if celltype_mapping is None:
+        print(f"bigwig/celltype_bigwig.json not found for {dataset}")
         return "Error: BigWig celltype mapping file not found for the dataset"
 
-    with open(celltype_mapping_file, "r") as f:
-        celltype_mapping = json.load(f)
-
     return list(celltype_mapping.keys())
+
+
+def inspect_dataset(dataset):
+    if not dataset or dataset == "all":
+        return {"reachable": False, "error": "No dataset specified."}
+
+    try:
+        has_qtl = bool(ds_exists(dataset, "celltypes", "celltype_parquet.json"))
+        has_bw = get_bw_data_exists(dataset)
+        has_bw = bool(has_bw) if not isinstance(has_bw, str) else False
+
+        config = get_config_info(dataset)
+        datatype = ""
+        info = {}
+        if isinstance(config, dict):
+            datatype = (config.get("datasetfile", {}) or {}).get("datatype", "") or ""
+            info = config.get("dataset", {}) or {}
+
+        is_caqtl = datatype.lower().startswith("ca")
+
+        # Fall back to structural heuristics when there is no dataset_info.toml.
+        if not datatype:
+            if has_qtl:
+                # caQTL groups gene jsons by chromosome (chr1.json ...), eQTL uses
+                # one file per gene symbol.
+                is_caqtl = bool(ds_exists(dataset, "gene_jsons", "chr1.json"))
+                datatype = "caQTL" if is_caqtl else "eQTL"
+            elif has_bw:
+                datatype = "scATACseq"
+
+        reachable = bool(has_qtl or has_bw or isinstance(config, dict))
+
+        return {
+            "reachable": reachable,
+            "dataset_id": dataset,
+            "assay": datatype,
+            "is_caqtl": is_caqtl,
+            "has_qtl": has_qtl,
+            "has_bw": has_bw,
+            "dataset_name": info.get("dataset_name", "") if info else "",
+            "info": info,
+        }
+    except Exception as e:
+        # Includes RemoteDatasetError (unsafe/blocked URL) and transport errors
+        return {"reachable": False, "dataset_id": dataset, "error": str(e)}
 
 
 def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=2000):
@@ -1341,9 +1306,9 @@ def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=
     #     return "Error: Annotation BED file not specified for the dataset."
     bed_rel = "transcript_annotation.bed"
 
-    bed_path = os.path.join("backend", "datasets", dataset, bed_rel)
-    if not os.path.exists(bed_path):
-        print(bed_path + " not found")
+    bed_stream = ds_text_stream(dataset, bed_rel)
+    if bed_stream is None:
+        print(f"{bed_rel} not found for {dataset}")
         return "Error: Annotation BED file not found for the specified dataset."
 
     chrom_list = []
@@ -1363,7 +1328,7 @@ def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=
     truncated = False
 
     import csv
-    with open(bed_path) as f:
+    with bed_stream as f:
       reader = csv.reader(f, delimiter="\t")
       for row in reader:
           if len(row) < 12:

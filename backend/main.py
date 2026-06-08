@@ -1,12 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
 
 from backend.db import create_db_and_tables
 from backend.routes import db_routes, api_routes, visium_routes, qtl_routes, dm_routes,signal_routes
+from backend.funcs.remote_io import RemoteDatasetError
 
 from backend.settings import settings
 
 app = FastAPI(debug=settings.debug)
+
+
+@app.exception_handler(RemoteDatasetError)
+async def remote_dataset_error_handler(request: Request, exc: RemoteDatasetError):
+    # A remote (client-supplied) dataset URL was disallowed or unreachable.
+    return JSONResponse(status_code=400, content={"detail": f"Remote dataset error: {exc}"})
 
 app.add_middleware(
     CORSMiddleware,

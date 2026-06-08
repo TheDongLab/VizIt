@@ -11,5 +11,6 @@ polars == 1.31.0
 fastparquet == 2024.11.0
 types-pytz == 2025.2.*
 pydantic-settings == 2.10.1
-pyBigWig == 0.3.24
+pyBigWig == 0.3.24 # pyBigWig must be built against libcurl so it can stream remote (http/https)
+requests == 2.32.*
 

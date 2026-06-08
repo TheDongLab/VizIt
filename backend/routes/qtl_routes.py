@@ -19,6 +19,7 @@ from backend.funcs.get_data import (
     get_gwas_datasets,
     get_gwas_in_chromosome,
     get_gencode_version,
+    inspect_dataset,
 )
 
 router = APIRouter()
@@ -27,6 +28,12 @@ router = APIRouter()
 @router.get("/")
 async def read_root():
     return {"Message": "Hello QTL."}
+
+
+@router.get("/inspectdataset")
+async def inspectdataset(request: Request):
+    dataset_id = request.query_params.get("dataset")
+    return inspect_dataset(dataset_id)
 
 
 @router.get("/getgenelocation")
