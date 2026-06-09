@@ -3,6 +3,7 @@ from fastapi import Request
 
 # from backend.funcs.get_data import *
 
+from backend.funcs.remote_io import is_remote, clear_remote_cache
 from backend.funcs.get_data import (
     get_qtl_gene_list,
     get_qtl_snp_list,
@@ -33,6 +34,8 @@ async def read_root():
 @router.get("/inspectdataset")
 async def inspectdataset(request: Request):
     dataset_id = request.query_params.get("dataset")
+    if is_remote(dataset_id):
+        clear_remote_cache()
     return inspect_dataset(dataset_id)
 
 

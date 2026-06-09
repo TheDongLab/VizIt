@@ -135,7 +135,11 @@ def _remote_exists(url: str) -> bool:
         resp.close()
 
 
-@lru_cache(maxsize=64)
+def clear_remote_cache() -> None:
+    _fetch_bytes_cached.cache_clear()
+
+
+@lru_cache(maxsize=512)
 def _fetch_bytes_cached(url: str) -> bytes:
     try:
         resp = _request("GET", url, stream=True)
