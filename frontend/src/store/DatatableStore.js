@@ -97,4 +97,11 @@ const useDatatableStore = create((set) => ({
 
 }));
 
+// When remote datasets change, refresh the merged list so all views pick up the
+// updated remote datasets.
+useRemoteDatasetStore.subscribe(
+    (state) => state.remoteDatasets,
+    () => useDatatableStore.getState().fetchDatasetList(),
+);
+
 export default useDatatableStore;
