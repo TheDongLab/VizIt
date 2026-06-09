@@ -33,6 +33,7 @@ import "./XQTLView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
+import useRemoteDatasetStore from "../../store/RemoteDatasetStore.js";
 
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
@@ -79,9 +80,25 @@ function XQTLView() {
     const urlDataset = queryParams.get("dataset") ?? "";
 
     const { datasetRecords, fetchDatasetList } = useDataStore();
+    const { ensureRemoteDataset } = useRemoteDatasetStore();
     useEffect(() => {
         fetchDatasetList();
     }, []);
+
+    // When a remote dataset is referenced by URL but not registered locally
+    // (e.g. when pasting in a shared link), register it so its display name is
+    // fetched from the dataset_info.toml
+    useEffect(() => {
+        if (
+            urlDataset &&
+            /^https?:\/\//i.test(urlDataset) &&
+            !datasetRecords.some((d) => d.dataset_id === urlDataset)
+        ) {
+            ensureRemoteDataset(urlDataset).then((added) => {
+                if (added) fetchDatasetList();
+            });
+        }
+    }, [urlDataset, datasetRecords]);
 
     const datasetOptions = datasetRecords
         .filter((d) => d.assay.toLowerCase().endsWith("qtl"))

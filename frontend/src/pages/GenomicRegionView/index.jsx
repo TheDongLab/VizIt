@@ -33,6 +33,7 @@ import "./GenomicRegionView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useSignalStore from "../../store/GenomicRegionStore.js";
+import useRemoteDatasetStore from "../../store/RemoteDatasetStore.js";
 
 import RegionViewPlotlyPlot from "./RegionViewPlotlyPlot.jsx";
 
@@ -77,10 +78,26 @@ function GenomicRegionView() {
     const urlRegion = queryParams.get("region") ?? "";
 
     const { datasetRecords, fetchDatasetList } = useDataStore();
+    const { ensureRemoteDataset } = useRemoteDatasetStore();
 
     useEffect(() => {
         fetchDatasetList();
     }, []);
+
+    // When a remote dataset is referenced by URL but not registered locally
+    // (e.g. when pasting in a shared link), register it so its display name is
+    // fetched from the dataset_info.toml
+    useEffect(() => {
+        if (
+            urlDataset &&
+            /^https?:\/\//i.test(urlDataset) &&
+            !datasetRecords.some((d) => d.dataset_id === urlDataset)
+        ) {
+            ensureRemoteDataset(urlDataset).then((added) => {
+                if (added) fetchDatasetList();
+            });
+        }
+    }, [urlDataset, datasetRecords]);
 
     const datasetOptions = datasetRecords
         .filter((d) => /[A-Za-z]*?(RNAseq|ATACseq)$/i.test(d.assay) && d.has_bw)

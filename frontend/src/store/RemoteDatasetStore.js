@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { inspectDataset } from "../api/qtl.js";
+
 export const buildRemoteRecord = (url, name, info = {}) => {
     let assay = info.assay || "";
     const hasBw = !!info.has_bw;
@@ -37,7 +39,7 @@ export const buildRemoteRecord = (url, name, info = {}) => {
 
 const useRemoteDatasetStore = create(
     persist(
-        (set) => ({
+        (set, get) => ({
             remoteDatasets: [],
 
             addRemoteDataset: (record) =>
@@ -49,6 +51,29 @@ const useRemoteDatasetStore = create(
                         record,
                     ],
                 })),
+
+            ensureRemoteDataset: async (url) => {
+                if (!url || !/^https?:\/\//i.test(url)) return false;
+                if (get().remoteDatasets.some((r) => r.dataset_id === url)) {
+                    return false;
+                }
+                try {
+                    const info = await inspectDataset(url);
+                    if (!info || !info.reachable) return false;
+                    const record = buildRemoteRecord(url, "", info);
+                    set((state) => ({
+                        remoteDatasets: [
+                            ...state.remoteDatasets.filter(
+                                (r) => r.dataset_id !== url,
+                            ),
+                            record,
+                        ],
+                    }));
+                    return true;
+                } catch {
+                    return false;
+                }
+            },
 
             removeRemoteDataset: (datasetId) =>
                 set((state) => ({
