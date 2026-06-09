@@ -6,11 +6,13 @@ import DatasetDisplay from "./DatasetDisplay.jsx";
 import LoadRemoteDatasetDialog from "./LoadRemoteDatasetDialog.jsx";
 import "./DatasetPage.css";
 import useDatatableStore from "../../store/DatatableStore.js";
+import useServerConfigStore from "../../store/ServerConfigStore.js";
 
 import {useSearchParams} from "react-router-dom";
 
 const DatasetsPage = () => {
     const {datasetRecords, fetchDatasetList} = useDatatableStore();
+    const {allowRemoteDatasets, fetchServerConfig} = useServerConfigStore();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Initialize filters from URL params
@@ -26,6 +28,13 @@ const DatasetsPage = () => {
     useEffect(() => {
         fetchDatasetList()
     }, [fetchDatasetList]);
+
+    useEffect(() => {
+        fetchServerConfig()
+    }, [fetchServerConfig]);
+
+    // null keeps button visible for backward compatibility
+    const remoteEnabled = allowRemoteDatasets !== false;
 
     // Update URL when filters change
     useEffect(() => {
@@ -144,9 +153,11 @@ const DatasetsPage = () => {
                     {/*    {deleteMode ? "Cancel Delete" : "- Delete Dataset"}*/}
                     {/*</Button>*/}
 
-                    <Button variant="outlined" color="primary" onClick={() => setLoadUrlOpen(true)}>
-                        Load from URL
-                    </Button>
+                    {remoteEnabled && (
+                        <Button variant="outlined" color="primary" onClick={() => setLoadUrlOpen(true)}>
+                            Load from URL
+                        </Button>
+                    )}
 
                     <Button variant="contained" color="primary">
                         <Link href="/datasetmanager" color="inherit" underline="hover">+ Add Dataset</Link>

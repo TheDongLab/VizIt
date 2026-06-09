@@ -3,6 +3,16 @@ import axios from "axios";
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const API_URL = `${BASE_URL}/api`;
 
+export const getServerConfig = async () => {
+    try {
+        const response = await axios.get(`${BASE_URL}/serverconfig`);
+        return response.data;
+    } catch (error) {
+        console.error("Error getServerConfig:", error);
+        throw error;
+    }
+}
+
 export const getHomeData = async () => {
     try {
         const response = await axios.get(`${API_URL}/gethomedata`);
