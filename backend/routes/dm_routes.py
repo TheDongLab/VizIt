@@ -310,48 +310,48 @@ def check_toml_file(toml_data):
     return {"message": "Config file is valid", "success": True}
 
 
-@router.get("/refreshdatabase")
-async def refreshdatabase(session: Session = Depends(get_session)):
-    try:
-        ## loop through all datasets
-        for dataset_i in os.listdir("backend/datasets"):
-            dataset_path = f"backend/datasets/{dataset_i}"
-            ## load dataset info
-            dataset_info_file = f"{dataset_path}/dataset_info.toml"
-            if not os.path.exists(dataset_info_file):
-                continue
+# @router.get("/refreshdatabase")
+# async def refreshdatabase(session: Session = Depends(get_session)):
+#     try:
+#         ## loop through all datasets
+#         for dataset_i in os.listdir("backend/datasets"):
+#             dataset_path = f"backend/datasets/{dataset_i}"
+#             ## load dataset info
+#             dataset_info_file = f"{dataset_path}/dataset_info.toml"
+#             if not os.path.exists(dataset_info_file):
+#                 continue
 
-            with open(f"{dataset_path}/dataset_info.toml", 'r') as f:
-                dataset_info = toml.load(f)
+#             with open(f"{dataset_path}/dataset_info.toml", 'r') as f:
+#                 dataset_info = toml.load(f)
 
-            ## check if dataset configuration is valid
-            check_result = check_toml_file(dataset_info)
-            if not check_result["success"]:
-                return check_result
+#             ## check if dataset configuration is valid
+#             check_result = check_toml_file(dataset_info)
+#             if not check_result["success"]:
+#                 return check_result
 
-            print("=======insert info into database==========")
-            study_dict= dataset_info["study"]
-            study_dict["study_id"] = study_dict["study_name"]
-            study = Study(**study_dict)
+#             print("=======insert info into database==========")
+#             study_dict= dataset_info["study"]
+#             study_dict["study_id"] = study_dict["study_name"]
+#             study = Study(**study_dict)
 
-            dataset_dict = dataset_info["dataset"]
-            dataset_dict["dataset_id"] = dataset_dict["dataset_name"]
-            dataset_dict["assay"] = dataset_info["datasetfile"]["datatype"]
-            dataset_dict["study_id"] = study_dict["study_id"]
-            dataset_dict["dataset_file"] = dataset_info["datasetfile"]["file"]
-            dataset = Dataset(**dataset_dict)
+#             dataset_dict = dataset_info["dataset"]
+#             dataset_dict["dataset_id"] = dataset_dict["dataset_name"]
+#             dataset_dict["assay"] = dataset_info["datasetfile"]["datatype"]
+#             dataset_dict["study_id"] = study_dict["study_id"]
+#             dataset_dict["dataset_file"] = dataset_info["datasetfile"]["file"]
+#             dataset = Dataset(**dataset_dict)
 
-            insert_study(study, session)
-            insert_dataset(dataset, session)
+#             insert_study(study, session)
+#             insert_dataset(dataset, session)
 
-            if not(dataset_dict["sample_sheet"] == "None" or dataset_dict["sample_sheet"] == ""):
-                sample_sheet_path = f"backend/SampleSheets/{dataset_dict['sample_sheet']}"
-                shutil.copyfile(sample_sheet_path, f"{dataset_path}/{dataset_dict['sample_sheet']}")
-                import_sample_sheet(sample_sheet_path, session)
+#             if not(dataset_dict["sample_sheet"] == "None" or dataset_dict["sample_sheet"] == ""):
+#                 sample_sheet_path = f"backend/SampleSheets/{dataset_dict['sample_sheet']}"
+#                 shutil.copyfile(sample_sheet_path, f"{dataset_path}/{dataset_dict['sample_sheet']}")
+#                 import_sample_sheet(sample_sheet_path, session)
 
-        return {"message": "Database refreshed successfully", "success": True}
-    except Exception as e:
-        return {"message": "Error: " + str(e), "success": False}
+#         return {"message": "Database refreshed successfully", "success": True}
+#     except Exception as e:
+#         return {"message": "Error: " + str(e), "success": False}
 
 
 @router.delete("/deletedataset")

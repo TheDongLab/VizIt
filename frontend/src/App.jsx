@@ -22,7 +22,7 @@ import GenomicRegionView from "./pages/GenomicRegionView";
 import XDatasetsView from "./pages/XDatasets";
 import CellTypesView from "./pages/CellTypesView";
 import ViewsHome from "./pages/ViewsHome";
-import DatasetManagePage from "./pages/DatasetManage";
+// import DatasetManagePage from "./pages/DatasetManage";
 import LayerView from "./pages/LayerView/index.jsx";
 import HowToUse from "./pages/Help/HowToUse.jsx";
 import FAQPage from "./pages/Help/FAQ.jsx";
@@ -113,7 +113,7 @@ function App() {
                             <Route path="/dataset-demos/xqtl" element={<XQTLDemo/>}/>
 
 
-                            <Route path="/datasetmanager" element={<DatasetManagePage/>}/>
+                            {/*<Route path="/datasetmanager" element={<DatasetManagePage/>}/>*/}
 
                             <Route path="/login" element={<Login/>}/>
 

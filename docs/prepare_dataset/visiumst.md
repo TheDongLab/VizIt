@@ -304,7 +304,7 @@ After running the pipeline, there will be a dataset folder that contains all nec
 * Upload the dataset folder named '&lt;dataset_name&gt;' to the server at __'backend/datasets'__.
 * Put the dataset configuration file named __'dataset_info.toml'__ to your dataset folder at __'backend/datasets/&lt;dataset_name&gt;'__.
 * Upload __samplesheet file__ to the server at __'backend/SampleSheet'__.
-* Refresh the database: Go to __'Datasets Management Page '(DATASETS -> +ADD DATASET)__ and click __'REFRESH DB'__.
+* Refresh the database: on the server, from the repository root, run `python -m backend.db_utils.refresh_db`.
 
 
 

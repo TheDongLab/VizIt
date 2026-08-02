@@ -1,6 +1,6 @@
 import {create} from 'zustand'
 import axios from 'axios'
-import {toast} from "react-toastify";
+// import {toast} from "react-toastify";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const dmURL = `${BASE_URL}/datasetmanage`;
@@ -194,21 +194,21 @@ const useDatasetManageStore = create((set, get) => ({
         });
     },
 
-    refreshDatabase: async () => {
-        try {
-            const response = await axios.get(`${dmURL}/refreshdatabase`);
-            if(response.data.success){
-                toast.success(response.data.message);
-            }else{
-                toast.error(response.data.message);
-            }
-            return response.data;
-        } catch (error) {
-            console.error('Error refreshing database:', error);
-            toast.error('Error while refreshing database.');
-            return null;
-        }
-    },
+    // refreshDatabase: async () => {
+    //     try {
+    //         const response = await axios.get(`${dmURL}/refreshdatabase`);
+    //         if(response.data.success){
+    //             toast.success(response.data.message);
+    //         }else{
+    //             toast.error(response.data.message);
+    //         }
+    //         return response.data;
+    //     } catch (error) {
+    //         console.error('Error refreshing database:', error);
+    //         toast.error('Error while refreshing database.');
+    //         return null;
+    //     }
+    // },
 
     deleteDataset: async (dataset) => {
         try {

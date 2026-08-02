@@ -229,7 +229,16 @@ After running the pipeline, there will be a dataset folder that contains all nec
 * The files and folders within the `your_dataset_name` folder are necessary for upload.
 * Upload the dataset folder named '&lt;dataset_name&gt;' to the server at __'backend/datasets'__.
 * Put the dataset configuration file named __'dataset_info.toml'__ to your dataset folder at __'backend/datasets/&lt;dataset_name&gt;'__.
-* Refresh the database: Go to __'Datasets Management Page '(DATASETS -> +ADD DATASET)__ and click __'REFRESH DB'__.
+* Refresh the database: on the server, from the repository root, run `python -m backend.db_utils.refresh_db`.
+
+Alternatively, you can host the dataset folder on a web server and add it from the
+__'DATASETS -> + ADD DATASET'__ dialog with the __'Load from URL'__ option. The dataset is then registered
+in your browser only, and no database refresh is needed. This requires:
+
+* A web server that supports __HTTP range requests__ (nginx, Apache, Caddy, S3, ...). Python's `http.server` does __not__ work since it ignores `Range` headers.
+* A URL that is reachable __from the machine running the VizIt backend__.
+* `REMOTE_DATASET_ALLOW_PRIVATE=true` in `backend/.env` if the dataset is served from a private or loopback
+  address, which is otherwise refused.
 
 
 

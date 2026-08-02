@@ -1,7 +1,7 @@
 import {useState, useRef, useEffect} from 'react';
 import {useSearchParams} from "react-router-dom";
 
-import {Box, Stepper, Step, StepLabel, Button, Paper, Typography, Divider,} from '@mui/material';
+import {Box, Stepper, Step, StepLabel, /* Button, */ Paper, Typography, Divider,} from '@mui/material';
 
 import ExtractInfo from './ExtractInfo';
 import ExtractInfoProcess from "./ExtractInfoProcess.jsx";
@@ -15,7 +15,8 @@ const steps = ['Setup dataset', 'Extracting data', 'Prepare metadata', 'Running 
 
 const DatasetManage = () => {
     const {setDatasetName, extractData, isProcessing} = useDatasetManageStore();
-    const {prepareMetaData,refreshDatabase} = useDatasetManageStore();
+    const {prepareMetaData} = useDatasetManageStore();
+    // const {refreshDatabase} = useDatasetManageStore();
 
     // Get all the pre-selected values
     const [queryParams, setQueryParams] = useSearchParams();
@@ -88,14 +89,14 @@ const DatasetManage = () => {
         newParams.set("stepidx", activeStep - 1)
         setQueryParams(newParams);
     };
-    const handleImportDataInfo = () => {
-        try {
-            const response = refreshDatabase();
-        } catch (error) {
-            console.error('Submission failed:', error);
-            alert('Failed to submit dataset info.');
-        }
-    };
+    // const handleImportDataInfo = () => {
+    //     try {
+    //         const response = refreshDatabase();
+    //     } catch (error) {
+    //         console.error('Submission failed:', error);
+    //         alert('Failed to submit dataset info.');
+    //     }
+    // };
 
     const getStepContent = (step) => {
         switch (step) {
@@ -124,15 +125,15 @@ const DatasetManage = () => {
                         {steps.map((label) => (<Step key={label}><StepLabel>{label}</StepLabel></Step>))}
                     </Stepper>
                     {/* Import Button */}
-                    <Box sx={{mt: 4}}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleImportDataInfo}
-                        >
-                            Refresh DB
-                        </Button>
-                    </Box>
+                    {/*<Box sx={{mt: 4}}>*/}
+                    {/*    <Button*/}
+                    {/*        variant="contained"*/}
+                    {/*        color="primary"*/}
+                    {/*        onClick={handleImportDataInfo}*/}
+                    {/*    >*/}
+                    {/*        Refresh DB*/}
+                    {/*    </Button>*/}
+                    {/*</Box>*/}
                 </Box>
 
 
@@ -142,7 +143,7 @@ const DatasetManage = () => {
                         <strong>Option 1: Use command line to process dataset</strong>
                         <br /> 1. Process the dataset using the provided <a href="/help/howtouse?tab=2">scripts </a>(Customize the scripts for your dataset)
                         <br /> 2. Upload the processed dataset to &quot;backend &gt; datasets&quot; folder,
-                        <br /> 3. Click the &quot;Refresh DB&quot; button
+                        <br /> 3. Refresh the database on the server: <code>python -m backend.db_utils.refresh_db</code>
                     </Typography>
                     <Divider/>
                     {/*<Typography variant="h6" sx={{mb: 2}}>*/}
