@@ -1,14 +1,31 @@
 # VizIt
 
-## Installation and running
-The Documentation for installation and running the app is available at <a href="https://thedonglab.github.io/VizIt/" target="_blank">VizIt Docs</a>.
+## Install and run
+
+See the [VizIt documentation](https://thedonglab.github.io/VizIt/) for full setup instructions.
+
+### Quick start with Docker
+
+```bash
+git clone https://github.com/TheDongLab/VizIt.git
+cd VizIt
+cp .env.example .env
+docker compose up -d --build
+```
+
+Open <http://localhost:8080> when the containers are running.
+
+Put your processed datasets in `backend/datasets/` and register them with:
+
+```bash
+docker compose exec backend python -m backend.db_utils.refresh_db
+```
 
 ### NOTES:
 - **VizIt is a general framework for multi-modal data visualization and exploration. You can implement it and customize it for your own data.**
   - Change the home page
   - Rename VizIt to your own App Name
 - **At the bottom part you can see we build the BrainDataPortal based on VizIt.**
-
 
 ## Overview
 - This is project designed for the brain omics data analysis and visualization.
@@ -96,4 +113,3 @@ The Documentation for installation and running the app is available at <a href="
 #### XQTL analysis & Peak signals
 <img src="docs/screenshots/xqtl.png" width="800">
 <img src="docs/screenshots/peaksignal.png" width="800">
-

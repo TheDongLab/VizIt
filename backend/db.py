@@ -4,13 +4,13 @@ from sqlmodel import create_engine
 from fastapi import Depends
 
 from backend.models import *
+from backend.settings import settings
 
-DATABASE_URL = "sqlite:///./backend/bdp_db.db"
-# DATABASE_URL = "postgresql://huruifeng:123456&Abc@localhost:5432/braindataportal"
-engine = create_engine(DATABASE_URL, echo=False)
+engine = create_engine(settings.database_url, echo=False)
+
 
 def create_db_and_tables():
-    ## Create database and tables only if they don't exist
+    # Create missing database tables
     SQLModel.metadata.create_all(engine)
 
 
