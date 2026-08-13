@@ -99,7 +99,9 @@ plugins:
 nav:
   - Home: index.md
   - Install:
-    - install/index.md
+    - Overview: install/index.md
+    - Manual install: install/manual.md
+    - With Docker: install/docker.md
   - Prepare dataset:
     - prepare_dataset/index.md
     - scRNAseq dataset: prepare_dataset/scrnaseq.md

@@ -1,0 +1,87 @@
+# VizIt production stack
+#
+#   cp .env.example .env      # Edit options
+#   docker compose up -d --build
+#
+# Rebuild after updating the repository
+
+volumes:
+  vizit_db:
+
+name: vizit
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: .docker/backend.Dockerfile
+
+      # Match ownership of the mounted data directories
+      args:
+        VIZIT_UID: ${VIZIT_UID:-1000}
+        VIZIT_GID: ${VIZIT_GID:-1000}
+    restart: unless-stopped
+    container_name: vizit-backend
+
+    # Map environment variables to backend settings
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/bdp_db.db}
+      DEBUG: ${DEBUG:-false}
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-4}
+      ALLOW_REMOTE_DATASETS: ${ALLOW_REMOTE_DATASETS:-true}
+      REMOTE_DATASET_ALLOWED_HOSTS: ${REMOTE_DATASET_ALLOWED_HOSTS:-}
+      REMOTE_DATASET_ALLOW_PRIVATE: ${REMOTE_DATASET_ALLOW_PRIVATE:-false}
+
+    volumes:
+      # Processed datasets
+      - ${VIZIT_DATASETS_DIR:-./backend/datasets}:/app/backend/datasets
+      # Sample sheet CSVs imported by `refresh_db`
+      - ${VIZIT_SAMPLESHEETS_DIR:-./backend/SampleSheets}:/app/backend/SampleSheets
+      - vizit_db:/data
+
+    # Keep the API private to the Compose network
+    expose:
+      - "8000"
+    # ports:
+    #   - "${VIZIT_BACKEND_HOST_PORT:-8000}:8000"
+
+    healthcheck:
+      # Check the backend root endpoint
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: .docker/frontend.Dockerfile
+
+      args:
+        VITE_APP_TITLE: ${VITE_APP_TITLE:-}
+        VITE_APP_SUBTITLE: ${VITE_APP_SUBTITLE:-}
+        VITE_HOME_PAGE: ${VITE_HOME_PAGE:-}
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-}
+    restart: unless-stopped
+    container_name: vizit-frontend
+
+    environment:
+      NGINX_ENVSUBST_FILTER: "VIZIT_"
+      VIZIT_BACKEND_HOST: backend
+      VIZIT_BACKEND_PORT: "8000"
+      VIZIT_PROXY_TIMEOUT: ${VIZIT_PROXY_TIMEOUT:-600s}
+      # Re-resolve the backend through Docker DNS
+      VIZIT_RESOLVER: ${VIZIT_RESOLVER:-127.0.0.11}
+
+    ports:
+      - "${VIZIT_PORT:-8080}:80"
+
+    depends_on:
+      backend:
+        condition: service_healthy
