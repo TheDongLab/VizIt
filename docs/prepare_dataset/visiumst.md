@@ -1,7 +1,7 @@
 # Visium ST Dataset Preparation
 Step-by-step guide for preparing Visium ST RNA-seq data for visualization in BrainDataPortal.
 
-Learn how to prepare and process Visium ST data for visualization in BrainDataPortal. 
+Learn how to prepare and process Visium ST data for visualization in BrainDataPortal.
 This section covers seurat object processing, gene expression data splitting, metadata table preparation and data formatting.
 
 We will use a brain dataset as an example and cover all essential preprocessing steps.
@@ -12,7 +12,7 @@ We will use a brain dataset as an example and cover all essential preprocessing 
 * Basic understanding of Visium ST concepts.
 
 ## 2. Download demo data
-We will use a Visium ST dataset from human brain. 
+We will use a Visium ST dataset from human brain.
 This dataset contains 10 subjects, approximately 40,000 spots from brain middle temporal gyrus region.
 
 * Demo dataset and scripts:
@@ -305,10 +305,6 @@ After running the pipeline, there will be a dataset folder that contains all nec
 * Put the dataset configuration file named __'dataset_info.toml'__ to your dataset folder at __'backend/datasets/&lt;dataset_name&gt;'__.
 * Upload __samplesheet file__ to the server at __'backend/SampleSheet'__.
 * Refresh the database: on the server, from the repository root, run `python -m backend.db_utils.refresh_db`.
-
-
-
-
 
 
 

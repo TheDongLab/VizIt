@@ -100,13 +100,13 @@ nav:
   - Home: index.md
   - Install:
     - Overview: install/index.md
-    - Manual install: install/manual.md
     - With Docker: install/docker.md
+    - Manual install: install/manual.md
   - Prepare dataset:
     - prepare_dataset/index.md
-    - scRNAseq dataset: prepare_dataset/scrnaseq.md
-    - VisiumST dataset: prepare_dataset/visiumst.md
-    - xQTL dataset: prepare_dataset/xqtl.md
+    - scRNA-seq dataset: prepare_dataset/scrnaseq.md
+    - scATAC-seq and xQTL dataset: prepare_dataset/xqtl.md
+    - Visium ST dataset: prepare_dataset/visiumst.md
   - Development:
     - development/index.md
     - Customize Home: development/customize_home.md
