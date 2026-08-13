@@ -33,6 +33,7 @@ import "./XQTLView.css";
 
 import useDataStore from "../../store/DatatableStore.js";
 import useQtlStore from "../../store/QtlStore.js";
+import useRemoteDatasetStore from "../../store/RemoteDatasetStore.js";
 
 import GeneViewPlotlyPlot from "./GeneViewPlotlyPlot.jsx";
 import SNPViewPlotlyPlot from "./SNPViewPlotlyPlot.jsx";
@@ -79,13 +80,35 @@ function XQTLView() {
     const urlDataset = queryParams.get("dataset") ?? "";
 
     const { datasetRecords, fetchDatasetList } = useDataStore();
+    const { ensureRemoteDataset } = useRemoteDatasetStore();
     useEffect(() => {
         fetchDatasetList();
     }, []);
 
+    // When a remote dataset is referenced by URL but not registered locally
+    // (e.g. when pasting in a shared link), register it so its display name is
+    // fetched from the dataset_info.toml
+    useEffect(() => {
+        if (
+            urlDataset &&
+            /^https?:\/\//i.test(urlDataset) &&
+            !datasetRecords.some((d) => d.dataset_id === urlDataset)
+        ) {
+            ensureRemoteDataset(urlDataset).then((added) => {
+                if (added) fetchDatasetList();
+            });
+        }
+    }, [urlDataset, datasetRecords]);
+
     const datasetOptions = datasetRecords
         .filter((d) => d.assay.toLowerCase().endsWith("qtl"))
         .map((d) => d.dataset_id);
+
+    // Map dataset_id to display name
+    const datasetLabel = (id) => {
+        const ds = datasetRecords.find((d) => d.dataset_id === id);
+        return (ds && ds.dataset_name) || id || "";
+    };
 
     const [datasetId, setDatasetId] = useState(urlDataset);
     const [datasetSearchText, setDatasetSearchText] = useState("");
@@ -551,6 +574,7 @@ function XQTLView() {
                         options={datasetOptions}
                         value={datasetId ?? null}
                         onChange={handleDatasetChange}
+                        getOptionLabel={(option) => datasetLabel(option)}
                         inputValue={datasetSearchText}
                         onInputChange={(event, newInputValue) =>
                             setDatasetSearchText(newInputValue)
@@ -567,7 +591,7 @@ function XQTLView() {
                             const { key, ...rest } = props;
                             return (
                                 <li key={key} {...rest}>
-                                    {option}
+                                    {datasetLabel(option)}
                                 </li>
                                 // <ListItem key={key} {...rest}>
                                 //   {option}

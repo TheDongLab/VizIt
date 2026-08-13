@@ -387,7 +387,7 @@ genes = [ "SNCA",...]                    ## List of default gene names
                                     <li>3. Upload the dataset folder named <b>&apos;&lt;dataset_name&gt;&apos;</b> to the server at <b>&apos;backend/datasets&apos;</b>.</li>
                                     <li>4. Put the dataset configuration file named <b>&apos;dataset_info.toml&apos;</b> to your dataset folder at <b>&apos;backend/datasets/&lt;dataset_name&gt;&apos;</b>.</li>
                                     <li>5. Upload <b>samplesheet file</b> to the server at <b>&apos;backend/SampleSheet&apos;</b>.</li>
-                                    <li>6. Refresh the database: Go to <b>&apos;<a href="/datasetmanager?dataset=&stepidx=0">Datasets Management Page</a> &apos;</b>(DATASETS -&gt; +ADD DATASET) and click <b>&apos;REFRESH DB&apos;</b>.</li>
+                                    <li>6. Refresh the database on the server, from the repository root: <code>python -m backend.db_utils.refresh_db</code></li>
                                 </ul>
                             </p>
                         </div>

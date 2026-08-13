@@ -3,6 +3,18 @@ import axios from "axios";
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const QTL_URL = `${BASE_URL}/qtl`;
 
+export const inspectDataset = async (dataset) => {
+    try {
+        const response = await axios.get(`${QTL_URL}/inspectdataset`, {
+            params: { dataset: dataset },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error inspectDataset:", error);
+        throw error;
+    }
+};
+
 export const getGeneLocation = async (dataset, gene) => {
     try {
         const response = await axios.get(`${QTL_URL}/getgenelocation`, {

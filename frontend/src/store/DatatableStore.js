@@ -2,6 +2,7 @@ import {create} from "zustand";
 import {toast} from "react-toastify";
 import {getDatatable_get, getDatasetList, getSampletable_get} from "../api/api.js";
 import {checkBWDataExists} from "./GenomicRegionStore.js";
+import useRemoteDatasetStore from "./RemoteDatasetStore.js";
 
 const useDatatableStore = create((set) => ({
     dataRecords: [],
@@ -61,6 +62,7 @@ const useDatatableStore = create((set) => ({
     },
 
     fetchDatasetList: async () => {
+        const remoteDatasets = useRemoteDatasetStore.getState().remoteDatasets || [];
         try {
             const response = await getDatasetList();
             // console.log(response);
@@ -75,21 +77,31 @@ const useDatatableStore = create((set) => ({
                     })
                 );
 
-                await set({datasetRecords: recordsWithBW, datasetFilters: data[1], datasetfetchStatus: "success"});
+                await set({datasetRecords: [...recordsWithBW, ...remoteDatasets], datasetFilters: data[1], datasetfetchStatus: "success"});
                 // toast.success("Sample loaded successfully!");
             } else {
                 console.error("Error fetching data:", response.data);
-                await set({datasetRecords: [], datasetfetchStatus: "failed"});
+                await set({datasetRecords: [...remoteDatasets], datasetfetchStatus: "failed"});
                 toast.error("Failed to fetch datasets.");
             }
 
         } catch (error) {
             console.error("Error fetching data:", error);
-            await set({datasetRecords: [], datasetfetchStatus: "error"});
-            toast.info(error.response.data.detail);
+            // Use browser-local remote datasets if the server dataset table is unavailable.
+            await set({datasetRecords: [...remoteDatasets], datasetfetchStatus: "error"});
+            if (error?.response?.data?.detail) {
+                toast.info(error.response.data.detail);
+            }
         }
     },
 
 }));
+
+// When remote datasets change, refresh the merged list so all views pick up the
+// updated remote datasets.
+useRemoteDatasetStore.subscribe(
+    (state) => state.remoteDatasets,
+    () => useDatatableStore.getState().fetchDatasetList(),
+);
 
 export default useDatatableStore;

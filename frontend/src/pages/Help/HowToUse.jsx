@@ -1017,7 +1017,16 @@ genes = [ "SNCA",...]                    ## List of default gene names
                                             <ListItem>1. Upload the whole dataset folder to the server backend/datasets/ folder. The gene expression matrix file is not required(raw_normalized_counts.csv), Files with name starting with &apos;raw_&apos; are not needed to be uploaded.</ListItem>
                                             <ListItem>2. The sample sheet file is required(e.g., DatasetName_sample_sheet.csv) and must be uploaded to the backend/SampleSheets/ folder.</ListItem>
                                             <ListItem>3. The dataset configuration file is required, the file name must be &apos;dataset_info.yaml&apos; and must be put in the backend/datasets/&lt;your_dataset_name&gt;/ folder.</ListItem>
-                                            <ListItem>4. Refresh the database: <a href="/datasetmanager">Dataset Manager</a></ListItem>
+                                            <ListItem><span>4. Refresh the database on the server, from the repository root: <code>python -m backend.db_utils.refresh_db</code></span></ListItem>
+                                        </List>
+                                        <AlertTitle className="alert-title" variant="h6" sx={{mt: 3}}>Loading data from a URL (no backend access needed):</AlertTitle>
+                                        <List dense>
+                                            <ListItem><span>1. Available for xQTL and signal/peaks datasets.</span></ListItem>
+                                            <ListItem><span>2. Serve the processed dataset folder from a web server that supports HTTP range requests, e.g. nginx, Apache, Caddy, or S3. Python&apos;s <code>http.server</code> will not work since it ignores Range headers.</span></ListItem>
+                                            <ListItem><span>3. Make sure that URL is reachable from the machine running the VizIt backend.</span></ListItem>
+                                            <ListItem><span>4. Go to <b>DATASETS &gt; + ADD DATASET</b> and use the <b>Load from URL</b> option.</span></ListItem>
+                                            <ListItem><span>5. The dataset is registered in your browser only. It is not visible to other users and needs no database refresh.</span></ListItem>
+                                            <ListItem><span>6. Serving from a private or loopback address requires <code>REMOTE_DATASET_ALLOW_PRIVATE=true</code> in backend/.env.</span></ListItem>
                                         </List>
                                     </Alert>
 

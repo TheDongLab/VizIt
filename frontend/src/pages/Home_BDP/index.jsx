@@ -111,7 +111,7 @@ const Home = () => {
                         <Box className="stat-bar-container"> <Typography variant="subtitle1">Loading stats data...</Typography> </Box>}
                          {/* Add Button here */}
                         <Box sx={{mt: 4, textAlign: 'center'}}>
-                            <Button variant="outlined" color="success" onClick={() => navigate("/datasetmanager")}>
+                            <Button variant="outlined" color="success" onClick={() => navigate("/datasets")}>
                                 Upload your own dataset to visualize
                             </Button>
                         </Box>
