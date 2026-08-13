@@ -106,7 +106,12 @@ const AddDatasetDialog = ({ open, onClose }) => {
                         <Typography variant="body2" sx={{ mb: 2 }}>
                             Process your raw data into the VizIt dataset layout
                             using the provided{" "}
-                            <Link href="/help/howtouse?tab=2" underline="hover">
+                            <Link
+                                href="https://thedonglab.github.io/VizIt/prepare_dataset/"
+                                underline="hover"
+                                target="_blank"
+                                rel="noopener"
+                            >
                                 scripts
                             </Link>{" "}
                             (customizable per dataset).
