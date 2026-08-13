@@ -206,7 +206,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     exonStructure,
     exonStructureTruncated,
 }) {
-    const range = visibleRange || selectedRange;
+    const range = (visibleRange?.start != null && visibleRange?.end != null) ? visibleRange : selectedRange;
     const signalList = Object.entries(signalData).flatMap(
         ([celltype, signals]) => {
             if (
