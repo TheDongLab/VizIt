@@ -1,5 +1,7 @@
 # VizIt
 
+[![DOI](https://zenodo.org/badge/996182057.svg)](https://doi.org/10.5281/zenodo.21925071)
+
 ## Install and run
 
 See the [VizIt documentation](https://thedonglab.github.io/VizIt/) for full setup instructions.
