@@ -21,6 +21,9 @@ Put your processed datasets in `backend/datasets/` and register them with:
 docker compose exec backend python -m backend.db_utils.refresh_db
 ```
 
+Configuration options and troubleshooting are in the
+[Docker installation guide](https://thedonglab.github.io/VizIt/install/docker/).
+
 ### NOTES:
 - **VizIt is a general framework for multi-modal data visualization and exploration. You can implement it and customize it for your own data.**
   - Change the home page

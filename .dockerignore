@@ -20,8 +20,8 @@ frontend/.vite/
 !frontend/env/
 
 .docker/dev.Dockerfile
-.docker/dev-entrypoint.sh
 docker-compose.dev.yml
+# Keep the development entrypoint in the shared build context
 docs/
 site/
 .playwright-mcp/

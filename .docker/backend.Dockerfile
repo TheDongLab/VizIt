@@ -35,7 +35,19 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-RUN useradd --create-home --uid 1000 vizit
+# Match ownership of the mounted data directories
+ARG VIZIT_UID=1000
+ARG VIZIT_GID=1000
+
+ENV HOME=/home/vizit
+
+# Reuse IDs already defined by the base image
+RUN set -eu; \
+    getent group "${VIZIT_GID}" >/dev/null \
+        || groupadd --gid "${VIZIT_GID}" vizit; \
+    getent passwd "${VIZIT_UID}" >/dev/null \
+        || useradd --uid "${VIZIT_UID}" --gid "${VIZIT_GID}" --home-dir "$HOME" vizit; \
+    mkdir -p "$HOME"
 
 WORKDIR /app
 COPY backend/ /app/backend/
@@ -44,9 +56,9 @@ RUN mkdir -p /data \
              /app/backend/datasets \
              /app/backend/SampleSheets \
              /app/backend/DatasetFiles \
-    && chown -R vizit:vizit /data /app
+    && chown -R "${VIZIT_UID}:${VIZIT_GID}" /data /app "$HOME"
 
-USER vizit
+USER ${VIZIT_UID}:${VIZIT_GID}
 EXPOSE 8000
 
 CMD ["sh", "-c", "exec uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-4} --proxy-headers --forwarded-allow-ips='*'"]

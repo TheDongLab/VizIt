@@ -14,12 +14,13 @@ services:
     build:
       context: .
       dockerfile: .docker/backend.Dockerfile
+
+      # Match ownership of the mounted data directories
+      args:
+        VIZIT_UID: ${VIZIT_UID:-1000}
+        VIZIT_GID: ${VIZIT_GID:-1000}
     restart: unless-stopped
     container_name: vizit-backend
-
-    # Must be able to write the bind-mounted data directories below. Set
-    # VIZIT_UID/VIZIT_GID in .env if your host user is not 1000:1000.
-    user: "${VIZIT_UID:-1000}:${VIZIT_GID:-1000}"
 
     # Map environment variables to backend settings
     environment:
@@ -75,6 +76,8 @@ services:
       VIZIT_BACKEND_HOST: backend
       VIZIT_BACKEND_PORT: "8000"
       VIZIT_PROXY_TIMEOUT: ${VIZIT_PROXY_TIMEOUT:-600s}
+      # Re-resolve the backend through Docker DNS
+      VIZIT_RESOLVER: ${VIZIT_RESOLVER:-127.0.0.11}
 
     ports:
       - "${VIZIT_PORT:-8080}:80"
