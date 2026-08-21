@@ -82,9 +82,12 @@ Before you begin, ensure you have the following installed on your system:
     VITE_APP_TITLE = BrainDataPortal
   
     # home page view options, the folder name of the home page
-    VITE_HOME_PAGE = Home_BDP  
+    VITE_HOME_PAGE = Home_PD5D
   
-    # runnning port, for running locally in development mode
+    # about page view options, the folder name of the about page
+    VITE_ABOUT_PAGE = About_PD5D
+  
+    # running port, for running locally in development mode
     # This port number is used to access the frontend server, it is different from the backend port
     VITE_PORT = 3000 
     ``` 

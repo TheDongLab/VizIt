@@ -67,6 +67,7 @@ services:
         VITE_APP_TITLE: ${VITE_APP_TITLE:-}
         VITE_APP_SUBTITLE: ${VITE_APP_SUBTITLE:-}
         VITE_HOME_PAGE: ${VITE_HOME_PAGE:-}
+        VITE_ABOUT_PAGE: ${VITE_ABOUT_PAGE:-}
         VITE_BACKEND_URL: ${VITE_BACKEND_URL:-}
     restart: unless-stopped
     container_name: vizit-frontend

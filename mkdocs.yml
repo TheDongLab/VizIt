@@ -110,6 +110,7 @@ nav:
   - Development:
     - development/index.md
     - Customize Home: development/customize_home.md
+    - Customize About: development/customize_about.md
     - Add view: development/add_view.md
   - Contribute:
     - contribute/index.md

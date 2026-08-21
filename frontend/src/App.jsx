@@ -3,7 +3,6 @@ import {Suspense, lazy} from 'react';
 
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
-import About from "./pages/About";
 import DatasetsPage from "./pages/Datasets";
 import SamplesPage from "./pages/Samples";
 import NotFoundPage from "./pages/NotFound";
@@ -34,7 +33,10 @@ import VisiumSTDemo from "./pages/DatasetDemos/VisiumSTDemo.jsx";
 import ClustersView from "./pages/ClustersView/index.jsx";
 
 const DefaultHome = lazy(() => import("./pages/Home/index.jsx"));
-const Home_BDP = lazy(() => import("./pages/Home_BDP/index.jsx"));
+const Home_PD5D = lazy(() => import("./pages/Home_PD5D/index.jsx"));
+
+const DefaultAbout = lazy(() => import("./pages/About/index.jsx"));
+const About_PD5D = lazy(() => import("./pages/About_PD5D/index.jsx"));
 
 // Dynamic home page loader
 const DynamicHome = () => {
@@ -51,6 +53,25 @@ const DynamicHome = () => {
     return (
         <Suspense fallback={<div>Loading Home Page...</div>}>
             <HomeComponent/>
+        </Suspense>
+    );
+};
+
+// Dynamic about page loader
+const DynamicAbout = () => {
+    const aboutPage = import.meta.env.VITE_ABOUT_PAGE;
+
+    // Try to dynamically import the custom about page
+    const AboutComponent = lazy(() =>
+        import(`./pages/${aboutPage}/index.jsx`).catch(() => {
+            console.warn(`About page "${aboutPage}" not found, using default`);
+            return import("./pages/About/index.jsx");
+        })
+    );
+
+    return (
+        <Suspense fallback={<div>Loading About Page...</div>}>
+            <AboutComponent/>
         </Suspense>
     );
 };
@@ -85,9 +106,13 @@ function App() {
 
                             {/* Keep default home routes for backup */}
                             <Route path="/home" element={<DefaultHome/>}/>
-                            <Route path="/home_bdp" element={<Home_BDP/>}/>
+                            <Route path="/home_pd5d" element={<Home_PD5D/>}/>
 
-                            <Route path="/about" element={<About/>}/>
+                            <Route path="/about" element={<DynamicAbout/>}/>
+
+                            {/* Keep default about routes for backup */}
+                            <Route path="/about_default" element={<DefaultAbout/>}/>
+                            <Route path="/about_pd5d" element={<About_PD5D/>}/>
                             <Route path="/datasets" element={<DatasetsPage/>}/>
 
                             <Route path="/samples" element={<Navigate to="/samples/all" replace/>}/>

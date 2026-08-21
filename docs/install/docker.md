@@ -35,6 +35,7 @@ Common settings:
 | `VIZIT_SAMPLESHEETS_DIR`  | `./backend/SampleSheets` | Sample sheet CSVs imported by `refresh_db`                                                                |
 | `VITE_APP_TITLE`          | *(empty)*                | Portal name shown in the header                                                                           |
 | `VITE_HOME_PAGE`          | *(empty)*                | Folder under `frontend/src/pages/` to use as the home page                                                |
+| `VITE_ABOUT_PAGE`         | *(empty)*                | Folder under `frontend/src/pages/` to use as the about page                                               |
 
 !!! warning "`VITE_*` and `VIZIT_UID`/`VIZIT_GID` are build-time settings"
     These values are built into the images. Apply changes by running

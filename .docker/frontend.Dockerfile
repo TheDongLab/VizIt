@@ -16,10 +16,11 @@ COPY frontend/ ./
 ARG VITE_APP_TITLE=
 ARG VITE_APP_SUBTITLE=
 ARG VITE_HOME_PAGE=
+ARG VITE_ABOUT_PAGE=
 ARG VITE_BACKEND_URL=
 
 RUN set -eu; \
-    for v in VITE_APP_TITLE VITE_APP_SUBTITLE VITE_HOME_PAGE VITE_BACKEND_URL; do \
+    for v in VITE_APP_TITLE VITE_APP_SUBTITLE VITE_HOME_PAGE VITE_ABOUT_PAGE VITE_BACKEND_URL; do \
         eval "[ -n \"\${$v:-}\" ] || unset $v"; \
     done; \
     npm run build:nginx

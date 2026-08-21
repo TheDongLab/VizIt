@@ -1,0 +1,70 @@
+/* About.css */
+
+.about-page {
+  font-family: Arial, sans-serif;
+  color: #333;
+  line-height: 1.6;
+  padding: 20px;
+  background-color: #f9f9f9;
+    width: 80%;
+    margin: 0 auto;
+}
+
+.about-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.about-header h1 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.about-header .subtitle {
+  font-size: 1.2em;
+  color: #7f8c8d;
+}
+
+.about-content .section {
+  margin-bottom: 30px;
+  padding: 15px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.about-content .section h2 {
+  font-size: 1.8em;
+  margin-bottom: 15px;
+  color: #34495e;
+}
+
+.about-content .section p {
+  margin-bottom: 10px;
+}
+
+.about-content .section ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+.about-content .section ul li {
+  margin-bottom: 8px;
+}
+
+.about-content a {
+  color: #2980b9;
+  text-decoration: none;
+}
+
+.about-content a:hover {
+  text-decoration: underline;
+}
+
+.about-footer {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 0.9em;
+  color: #95a5a6;
+}
