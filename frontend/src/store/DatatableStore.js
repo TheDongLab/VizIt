@@ -1,7 +1,6 @@
 import {create} from "zustand";
 import {toast} from "react-toastify";
 import {getDatatable_get, getDatasetList, getSampletable_get} from "../api/api.js";
-import {checkBWDataExists} from "./GenomicRegionStore.js";
 import useRemoteDatasetStore from "./RemoteDatasetStore.js";
 
 const useDatatableStore = create((set) => ({
@@ -69,15 +68,7 @@ const useDatatableStore = create((set) => ({
             if (response.status === 200) {
                 const data = await response.data;
 
-                // Add has_bw property to each record
-                const recordsWithBW = await Promise.all(
-                    data[0].map(async (record) => {
-                        const hasBW = await checkBWDataExists(record.dataset_id);
-                        return {...record, has_bw: hasBW};
-                    })
-                );
-
-                await set({datasetRecords: [...recordsWithBW, ...remoteDatasets], datasetFilters: data[1], datasetfetchStatus: "success"});
+                await set({datasetRecords: [...data[0], ...remoteDatasets], datasetFilters: data[1], datasetfetchStatus: "success"});
                 // toast.success("Sample loaded successfully!");
             } else {
                 console.error("Error fetching data:", response.data);

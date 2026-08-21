@@ -42,7 +42,7 @@ function VisiumView() {
 
     const datasetOptions = []
     datasetRecords.map((d) => {
-        if (d.assay.toLowerCase() === "visiumst" || d.assay.toLowerCase() === "merfish") {
+        if (d.has_spatial) {
             datasetOptions.push(d.dataset_id)
         }
     })

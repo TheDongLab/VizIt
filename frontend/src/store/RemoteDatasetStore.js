@@ -32,7 +32,12 @@ export const buildRemoteRecord = (url, name, info = {}) => {
         tissue: (info.info && info.info.tissue) || "",
         assay: assay,
         sample_sheet: "None",
+        sample_count: 0,
+        has_samples: false,
+        has_umap: !!info.has_umap,
+        has_qtl: hasQtl,
         has_bw: hasBw,
+        has_spatial: !!info.has_spatial,
         is_remote: true,
     };
 };

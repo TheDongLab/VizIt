@@ -1247,14 +1247,24 @@ def get_bigwig_celltype_list(dataset):
     return list(celltype_mapping.keys())
 
 
+def get_dataset_capabilities(dataset):
+    has_bw = get_bw_data_exists(dataset)
+    return {
+        "has_umap": bool(ds_exists(dataset, "umap_embeddings_50k.csv")),
+        "has_qtl": bool(ds_exists(dataset, "celltypes", "celltype_parquet.json")),
+        "has_bw": bool(has_bw) if not isinstance(has_bw, str) else False,
+        "has_spatial": bool(ds_exists(dataset, "coordinates")),
+    }
+
+
 def inspect_dataset(dataset):
     if not dataset or dataset == "all":
         return {"reachable": False, "error": "No dataset specified."}
 
     try:
-        has_qtl = bool(ds_exists(dataset, "celltypes", "celltype_parquet.json"))
-        has_bw = get_bw_data_exists(dataset)
-        has_bw = bool(has_bw) if not isinstance(has_bw, str) else False
+        capabilities = get_dataset_capabilities(dataset)
+        has_qtl = capabilities["has_qtl"]
+        has_bw = capabilities["has_bw"]
 
         config = get_config_info(dataset)
         datatype = ""
@@ -1282,8 +1292,7 @@ def inspect_dataset(dataset):
             "dataset_id": dataset,
             "assay": datatype,
             "is_caqtl": is_caqtl,
-            "has_qtl": has_qtl,
-            "has_bw": has_bw,
+            **capabilities,
             "dataset_name": info.get("dataset_name", "") if info else "",
             "info": info,
         }

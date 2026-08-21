@@ -45,7 +45,7 @@ function GeneView() {
     }, [])
 
     const datasetOptions = datasetRecords
-    .filter((d) => !d.assay.toLowerCase().endsWith("qtl"))
+    .filter((d) => d.has_umap)
     .map((d) => d.dataset_id)
 
     const [datasetId, setDatasetId] = useState(initialDataset)

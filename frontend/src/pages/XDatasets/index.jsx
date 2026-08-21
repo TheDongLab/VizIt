@@ -685,7 +685,7 @@ function XDatasetsView() {
                                         <Autocomplete
                                             size="small"
                                             options={datasetRecords && datasetRecords.length > 0
-                                                ? datasetRecords.filter(d => d.assay && (!d.assay.toLowerCase().endsWith("qtl"))).map(d => d.dataset_id)
+                                                ? datasetRecords.filter(d => d.has_umap).map(d => d.dataset_id)
                                                 : []}
                                             value={dataset.id}
                                             onChange={(event, newValue) => handleDatasetChange(index, newValue)}

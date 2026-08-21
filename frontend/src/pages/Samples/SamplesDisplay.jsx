@@ -15,8 +15,14 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import ListIcon from "@mui/icons-material/List";
 import PivotTableChart from "@mui/icons-material/PivotTableChart";
 import {Link} from "react-router-dom";
+import useDataStore from "../../store/DatatableStore.js";
 
 const SamplesDisplay = ({ dataRecords}) => {
+    const {datasetRecords} = useDataStore();
+    const hasSpatial = (dataset_id) => {
+        const dataset = datasetRecords.find((d) => d.dataset_id === dataset_id);
+        return Boolean(dataset && dataset.has_spatial);
+    };
     const [page, setPage] = useState(1);
     const [displayMode, setDisplayMode] = useState("table"); // "table" or "list"
     const [searchQuery, setSearchQuery] = useState("");
@@ -35,12 +41,12 @@ const SamplesDisplay = ({ dataRecords}) => {
     // Filter data based on the search query
     const filteredData = dataRecords.filter(
         (item) =>
-            item.sample_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.source_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.tissue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.brain_region.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.region_level_1.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.assay.toLowerCase().includes(searchQuery.toLowerCase())
+            String(item.sample_id ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.source_id ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.tissue ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.brain_region ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.region_level_1 ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.assay ?? "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // Pagination logic: Get only the records for the current page
@@ -128,8 +134,7 @@ const SamplesDisplay = ({ dataRecords}) => {
                                         <TableCell>{record.assay}</TableCell>
                                         <TableCell>
                                             <Link to={`/views/geneview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>UMAP</Link> &nbsp;&nbsp;
-                                            {record.assay.toLowerCase() === "visiumst" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>VisiumST</Link>}
-                                            {record.assay.toLowerCase() === "merfish" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>MERFISH</Link>}
+                                            {hasSpatial(record.dataset_id) && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>{record.assay}</Link>}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -151,8 +156,7 @@ const SamplesDisplay = ({ dataRecords}) => {
                                   </Box>
                                   <Box sx={{fontSize: "14px", padding: "8px 0"}}>
                                     <Link to={`/views/geneview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>View UMAP</Link> &nbsp;&nbsp;
-                                      {record.assay.toLowerCase() === "visiumst" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>VisiumST</Link>}&nbsp;&nbsp;
-                                      {record.assay.toLowerCase() === "merfish" && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>MERFISH</Link>}&nbsp;&nbsp;
+                                      {hasSpatial(record.dataset_id) && <Link to={`/views/visiumview?dataset=${record.dataset_id}&sample=${record.sample_id}`}>{record.assay}</Link>}&nbsp;&nbsp;
                                   </Box>
                                 </Typography>
                             </Box>

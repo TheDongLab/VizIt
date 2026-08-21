@@ -100,7 +100,7 @@ function GenomicRegionView() {
     }, [urlDataset, datasetRecords]);
 
     const datasetOptions = datasetRecords
-        .filter((d) => /[A-Za-z]*?(RNAseq|ATACseq)$/i.test(d.assay) && d.has_bw)
+        .filter((d) => d.has_bw)
         .map((d) => d.dataset_id);
 
     // Map dataset_id to display name

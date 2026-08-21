@@ -293,7 +293,18 @@ async def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
             {"title": "Tissue", "key": "tissue", "options": set(tissue_ls), },
             {"title": "Disease", "key": "disease", "options": set(disease_ls), },
         ]
-        return [datasets, dataset_fileters]  # datasets, dataset_fileters
+        sample_counts = get_sample_counts(session)
+        dataset_records = []
+        for dataset in datasets:
+            sample_count = sample_counts.get(dataset.dataset_id, 0)
+            dataset_records.append({
+                **dataset.model_dump(),
+                **get_dataset_capabilities(dataset.dataset_id),
+                "sample_count": sample_count,
+                "has_samples": sample_count > 0,
+            })
+
+        return [dataset_records, dataset_fileters]  # datasets, dataset_fileters
     else:
         dataset = get_dataset_by_id(dataset_id, session)
         if not dataset:

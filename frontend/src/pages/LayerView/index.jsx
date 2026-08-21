@@ -70,7 +70,7 @@ function LayerView() {
 
     const datasetOptions = []
     datasetRecords.map((d) => {
-        if (d.assay.toLowerCase() === "visiumst") {
+        if (d.has_spatial) {
             datasetOptions.push(d.dataset_id)
         }
     })

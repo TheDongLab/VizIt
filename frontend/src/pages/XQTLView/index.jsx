@@ -101,7 +101,7 @@ function XQTLView() {
     }, [urlDataset, datasetRecords]);
 
     const datasetOptions = datasetRecords
-        .filter((d) => d.assay.toLowerCase().endsWith("qtl"))
+        .filter((d) => d.has_qtl)
         .map((d) => d.dataset_id);
 
     // Map dataset_id to display name
@@ -115,7 +115,7 @@ function XQTLView() {
 
     const isCaQTL = useMemo(() => {
         const dataset = datasetRecords.find((d) => d.dataset_id === datasetId);
-        return dataset?.assay.toLowerCase().startsWith("ca");
+        return dataset?.assay?.toLowerCase().startsWith("ca");
     }, [datasetId, datasetRecords]);
 
     const {

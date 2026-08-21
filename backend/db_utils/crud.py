@@ -3,7 +3,7 @@ import uuid
 import numpy as np
 import pandas as pd
 from fastapi import HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 from backend.models import *
 from backend.db import engine
@@ -193,6 +193,10 @@ def get_all_datasets(session):
     statement = select(Dataset)
     result = session.exec(statement)
     return result.all()
+
+def get_sample_counts(session):
+    statement = select(Sample.dataset_id, func.count(Sample.id)).group_by(Sample.dataset_id)
+    return {dataset_id: count for dataset_id, count in session.exec(statement)}
 
 def get_home_data(session):
     datasets = get_all_datasets(session)

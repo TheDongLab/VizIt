@@ -97,7 +97,7 @@ export default function HomePage() {
                                         {option.description}
                                     </Typography>
                                 </CardContent>
-                                {/* <CardActions sx={{p: 2, pt: 0}}>
+                                <CardActions sx={{p: 2, pt: 0}}>
                                     <Button
                                         component={Link}
                                         to={option.href}
@@ -115,7 +115,7 @@ export default function HomePage() {
                                     >
                                         Explore {option.title}
                                     </Button>
-                                </CardActions> */}
+                                </CardActions>
                             </Card>
                         </Grid>
                     ))}

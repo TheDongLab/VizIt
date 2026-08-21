@@ -64,14 +64,14 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
     // Filter data based on the search query (this now works on already filtered data from parent)
     const searchFilteredData = dataRecords.filter(
         (item) =>
-            item.dataset_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.dataset_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.PI_full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.first_contributor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.n_samples.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.organism.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.brain_region.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.assay.toLowerCase().includes(searchQuery.toLowerCase()),
+            String(item.dataset_id ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.dataset_name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.PI_full_name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.first_contributor ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.sample_count ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.organism ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.brain_region ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(item.assay ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
     )
 
     // Pagination logic: Get only the records for the current page
@@ -208,19 +208,19 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                 {displayedData.map((record) => (
                                     <TableRow key={record.dataset_id}>
                                         <TableCell>
-                                            {record.is_remote || record.sample_sheet === "None" || record.sample_sheet === null || record.sample_sheet.trim() === "" ? (record.dataset_name || record.dataset_id) :
-                                                <Link to={`/samples/${record.dataset_id}`}>{record.dataset_id}</Link>}
+                                            {record.has_samples ? <Link to={`/samples/${record.dataset_id}`}>{record.dataset_id}</Link> :
+                                                (record.dataset_name || record.dataset_id)}
                                         </TableCell>
                                         <TableCell>{record.PI_full_name}</TableCell>
                                         <TableCell>{record.first_contributor}</TableCell>
-                                        <TableCell>{record.n_samples}</TableCell>
+                                        <TableCell>{record.sample_count}</TableCell>
                                         <TableCell>{record.brain_region}</TableCell>
                                         <TableCell>{record.assay}</TableCell>
                                         <TableCell>
                                             <Box sx={{display: "flex", gap: "10px"}}>
-                                                {["scrnaseq", "snrnaseq", "visiumst","merfish"].includes(record.assay.toLowerCase()) && (<Link to={`/views/geneview?dataset=${encodeURIComponent(record.dataset_id)}&sample=all`}>UMAP</Link>)}
-                                                {/*{["visiumst","visium"].includes(record.assay.toLowerCase()) && (<Link to={`/views/visiumview?dataset=${encodeURIComponent(record.dataset_id)}`}>Visium</Link>)}*/}
-                                                {["eqtl", "caqtl"].includes(record.assay.toLowerCase()) && (<Link to={`/views/xqtlview?dataset=${encodeURIComponent(record.dataset_id)}`}>xQTL</Link>)}
+                                                {record.has_umap && (<Link to={`/views/geneview?dataset=${encodeURIComponent(record.dataset_id)}&sample=all`}>UMAP</Link>)}
+                                                {/*{record.has_spatial && (<Link to={`/views/visiumview?dataset=${encodeURIComponent(record.dataset_id)}`}>Visium</Link>)}*/}
+                                                {record.has_qtl && (<Link to={`/views/xqtlview?dataset=${encodeURIComponent(record.dataset_id)}`}>xQTL</Link>)}
                                                 {record.has_bw && (<Link to={`/views/genomicregionview?dataset=${encodeURIComponent(record.dataset_id)}&region=chr1:1000000-2000000`}>Peaks</Link>)}
                                             </Box>
                                         </TableCell>
@@ -242,9 +242,9 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                         {displayedData.map((record) => (
                             <Box key={record.dataset_id} className="list-item">
                                 <Typography variant="h6" color="text.secondary">
-                                    {record.is_remote || record.sample_sheet === "None" || record.sample_sheet === null || (record.sample_sheet ?? "").trim() === "" ?
-                                        (record.dataset_name || record.dataset_id) :
-                                        <Link to={`/samples/${record.dataset_id}`}>{record.dataset_id}</Link>}
+                                    {record.has_samples ?
+                                        <Link to={`/samples/${record.dataset_id}`}>{record.dataset_id}</Link> :
+                                        (record.dataset_name || record.dataset_id)}
                                 </Typography>
                                 <Box display="flex" gap={2} sx={{fontSize: "14px", padding: "8px 0"}}>
                                     <Box>
@@ -257,16 +257,16 @@ const DatasetDisplay = ({dataRecords, deleteMode}) => {
                                         <b>Brain Region:</b> {record.brain_region}
                                     </Box>
                                     <Box>
-                                        <b># Samples:</b> {record.n_samples}
+                                        <b># Samples:</b> {record.sample_count}
                                     </Box>
                                     <Box>
                                         <b>Assay type:</b> {record.assay}
                                     </Box>
                                 </Box>
                                 <Box sx={{fontSize: "14px", padding: "8px 0", display: "flex", gap: "8px"}}>
-                                    {["scrnaseq", "snrnaseq", "visiumst", "merfish"].includes(record.assay.toLowerCase()) && (<Link to={`/views/geneview?dataset=${encodeURIComponent(record.dataset_id)}&sample=all`}>UMAP</Link>)}
-                                    {/*{["visiumst","visium"].includes(record.assay.toLowerCase()) && (<Link to={`/views/visiumview?dataset=${encodeURIComponent(record.dataset_id)}`}>Visium</Link>)}*/}
-                                    {["eqtl", "caqtl"].includes(record.assay.toLowerCase()) && (<Link to={`/views/xqtlview?dataset=${encodeURIComponent(record.dataset_id)}`}>xQTL</Link>)}
+                                    {record.has_umap && (<Link to={`/views/geneview?dataset=${encodeURIComponent(record.dataset_id)}&sample=all`}>UMAP</Link>)}
+                                    {/*{record.has_spatial && (<Link to={`/views/visiumview?dataset=${encodeURIComponent(record.dataset_id)}`}>Visium</Link>)}*/}
+                                    {record.has_qtl && (<Link to={`/views/xqtlview?dataset=${encodeURIComponent(record.dataset_id)}`}>xQTL</Link>)}
                                     {record.has_bw && (<Link to={`/views/genomicregionview?dataset=${encodeURIComponent(record.dataset_id)}&region=chr1:1000000-2000000`}>Peaks</Link>)}
                                 </Box>
                                 <Box sx={{fontSize: "14px", display: "flex", gap: "8px", justifyContent: "flex-end"}}>

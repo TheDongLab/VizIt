@@ -12,9 +12,10 @@ const SamplesPage = () => {
     // const dataset_id = window.location.pathname.split("/")[2];
     const { dataset_id } = useParams(); // Extracts dataset_id from the URL
 
-    const {sampleRecords,fetchSampleData} = useDataStore();
+    const {sampleRecords,fetchSampleData,fetchDatasetList} = useDataStore();
     useEffect(() => {
         fetchSampleData({dataset_id})
+        fetchDatasetList()
     }, [fetchSampleData]);
 
     return (

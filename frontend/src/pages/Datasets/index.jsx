@@ -70,7 +70,7 @@ const DatasetsPage = () => {
     const getFilteredRecords = () => {
         return datasetRecords.filter((record) => {
             // Check assay type filter
-            if (selectedFilters.assayType.length > 0 && !selectedFilters.assayType.includes(record.assay)) {
+            if (selectedFilters.assayType.length > 0 && !selectedFilters.assayType.some((a) => String(a ?? "").toLowerCase() === String(record.assay ?? "").toLowerCase())) {
                 return false
             }
 
