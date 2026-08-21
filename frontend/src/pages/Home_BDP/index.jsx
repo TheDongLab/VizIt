@@ -33,7 +33,7 @@ const Home = () => {
                         {import.meta.env.VITE_APP_TITLE}
                     </Typography>
                     <Typography variant="h5" align="center" className="subtitle">
-                        Explore and analyze brain-related omics data with ease.
+                        {import.meta.env.VITE_APP_SUBTITLE}
                     </Typography>
                 </Grid2>
 

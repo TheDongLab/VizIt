@@ -49,7 +49,7 @@ sample_id_column = ""
 main_cluster_column = ""
 condition_column = ""
 
-[visium_defaults]
+[spatial_defaults]
 samples = []
 features = []
 genes = []
