@@ -8,6 +8,11 @@ export default defineConfig(({mode}) => {
     return {
         plugins: [react()],
         envDir: './env', // ⬅️ 指定 .env 文件夹
+        resolve: {
+            alias: {
+                'plotly.js/dist/plotly': 'plotly.js-dist-min',
+            },
+        },
         server: {
             // proxy: {
             //   '/api': {

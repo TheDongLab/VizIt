@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState, useCallback, useMemo} from "react";
 import Plot from "react-plotly.js";
-import Plotly from "plotly.js-dist";
+import Plotly from "plotly.js-dist-min";
 import PropTypes from "prop-types";
 import {calculateMinMax, isCategorical, sortObjectByKey} from "../../utils/funcs.js";
 

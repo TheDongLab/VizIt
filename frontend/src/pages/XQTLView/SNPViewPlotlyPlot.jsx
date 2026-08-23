@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState, useEffect } from "react";
 import Plot from "react-plotly.js";
-import Plotly from "plotly.js-dist";
+import Plotly from "plotly.js-dist-min";
 import PropTypes from "prop-types";
 import { getGencodeVersion } from "../../api/qtl.js";
 

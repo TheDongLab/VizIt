@@ -1,5 +1,5 @@
 import Plot from "react-plotly.js";
-import Plotly from "plotly.js-dist";
+import Plotly from "plotly.js-dist-min";
 import {isCategorical} from "../../utils/funcs.js";
 import PropTypes from "prop-types";
 import {groupBy} from "lodash";
