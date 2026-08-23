@@ -188,6 +188,8 @@ function getTrackRange(
         : [0, globalMaxPosRange];
 }
 
+const MAX_TRANSCRIPT_LANES = 100;
+
 const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     dataset,
     chromosome,
@@ -389,21 +391,35 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
         );
 
         let numFallbacks = 0;
+        let windowStart = 0;
 
         for (const gene of sortedGenes) {
             let jitterValue;
             let attempts = 0;
+
+            while (
+                windowStart < assigned.length &&
+                gene.position_start - assigned[windowStart].pos >= maxXSpacing
+            ) {
+                windowStart++;
+            }
 
             while (attempts < maxAttempts) {
                 const candidate = Math.random() * maxAmplitude;
                 const sign = Math.random() > 0.5 ? 1 : -1;
                 const jitter = sign * candidate;
 
-                const isTooClose = assigned.some(
-                    ({ pos, jitter: prev }) =>
+                let isTooClose = false;
+                for (let i = windowStart; i < assigned.length; i++) {
+                    const { pos, jitter: prev } = assigned[i];
+                    if (
                         Math.abs(prev - jitter) < minYSpacing &&
-                        Math.abs(pos - gene.position_start) < maxXSpacing,
-                );
+                        Math.abs(pos - gene.position_start) < maxXSpacing
+                    ) {
+                        isTooClose = true;
+                        break;
+                    }
+                }
 
                 if (!isTooClose) {
                     jitterValue = jitter;
@@ -430,7 +446,10 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     }, [nearbyGenes, range.start, range.end]);
 
     const isExonMode =
-        !exonStructureTruncated && exonStructure && exonStructure.length > 0;
+        !exonStructureTruncated &&
+        exonStructure &&
+        exonStructure.length > 0 &&
+        exonStructure.length <= MAX_TRANSCRIPT_LANES;
 
     let geneTrackYMin, geneTrackYMax;
     let exonTrackPixels;
@@ -577,14 +596,36 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
     const exonTraces = useMemo(() => {
         if (!exonStructure || exonStructure.length === 0) return [];
 
-        const plots = [];
-
         const transcripts = exonStructure;
         const txToLane = new Map(
             transcripts.map((tx, idx) => [tx.transcript_id, idx]),
         );
 
         const exonHalfHeight = 0.3;
+
+        const groups = new Map();
+        const groupFor = (colors) => {
+            let group = groups.get(colors.exonFill);
+            if (!group) {
+                group = {
+                    colors,
+                    intronX: [],
+                    intronY: [],
+                    intronMeta: [],
+                    exonX: [],
+                    exonY: [],
+                    exonMeta: [],
+                    exonHover: [],
+                    labelX: [],
+                    labelY: [],
+                    labelText: [],
+                    labelMeta: [],
+                    labelHover: [],
+                };
+                groups.set(colors.exonFill, group);
+            }
+            return group;
+        };
 
         for (const tx of transcripts) {
             const laneY = txToLane.get(tx.transcript_id);
@@ -597,9 +638,7 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 exons[0].exon_count != null ? exons[0].exon_count : null;
 
             const colors = getTranscriptColor(tx.biotype);
-            const exonFill = colors.exonFill;
-            const exonBorder = colors.exonBorder;
-            const intronColor = colors.intron;
+            const group = groupFor(colors);
 
             const txMeta = {
                 transcript_id: tx.transcript_id,
@@ -611,42 +650,16 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
                 tx_end: tx.tx_end,
             };
 
-            // Introns
-            const intronXs = [];
-            const intronYs = [];
+            const pushIntron = (x0, x1) => {
+                group.intronX.push(x0, x1, null);
+                group.intronY.push(laneY, laneY, null);
+                group.intronMeta.push(txMeta, txMeta, null);
+            };
 
-            for (let i = 0; i < exons.length - 1; i++) {
-                const a = exons[i];
-                const b = exons[i + 1];
-                const x0 = a.exon_end;
-                const x1 = b.exon_start;
-                const y = laneY;
-
-                intronXs.push(x0, x1);
-                intronYs.push(y, y);
-            }
-
-            if (intronXs.length > 0) {
-                plots.push({
-                    x: intronXs,
-                    y: intronYs,
-                    type: "scatter",
-                    mode: "lines",
-                    line: { color: intronColor, width: 1 },
-                    xaxis: "x",
-                    yaxis: "y",
-                    hoverinfo: "skip",
-                    pointType: "gene",
-                    customdata: txMeta,
-                    showlegend: false,
-                });
-            }
-
-            // Partial Introns (extending out of viewing window)
             const firstExon = exons[0];
             const lastExon = exons[exons.length - 1];
 
-            // Left continuation
+            // Left continuation (extending out of viewing window)
             if (
                 exonCount != null &&
                 firstExon.exon_index != null &&
@@ -654,26 +667,15 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             ) {
                 const x0 = Math.max(range.start, tx.tx_start ?? range.start);
                 const x1 = firstExon.exon_start;
-                const y = laneY;
-
-                if (x1 > x0) {
-                    plots.push({
-                        x: [x0, x1],
-                        y: [y, y],
-                        type: "scatter",
-                        mode: "lines",
-                        line: { color: intronColor, width: 1 },
-                        xaxis: "x",
-                        yaxis: "y",
-                        hoverinfo: "skip",
-                        pointType: "gene",
-                        customdata: txMeta,
-                        showlegend: false,
-                    });
-                }
+                if (x1 > x0) pushIntron(x0, x1);
             }
 
-            // Right continuation
+            // Introns
+            for (let i = 0; i < exons.length - 1; i++) {
+                pushIntron(exons[i].exon_end, exons[i + 1].exon_start);
+            }
+
+            // Right continuation (extending out of viewing window)
             if (
                 exonCount != null &&
                 lastExon.exon_index != null &&
@@ -681,122 +683,117 @@ const RegionViewPlotlyPlot = React.memo(function RegionViewPlotlyPlot({
             ) {
                 const x0 = lastExon.exon_end;
                 const x1 = Math.min(range.end, tx.tx_end ?? range.end);
-                const y = laneY;
-
-                if (x1 > x0) {
-                    plots.push({
-                        x: [x0, x1],
-                        y: [y, y],
-                        type: "scatter",
-                        mode: "lines",
-                        line: { color: intronColor, width: 1 },
-                        xaxis: "x",
-                        yaxis: "y",
-                        hoverinfo: "skip",
-                        pointType: "gene",
-                        customdata: txMeta,
-                        showlegend: false,
-                    });
-                }
+                if (x1 > x0) pushIntron(x0, x1);
             }
 
             // Exons
-            const exonXs = [];
-            const exonYs = [];
-            const exonHoverTexts = [];
+            const geneLabel = tx.gene_symbol || tx.gene_id || "N/A";
+            const strandLabel =
+                tx.strand === "-" ? "−" : tx.strand === "+" ? "+" : "N/A";
 
             for (const e of exons) {
-                const x0 = e.exon_start;
-                const x1 = e.exon_end;
-                const y = laneY;
-
-                const geneLabel = tx.gene_symbol || tx.gene_id || "N/A";
                 const h =
                     `<b>Gene:</b> ${geneLabel}<br>` +
                     (tx.transcript_id
                         ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
                         : "") +
                     (tx.biotype ? `<b>Biotype:</b> ${tx.biotype}<br>` : "") +
-                    `<b>Strand:</b> ${
-                        tx.strand === "-"
-                            ? "−"
-                            : tx.strand === "+"
-                              ? "+"
-                              : "N/A"
-                    }<br>` +
+                    `<b>Strand:</b> ${strandLabel}<br>` +
                     `<b>Exon:</b> ${e.exon_start}–${e.exon_end}<br>` +
                     (e.exon_index != null && exonCount != null
                         ? `<b>Exon Number:</b> #${e.exon_index + 1} / ${exonCount}<br>`
                         : "");
 
-                exonXs.push(x0, x1, null);
-                exonYs.push(y, y, null);
-                exonHoverTexts.push(h, h, null);
+                group.exonX.push(e.exon_start, e.exon_end, null);
+                group.exonY.push(laneY, laneY, null);
+                group.exonHover.push(h, h, null);
+                group.exonMeta.push(txMeta, txMeta, null);
             }
-
-            // Exon traces need to come after introns so that they are visually on top
-            plots.push({
-                x: exonXs,
-                y: exonYs,
-                type: "scatter",
-                mode: "lines",
-                line: { color: exonFill, width: exonHalfHeight * 3 * 10 },
-                xaxis: "x",
-                yaxis: "y",
-                hoverinfo: "text",
-                hovertext: exonHoverTexts,
-                pointType: "gene",
-                customdata: txMeta,
-                showlegend: false,
-            });
 
             // Gene Label
             const txLeft = tx.tx_start ?? firstExon.exon_start;
             const tssInside = txLeft >= range.start && txLeft <= range.end;
 
             if (tssInside) {
-                const labelX =
-                    firstExon.exon_start - (range.end - range.start) * 0.005;
-                const labelY = laneY - exonHalfHeight / 6;
-
-                plots.push({
-                    x: [labelX],
-                    y: [labelY],
-                    type: "scatter",
-                    mode: "text",
-                    text: [tx.gene_symbol || tx.gene_id || ""],
-                    textposition: "middle left",
-                    xaxis: "x",
-                    yaxis: "y",
-                    hoverinfo: "text",
-                    hovertext: [
-                        `<b>Gene:</b> ${tx.gene_symbol || tx.gene_id || "N/A"}<br>` +
-                            (tx.transcript_id
-                                ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
-                                : "") +
-                            (tx.biotype
-                                ? `<b>Biotype:</b> ${tx.biotype}<br>`
-                                : "") +
-                            `<b>Strand:</b> ${
-                                tx.strand === "-"
-                                    ? "−"
-                                    : tx.strand === "+"
-                                      ? "+"
-                                      : "N/A"
-                            }`,
-                    ],
-                    textfont: {
-                        size: 10,
-                        color: exonBorder,
-                    },
-                    hoverlabel: {
-                        bgcolor: exonFill,
-                    },
-                    pointType: "gene",
-                    customdata: txMeta,
-                    showlegend: false,
-                });
+                group.labelX.push(
+                    firstExon.exon_start - (range.end - range.start) * 0.005,
+                );
+                group.labelY.push(laneY - exonHalfHeight / 6);
+                group.labelText.push(tx.gene_symbol || tx.gene_id || "");
+                group.labelMeta.push(txMeta);
+                group.labelHover.push(
+                    `<b>Gene:</b> ${geneLabel}<br>` +
+                        (tx.transcript_id
+                            ? `<b>Transcript ID:</b> ${tx.transcript_id}<br>`
+                            : "") +
+                        (tx.biotype
+                            ? `<b>Biotype:</b> ${tx.biotype}<br>`
+                            : "") +
+                        `<b>Strand:</b> ${strandLabel}`,
+                );
             }
+        }
+
+        const plots = [];
+
+        for (const group of groups.values()) {
+            if (group.intronX.length === 0) continue;
+            plots.push({
+                x: group.intronX,
+                y: group.intronY,
+                type: "scatter",
+                mode: "lines",
+                line: { color: group.colors.intron, width: 1 },
+                xaxis: "x",
+                yaxis: "y",
+                hoverinfo: "skip",
+                pointType: "gene",
+                customdata: group.intronMeta,
+                showlegend: false,
+            });
+        }
+
+        // Exon traces need to come after introns so that they are visually on top
+        for (const group of groups.values()) {
+            if (group.exonX.length === 0) continue;
+            plots.push({
+                x: group.exonX,
+                y: group.exonY,
+                type: "scatter",
+                mode: "lines",
+                line: {
+                    color: group.colors.exonFill,
+                    width: exonHalfHeight * 3 * 10,
+                },
+                xaxis: "x",
+                yaxis: "y",
+                hoverinfo: "text",
+                hovertext: group.exonHover,
+                pointType: "gene",
+                customdata: group.exonMeta,
+                showlegend: false,
+            });
+        }
+
+        for (const group of groups.values()) {
+            if (group.labelX.length === 0) continue;
+            plots.push({
+                x: group.labelX,
+                y: group.labelY,
+                type: "scatter",
+                mode: "text",
+                text: group.labelText,
+                textposition: "middle left",
+                xaxis: "x",
+                yaxis: "y",
+                hoverinfo: "text",
+                hovertext: group.labelHover,
+                textfont: { size: 10, color: group.colors.exonBorder },
+                hoverlabel: { bgcolor: group.colors.exonFill },
+                pointType: "gene",
+                customdata: group.labelMeta,
+                showlegend: false,
+            });
         }
 
         return plots;
