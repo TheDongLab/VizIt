@@ -16,8 +16,9 @@ frontend/.vite/
 
 .env
 .env.*
+**/.env
 !.env.example
-!frontend/env/
+!frontend/env/**
 
 .docker/dev.Dockerfile
 docker-compose.dev.yml
