@@ -77,11 +77,11 @@ class MetaFeatureData(BaseModel):
     condition_column: str
 
 @router.get("/")
-async def dm_root():
+def dm_root():
     return {"Message": "Hello DataManager."}
 
 @router.get("/getdatasetfiles")
-async def getdatasetfiles():
+def getdatasetfiles():
     file_path = "backend/DatasetFiles"
     file_ls = os.listdir(file_path)
     # for file in file_ls:
@@ -90,7 +90,7 @@ async def getdatasetfiles():
     return file_ls
 
 @router.get("/getsamplesheets")
-async def getsamplesheets():
+def getsamplesheets():
     file_path = "backend/SampleSheets"
     file_ls = os.listdir(file_path)
     # for file in file_ls:
@@ -99,14 +99,14 @@ async def getsamplesheets():
     return file_ls
 
 @router.get("/checkdatasetname")
-async def checkdatasetname(name: str):
+def checkdatasetname(name: str):
     path_str = "backend/datasets/" + name
     if os.path.exists(path_str):
         return {"isUnique": False}
     return {"isUnique": True}
 
 @router.post("/extractdata")
-async def extractdata(data: SubmissionData, session: Session = Depends(get_session)):
+def extractdata(data: SubmissionData, session: Session = Depends(get_session)):
     dataset_file = data.datasetfile_info.file
     datatype = data.datasetfile_info.datatype
     dataset_name = data.dataset_info.dataset_name
@@ -186,7 +186,7 @@ async def extractdata(data: SubmissionData, session: Session = Depends(get_sessi
     return {"message": "Data received successfully", "success": True, "jobId": dataset_name + now.strftime("%Y%m%d%H%M%S")}
 
 @router.get("/getprocessingstatus")
-async def getprocessingstatus(dataset: str =  Query(...), task: str = Query(...)):
+def getprocessingstatus(dataset: str =  Query(...), task: str = Query(...)):
     if task == "extract_data":
         log_file_path = f"backend/datasets/{dataset}/extractdata_output.log"
     if task == "prepare_metadata":
@@ -215,7 +215,7 @@ async def getprocessingstatus(dataset: str =  Query(...), task: str = Query(...)
 
 
 @router.get("/getdatasetfeatures")
-async def getdatasetfeatures(dataset: str = Query(...)):
+def getdatasetfeatures(dataset: str = Query(...)):
     dataset_path = f"backend/datasets/{dataset}"
     features_file = f"{dataset_path}/raw_metadata_columns.json"
     with open(features_file, "r") as f:
@@ -223,7 +223,7 @@ async def getdatasetfeatures(dataset: str = Query(...)):
     return features
 
 @router.post("/preparemetafeatures")
-async def preparemetafeatures(data: MetaFeatureData, session: Session = Depends(get_session)):
+def preparemetafeatures(data: MetaFeatureData, session: Session = Depends(get_session)):
     dataset = data.dataset
     selected_features = data.selected_features
     sample_id_column = data.sample_id_column
@@ -355,7 +355,7 @@ def check_toml_file(toml_data):
 
 
 @router.delete("/deletedataset")
-async def deletedataset(dataset: str = Query(...),session: Session = Depends(get_session)):
+def deletedataset(dataset: str = Query(...),session: Session = Depends(get_session)):
     try:
         ## remove records from database
         print(f"=======deleting dataset: {dataset}==========")

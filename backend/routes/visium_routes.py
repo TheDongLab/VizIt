@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi import Request
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, ORJSONResponse, FileResponse
 
 
 from backend.db import SessionDep
@@ -12,12 +12,12 @@ import os
 router = APIRouter()
 
 @router.get("/")
-async def read_root():
+def read_root():
     return {"Message": "Hello Visium."}
 
 
 @router.get("/getcoordinates")
-async def getcoordinates(request:Request):
+def getcoordinates(request:Request):
     print("getcoordinates() called================")
     dataset_id = request.query_params.get("dataset")
     sample = request.query_params.get("sample")
@@ -27,11 +27,11 @@ async def getcoordinates(request:Request):
     #     raise HTTPException(status_code=404, detail="Error in getting coordinates.")
 
     response = {"coordinates": results["coordinates"], "scales": results["scales"]}
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getimage")
-async def getimage(request: Request):
+def getimage(request: Request):
     print("getimage() called================")
     dataset_id = request.query_params.get("dataset")
     sample = request.query_params.get("sample")
@@ -73,7 +73,7 @@ async def getimage(request: Request):
         return JSONResponse(status_code=500,content={"success": False, "message": "Internal server error"})
 
 @router.get("/getvisiumdefaults")
-async def getvisiumdefaults(request:Request):
+def getvisiumdefaults(request:Request):
     print("getvisiumdefaults() called================")
     dataset_id = request.query_params.get("dataset")
 

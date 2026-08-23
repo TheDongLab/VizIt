@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import ORJSONResponse
 from starlette.requests import Request
 
 from backend.db import SessionDep
@@ -9,12 +10,12 @@ router = APIRouter()
 
 
 @router.get("/")
-async def read_root():
+def read_root():
     return {"Message": "Hello API."}
 
 
 @router.get("/gethomedata")
-async def gethomedata(session: SessionDep):
+def gethomedata(session: SessionDep):
     print("gethomedata() called================")
     response = get_home_data(session)
     # print (response)
@@ -24,7 +25,7 @@ async def gethomedata(session: SessionDep):
 
 
 @router.get("/getgenelist")
-async def getgenelist(request: Request):
+def getgenelist(request: Request):
     print("getgenelist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -37,7 +38,7 @@ async def getgenelist(request: Request):
 
 
 @router.get("/getsamplelist")
-async def getsamplelist(request: Request):
+def getsamplelist(request: Request):
     print("getsamplelist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -50,7 +51,7 @@ async def getsamplelist(request: Request):
 
 
 @router.get("/getmetalist")
-async def getmetalist(request: Request):
+def getmetalist(request: Request):
     print("getmetalist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -63,7 +64,7 @@ async def getmetalist(request: Request):
 
 
 @router.get("/getmainclusterinfo")
-async def getmainclusterinfo(request: Request):
+def getmainclusterinfo(request: Request):
     print("getmainclusterinfo() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -80,7 +81,7 @@ async def getmainclusterinfo(request: Request):
 
 
 @router.get("/getclusterlist")
-async def getclusterlist(request: Request):
+def getclusterlist(request: Request):
     print("getclusterlist() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -92,7 +93,7 @@ async def getclusterlist(request: Request):
 
 
 @router.get("/getcellcounts")
-async def getcellcounts(request: Request):
+def getcellcounts(request: Request):
     print("getcellcounts() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -104,7 +105,7 @@ async def getcellcounts(request: Request):
 
 
 @router.get("/getmarkergenes")
-async def getmarkergenes(request: Request):
+def getmarkergenes(request: Request):
     print("getmarkergenes() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -112,11 +113,11 @@ async def getmarkergenes(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene markers.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getdegsofcluster")
-async def getdegsofcluster(request: Request):
+def getdegsofcluster(request: Request):
     dataset_id = request.query_params.get("dataset")
     cluster = request.query_params.get("cluster")
     print(f"getdegsofcluster({dataset_id},{cluster}) called================")
@@ -126,11 +127,11 @@ async def getdegsofcluster(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene markers.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getumapembedding")
-async def getumapembedding(request: Request):
+def getumapembedding(request: Request):
     print("getumapembedding() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -138,11 +139,11 @@ async def getumapembedding(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting Meta list.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getexprdata")
-async def getexprdata(request: Request):
+def getexprdata(request: Request):
     print("getgeneexprdata() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -151,11 +152,11 @@ async def getexprdata(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting expression data.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getpseudoexprdata")
-async def getpseudoexprdata(request: Request):
+def getpseudoexprdata(request: Request):
     print("getpseudoexprdata() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -164,11 +165,11 @@ async def getpseudoexprdata(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting expression data.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getallmetadata")
-async def getallmetadata(request: Request):
+def getallmetadata(request: Request):
     dataset = request.query_params.get("dataset_id")
     cols = request.query_params.getlist("cols[]")
     rows = request.query_params.getlist("rows[]")
@@ -179,11 +180,11 @@ async def getallmetadata(request: Request):
     if "Error" in metadata:
         raise HTTPException(status_code=404, detail=metadata)
 
-    return metadata
+    return ORJSONResponse(metadata)
 
 
 @router.get("/getallsamplemetadata")
-async def getallsamplemetadata(request: Request):
+def getallsamplemetadata(request: Request):
     print("getallsamplemetadata() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -191,11 +192,11 @@ async def getallsamplemetadata(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting sample metadata.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getmetadataofsample")
-async def getmetadataofsample(request: Request):
+def getmetadataofsample(request: Request):
     print("getmetadataofsample() called================")
     dataset_id = request.query_params.get("dataset")
     sample = request.query_params.get("sample")
@@ -204,11 +205,11 @@ async def getmetadataofsample(request: Request):
     # print (response)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting sample metadata.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getdatatable/{data_id}")
-async def getdatatable(data_id: str | uuid.UUID, session: SessionDep):
+def getdatatable(data_id: str | uuid.UUID, session: SessionDep):
     if not data_id:
         raise HTTPException(status_code=400, detail="data_id is empty")
 
@@ -225,7 +226,7 @@ async def getdatatable(data_id: str | uuid.UUID, session: SessionDep):
 
 
 @router.get("/getsampletable")
-async def getsampletable(request: Request, session: SessionDep):
+def getsampletable(request: Request, session: SessionDep):
     sample_ids = request.query_params.getlist("sample_id")
     dataset_ids = request.query_params.getlist("dataset_id")
     conditions = {k: request.query_params.getlist(k) for k, v in request.query_params.items()}
@@ -262,7 +263,7 @@ async def getsampletable(request: Request, session: SessionDep):
 
 
 @router.get("/getdatasetlist/{dataset_id}")
-async def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
+def getdatasetlist(dataset_id: str | uuid.UUID, session: SessionDep):
     if not dataset_id:
         raise HTTPException(status_code=400, detail="dataset_id is empty")
 

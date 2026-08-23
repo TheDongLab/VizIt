@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import ORJSONResponse
 from fastapi import Request
 
 # from backend.funcs.get_data import *
@@ -21,19 +22,19 @@ router = APIRouter()
 
 
 @router.get("/")
-async def read_root():
+def read_root():
     return {"Message": "Hello Signal."}
 
 
 @router.get("/getbwdataexists")
-async def getbwdataexists(request: Request):
+def getbwdataexists(request: Request):
     dataset_id = request.query_params.get("dataset")
     exists = get_bw_data_exists(dataset_id)
     return {"hasBWData": exists}
 
 
 @router.get("/getregionsignaldata")
-async def getregionsignaldata(request: Request):
+def getregionsignaldata(request: Request):
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
     start = int(request.query_params.get("start"))
@@ -51,13 +52,13 @@ async def getregionsignaldata(request: Request):
     if isinstance(response, str) and "Error" in response:
         print(response)
         if "BigWig folder not found" in response:
-            return {"hasBWData": False, "message": response}
+            return ORJSONResponse({"hasBWData": False, "message": response})
         raise HTTPException(status_code=404, detail="Error in getting signal data")
-    return {"hasBWData": True, "data": response}
+    return ORJSONResponse({"hasBWData": True, "data": response})
 
 
 @router.get("/getcelltypelist")
-async def getcelltypelist(request: Request):
+def getcelltypelist(request: Request):
     print("getcelltypelist() called================")
 
     dataset_id = request.query_params.get("dataset")
@@ -70,7 +71,7 @@ async def getcelltypelist(request: Request):
 
 
 @router.get("/getbigwigcelltypelist")
-async def getbigwigcelltypelist(request: Request):
+def getbigwigcelltypelist(request: Request):
     print("getbigwigcelltypelist() called================")
 
     dataset_id = request.query_params.get("dataset")
@@ -85,7 +86,7 @@ async def getbigwigcelltypelist(request: Request):
 
 
 @router.get("/getgenelocationsinchromosome")
-async def getgenelocationsinchromosome(request: Request):
+def getgenelocationsinchromosome(request: Request):
     print("getgenelocationsinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
@@ -100,11 +101,11 @@ async def getgenelocationsinchromosome(request: Request):
     if "Error" in response:
         print(response)
         raise HTTPException(status_code=404, detail="Error in getting gene locations.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getgwasdatasets")
-async def getgwasdatasets(request: Request):
+def getgwasdatasets(request: Request):
     print("getgwasdatasets() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -116,7 +117,7 @@ async def getgwasdatasets(request: Request):
 
 
 @router.get("/getgwasinchromosome")
-async def getgwasinchromosome(request: Request):
+def getgwasinchromosome(request: Request):
     print("getgwasinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     gwas_dataset_id = request.query_params.get("gwas_dataset")
@@ -133,19 +134,19 @@ async def getgwasinchromosome(request: Request):
 
     if "Error" in response:
         if "Chromosome file not found" in response:
-            return {"hasGwas": False, "data": []}
+            return ORJSONResponse({"hasGwas": False, "data": []})
         # raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
-    return {"hasGwas": True, "data": response}
+    return ORJSONResponse({"hasGwas": True, "data": response})
 
     response = get_gwas_in_chromosome(dataset_id, chromosome, start, end)
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getgenelist")
-async def getgenelist(request: Request):
+def getgenelist(request: Request):
     print("getgenelist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -158,7 +159,7 @@ async def getgenelist(request: Request):
 
 
 @router.get("/getsnplist")
-async def getsnplist(request: Request):
+def getsnplist(request: Request):
     print("getsnplist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -171,7 +172,7 @@ async def getsnplist(request: Request):
 
 
 @router.get("/getexonstructureinchromosome")
-async def getexonstructureinchromosome(request: Request):
+def getexonstructureinchromosome(request: Request):
     print("getexonstructureinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
@@ -187,11 +188,11 @@ async def getexonstructureinchromosome(request: Request):
         print(response)
         raise HTTPException(status_code=404, detail="Error in getting exon structure.")
 
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getgencodeversion")
-async def getgencodeversion(request: Request):
+def getgencodeversion(request: Request):
     print("getgencodeversion() called================")
     dataset_id = request.query_params.get("dataset")
 

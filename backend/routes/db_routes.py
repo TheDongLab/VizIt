@@ -8,7 +8,7 @@ from backend.db import engine
 router = APIRouter()
 
 @router.get("/")
-async def read_root():
+def read_root():
     return {"Message": "Hello DB."}
 
 
@@ -24,7 +24,7 @@ Here is the order to import the CSV data into the database
 7. data
 '''
 @router.get("/import_csv/{table}", tags=["db"])
-async def import_csv(table: str):
+def import_csv(table: str):
     empty_data_lst = [None, "none","Null","null","na", np.nan, "Unknown","unknown","NaN","nan","N/A"]
     if table == "study":
         try:

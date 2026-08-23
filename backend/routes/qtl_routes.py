@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import ORJSONResponse
 from fastapi import Request
 
 # from backend.funcs.get_data import *
@@ -27,12 +28,12 @@ router = APIRouter()
 
 
 @router.get("/")
-async def read_root():
+def read_root():
     return {"Message": "Hello QTL."}
 
 
 @router.get("/inspectdataset")
-async def inspectdataset(request: Request):
+def inspectdataset(request: Request):
     dataset_id = request.query_params.get("dataset")
     if is_remote(dataset_id):
         clear_remote_cache()
@@ -40,7 +41,7 @@ async def inspectdataset(request: Request):
 
 
 @router.get("/getgenelocation")
-async def getgenelocation(request: Request):
+def getgenelocation(request: Request):
     print("getgenelocation() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -53,7 +54,7 @@ async def getgenelocation(request: Request):
 
 
 @router.get("/getsnplocation")
-async def getsnplocation(request: Request):
+def getsnplocation(request: Request):
     print("getsnplocation() called================")
     dataset_id = request.query_params.get("dataset")
     snp = request.query_params.get("snp")
@@ -66,7 +67,7 @@ async def getsnplocation(request: Request):
 
 
 @router.get("/getgenelocationsinchromosome")
-async def getgenelocationsinchromosome(request: Request):
+def getgenelocationsinchromosome(request: Request):
     print("getgenelocationsinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
@@ -80,11 +81,11 @@ async def getgenelocationsinchromosome(request: Request):
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene locations.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getsnplocationsinchromosome")
-async def getsnplocationsinchromosome(request: Request):
+def getsnplocationsinchromosome(request: Request):
     print("getsnplocationsinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     chromosome = request.query_params.get("chromosome")
@@ -98,11 +99,11 @@ async def getsnplocationsinchromosome(request: Request):
 
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting SNP locations.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getgwasdatasets")
-async def getgwasdatasets(request: Request):
+def getgwasdatasets(request: Request):
     print("getgwasdatasets() called================")
     dataset_id = request.query_params.get("dataset")
 
@@ -114,7 +115,7 @@ async def getgwasdatasets(request: Request):
 
 
 @router.get("/getgwasinchromosome")
-async def getgwasinchromosome(request: Request):
+def getgwasinchromosome(request: Request):
     print("getgwasinchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     gwas_dataset_id = request.query_params.get("gwas_dataset")
@@ -131,13 +132,13 @@ async def getgwasinchromosome(request: Request):
 
     if "Error" in response:
         if "Chromosome file not found" in response:
-            return {"hasGwas": False, "data": []}
+            return ORJSONResponse({"hasGwas": False, "data": []})
         # raise HTTPException(status_code=404, detail="Error in getting GWAS data.")
-    return {"hasGwas": True, "data": response}
+    return ORJSONResponse({"hasGwas": True, "data": response})
 
 
 @router.get("/getgenechromosome")
-async def getgenechromosome(request: Request):
+def getgenechromosome(request: Request):
     print("getgenechromosome() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -150,7 +151,7 @@ async def getgenechromosome(request: Request):
 
 
 @router.get("/getsnpchromosome")
-async def getsnpchromosome(request: Request):
+def getsnpchromosome(request: Request):
     print("getsnpchromosome() called================")
     dataset_id = request.query_params.get("dataset")
     snp = request.query_params.get("snp")
@@ -163,7 +164,7 @@ async def getsnpchromosome(request: Request):
 
 
 @router.get("/getgenelist")
-async def getgenelist(request: Request):
+def getgenelist(request: Request):
     print("getgenelist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -176,7 +177,7 @@ async def getgenelist(request: Request):
 
 
 @router.get("/getsnplist")
-async def getsnplist(request: Request):
+def getsnplist(request: Request):
     print("getsnplist() called================")
     dataset_id = request.query_params.get("dataset")
     query_str = request.query_params.get("query_str")
@@ -189,7 +190,7 @@ async def getsnplist(request: Request):
 
 
 @router.get("/getgenecelltypes")
-async def getgenecelltypes(request: Request):
+def getgenecelltypes(request: Request):
     print("getgenecelltypes() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -203,7 +204,7 @@ async def getgenecelltypes(request: Request):
 
 
 @router.get("/getsnpcelltypes")
-async def getsnpcelltypes(request: Request):
+def getsnpcelltypes(request: Request):
     print("getsnpcelltypes() called================")
     dataset_id = request.query_params.get("dataset")
     snp = request.query_params.get("snp")
@@ -217,7 +218,7 @@ async def getsnpcelltypes(request: Request):
 
 
 @router.get("/getsnpdataforgene")
-async def getsnpdataforgene(request: Request):
+def getsnpdataforgene(request: Request):
     print("getsnpdataforgene() called================")
     dataset_id = request.query_params.get("dataset")
     gene = request.query_params.get("gene")
@@ -226,11 +227,11 @@ async def getsnpdataforgene(request: Request):
     response = get_snp_data_for_gene(dataset_id, gene, celltype)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting SNP data.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getgenedataforsnp")
-async def getgenedataforsnp(request: Request):
+def getgenedataforsnp(request: Request):
     print("getgenedataforsnp() called================")
     dataset_id = request.query_params.get("dataset")
     is_caqtl = request.query_params.get("is_caqtl", "false").lower() == "true"
@@ -240,11 +241,11 @@ async def getgenedataforsnp(request: Request):
     response = get_gene_data_for_snp(dataset_id, is_caqtl, snp, celltype)
     if "Error" in response:
         raise HTTPException(status_code=404, detail="Error in getting gene data.")
-    return response
+    return ORJSONResponse(response)
 
 
 @router.get("/getgencodeversion")
-async def getgencodeversion(request: Request):
+def getgencodeversion(request: Request):
     print("getgencodeversion() called================")
     dataset_id = request.query_params.get("dataset")
 

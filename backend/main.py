@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from starlette.requests import Request
 
 from backend.db import create_db_and_tables
@@ -20,7 +20,7 @@ from backend.funcs.remote_capabilities import (
 
 from backend.settings import settings
 
-app = FastAPI(debug=settings.debug)
+app = FastAPI(debug=settings.debug, default_response_class=ORJSONResponse)
 
 
 def check_remote_capabilities_on_startup():
@@ -52,12 +52,12 @@ app.add_event_handler("startup", check_remote_capabilities_on_startup)
 
 
 @app.get("/")
-async def root():
+def root():
     return "Hello, Welcome to VizIt!"
 
 
 @app.get("/serverconfig")
-async def server_config():
+def server_config():
     caps = run_capability_checks() if settings.allow_remote_datasets else []
     return {
         "allow_remote_datasets": settings.allow_remote_datasets,
