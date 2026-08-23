@@ -1,0 +1,55 @@
+[datasetfile]
+file = "DietFullIntegration_Oct2023_FinalOSR_6HC_MTG_FebCA_MajorMarkersUpdated2_SubCellTypes.rds"
+datatype = "snRNAseq"
+
+[dataset]
+dataset_name = "PD5D_MTG_snRNAseq"
+description = ""
+PI_full_name = "Clemens Scherzer"
+PI_email = "clemens.scherzer@yale.edu"
+first_contributor = "Jacob Parker"
+first_contributor_email = "jacob.parker@yale.edu"
+other_contributors = ""
+support_grants = ""
+other_funding_source = ""
+publication_DOI = ""
+publication_PMID = ""
+brain_super_region = "Temporal lobe"
+brain_region = "Middle temporal gyrus"
+sample_info = ""
+sample_sheet = "Sample_snRNAseq_10Samples.csv"
+n_samples = 10
+organism = "Homo Sapiens"
+tissue = "Brain"
+disease = "PD"
+
+[study]
+study_name = "Parkinson5D"
+description = ""
+team_name = "Team Scherzer"
+lab_name = "NeuroGenomics"
+submitter_name = ""
+submitter_email = ""
+
+[protocol]
+protocol_id = "P001"
+protocol_name = "P001_snRNAseq"
+version = ""
+github_url = ""
+sample_collection_summary = ""
+cell_extraction_summary = ""
+lib_prep_summary = ""
+data_processing_summary = ""
+protocols_io_DOI = ""
+other_reference = ""
+
+[meta_features]
+selected_features = [ "nCount_RNA", "nFeature_RNA", "sex", "MajorCellTypes", "updrs", "SubCellTypes", "mmse", "sample_id", "case",]
+sample_id_column = "sample_id"
+main_cluster_column = "SubCellTypes"
+condition_column = "case"
+
+[visium_defaults]
+samples = [ "BN2023", "BN1076",]
+features = [ "smoothed_label_s5",]
+genes = [ "SNCA",]

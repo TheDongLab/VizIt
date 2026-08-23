@@ -1,0 +1,55 @@
+[datasetfile]
+file = ""
+datatype = "eQTL"
+
+[dataset]
+dataset_name = "PD5D_Midbrain_sc_eQTL"
+description = ""
+PI_full_name = "Xianjun Dong"
+PI_email = "xianjun.dong@yale.edu"
+first_contributor = "Mingming Lu"
+first_contributor_email = "mingming.lu@yale.edu"
+other_contributors = ""
+support_grants = ""
+other_funding_source = ""
+publication_DOI = ""
+publication_PMID = ""
+brain_super_region = "Brainstem"
+brain_region = "Midbrain"
+sample_info = ""
+sample_sheet = ""
+n_samples = 0
+organism = "Homo Sapiens"
+tissue = "Brain"
+disease = "PD"
+
+[study]
+study_name = "Parkinson5D"
+description = ""
+team_name = "Team Scherzer"
+lab_name = "Dong Lab"
+submitter_name = ""
+submitter_email = ""
+
+[protocol]
+protocol_id = "P001"
+protocol_name = "P001_sc_eQTL"
+version = ""
+github_url = ""
+sample_collection_summary = ""
+cell_extraction_summary = ""
+lib_prep_summary = ""
+data_processing_summary = ""
+protocols_io_DOI = ""
+other_reference = ""
+
+[meta_features]
+selected_features = []
+sample_id_column = ""
+main_cluster_column = ""
+condition_column = ""
+
+[visium_defaults]
+samples = []
+features = []
+genes = []
