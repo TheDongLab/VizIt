@@ -1,6 +1,12 @@
-# VizIt
+<p align="center">
+  <img src="docs/assets/images/logo.png" alt="VizIt logo" width="300">
+</p>
 
-[![DOI](https://zenodo.org/badge/996182057.svg)](https://doi.org/10.5281/zenodo.21925071)
+<h1 align="center">VizIt</h1>
+
+<p align="center">
+  <a href="https://doi.org/10.5281/zenodo.21925071"><img src="https://zenodo.org/badge/996182057.svg" alt="DOI"></a>
+</p>
 
 ## Install and run
 

@@ -1,3 +1,7 @@
+<p style="text-align: center;">
+  <img src="assets/images/logo.png" alt="VizIt logo" width="160">
+</p>
+
 # Welcome to VizIt Docs!
 VizIt is a comprehensive framework for single-cell, spatial transcriptomics, and other omics data visualization and exploration. 
 This documentation will guide you through the installation and data preparation processes.
