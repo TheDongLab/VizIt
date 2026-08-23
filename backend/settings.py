@@ -1,4 +1,6 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     uvicorn_port: int = 8000
@@ -12,7 +14,9 @@ class Settings(BaseSettings):
     # Resolve the SQLite path from the repository root
     database_url: str = "sqlite:///./backend/bdp_db.db"
 
-    class Config:
-        env_file = ".env"  # Load local settings
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).parent / ".env",
+        extra="ignore",
+    )
 
 settings = Settings()
