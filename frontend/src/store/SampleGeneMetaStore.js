@@ -178,9 +178,9 @@ const useSampleGeneMetaStore = create((set, get) => ({
         }
 
         try {
-            for (var sample of selectedSamples) {
-                if (sample === "all") continue
-                if (!get().sampleMetaDict[sample]) {
+            await Promise.all(selectedSamples
+                .filter((sample) => sample !== "all" && !get().sampleMetaDict[sample])
+                .map(async (sample) => {
                     const response = await getMetaDataOfSample(dataset_id, sample)
                     set({
                         sampleMetaDict:
@@ -193,8 +193,7 @@ const useSampleGeneMetaStore = create((set, get) => ({
                                 }
                             }
                     })
-                }
-            }
+                }))
         } catch (error) {
             set({error: "Failed to fetch sample meta data:" + error, loading: false})
         }
@@ -328,12 +327,12 @@ const useSampleGeneMetaStore = create((set, get) => ({
         set({loading: true, error: null})
 
         try {
-            for (var gene of selectedGenes) {
-                if (!get().exprDataDict[gene]) {
+            await Promise.all(selectedGenes
+                .filter((gene) => !get().exprDataDict[gene])
+                .map(async (gene) => {
                     const response = await getExprData(dataset_id, gene)
                     set({exprDataDict: {...get().exprDataDict, [gene]: response.data}})
-                }
-            }
+                }))
             // remove gene item if it is not selected
             for (var key in get().exprDataDict) {
                 if (!selectedGenes.includes(key)) {
@@ -361,12 +360,12 @@ const useSampleGeneMetaStore = create((set, get) => ({
         set({loading: true, error: null})
 
         try {
-            for (var gene of selectedGenes) {
-                if (!get().pseudoExprDict[gene]) {
+            await Promise.all(selectedGenes
+                .filter((gene) => !get().pseudoExprDict[gene])
+                .map(async (gene) => {
                     const response = await getPseudoExprData(dataset_id, gene)
                     set({pseudoExprDict: {...get().pseudoExprDict, [gene]: response.data}})
-                }
-            }
+                }))
             // remove gene item if it is not selected
             for (var key in get().pseudoExprDict) {
                 if (!selectedGenes.includes(key)) {
@@ -394,11 +393,13 @@ const useSampleGeneMetaStore = create((set, get) => ({
         set({loading: true, error: null})
 
         try {
-            for (var sample of selectedSamples) {
-                if (sample === "all") continue
-                if (!get().imageDataDict[sample]) {
-                    const coor_response = await getCoordinates(dataset_id, sample)
-                    const img_response = await getImage(dataset_id, sample)
+            await Promise.all(selectedSamples
+                .filter((sample) => sample !== "all" && !get().imageDataDict[sample])
+                .map(async (sample) => {
+                    const [coor_response, img_response] = await Promise.all([
+                        getCoordinates(dataset_id, sample),
+                        getImage(dataset_id, sample),
+                    ])
                     set({
                         imageDataDict: {
                             ...get().imageDataDict,
@@ -409,8 +410,7 @@ const useSampleGeneMetaStore = create((set, get) => ({
                             },
                         },
                     })
-                }
-            }
+                }))
             // remove gene item if it is not selected
             for (var key in get().imageDataDict) {
                 if (!selectedSamples.includes(key)) {
