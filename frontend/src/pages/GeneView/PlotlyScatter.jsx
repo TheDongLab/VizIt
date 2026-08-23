@@ -14,7 +14,8 @@ const PlotlyScatterPlot = React.memo(function PlotlyScatterPlot({
     if (umapData.length === 0) return "UMAP data is loading...";
 
     if (sampleList.length >= 1 && !sampleList.includes("all")) {
-        umapData = umapData.filter((point) => sampleList.includes(point[0].split('_').slice(0, -1).join('_'))); //cs_id.split(/_(?:c|s|cs)\d+$/)[0]
+        const sampleSet = new Set(sampleList);
+        umapData = umapData.filter((point) => sampleSet.has(point[0].split('_').slice(0, -1).join('_'))); //cs_id.split(/_(?:c|s|cs)\d+$/)[0]
     }
     console.log("umapData: ", umapData);
     const createCategoryTraces = (plotData, colorGroup) => {

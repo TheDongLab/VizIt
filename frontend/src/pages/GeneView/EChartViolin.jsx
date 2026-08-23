@@ -5,7 +5,8 @@ import PropTypes from "prop-types";
 
 const EChartViolin = ({gene, geneData, sampleData, metaData, group}) => {
     if (sampleData.length >= 1 && !sampleData.includes("all")) {
-        metaData = metaData.filter((meta) => sampleData.includes(meta.sample_id));
+        const sampleSet = new Set(sampleData);
+        metaData = metaData.filter((meta) => sampleSet.has(meta.sample_id));
     }
     if(metaData.length === 0) return "Sample not found in the MetaData";
 

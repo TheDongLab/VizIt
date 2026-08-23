@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useRef} from "react"
+import {useEffect, useMemo, useRef} from "react"
 import PropTypes from "prop-types"
 import Plotly from "plotly.js-dist-min"
 
@@ -9,14 +9,14 @@ const UMAPPlot = ({umapData, metaData, selectedCellTypes, isAllCellTypesSelected
     const plotRef = useRef(null)
 
     const {cell_metadata, sample_metadata, cell_metadata_mapping} = metaData
-    const updatedCellMetaData = Object.fromEntries(
+    const updatedCellMetaData = useMemo(() => Object.fromEntries(
         Object.entries(cell_metadata??{}).map(([cs_id, csObj]) => {
             const newSubObj = {...csObj};  // shallow copy of inner object
             const targetValue = csObj[mainCluster];
             newSubObj[mainCluster] = cell_metadata_mapping[mainCluster]?.[targetValue]?.[0];
             return [cs_id, newSubObj];
         })
-    );
+    ), [cell_metadata, cell_metadata_mapping, mainCluster]);
 
     // console.log("cell_metadata", cell_metadata)
     // console.log("updatedCellMetaData", updatedCellMetaData)
@@ -75,9 +75,11 @@ const UMAPPlot = ({umapData, metaData, selectedCellTypes, isAllCellTypesSelected
             const text = []
             const colors = []
 
+            const selectedCellTypeSet = new Set(selectedCellTypes)
+
             umapData.forEach((point) => {
                 const cellType = updatedCellMetaData?.[point[0]]?.[mainCluster] ?? "Other"
-                const isSelected = selectedCellTypes.includes(cellType)
+                const isSelected = selectedCellTypeSet.has(cellType)
 
                 x.push(point[1])
                 y.push(point[2])

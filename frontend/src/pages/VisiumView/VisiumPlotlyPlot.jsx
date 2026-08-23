@@ -86,8 +86,10 @@ const PlotlyFeaturePlotVisium = React.memo(function PlotlyFeaturePlot({
     const featuredData = useMemo(() => {
         if (geneData[feature]) return geneData[feature];
         const data = {};
+        // The feature does not change inside the loop, so test it once
+        const isCellLevelFeature = cell_level_meta.includes(feature);
         Object.entries(cell_metadata || {}).forEach(([id, item]) => {
-            if (cell_level_meta.includes(feature)) {
+            if (isCellLevelFeature) {
                 data[id] = cell_metadata_mapping[feature][item[feature]][0];
             } else {
                 const sample_id = id.split('_').slice(0, -1).join('_')

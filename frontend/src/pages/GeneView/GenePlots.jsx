@@ -23,12 +23,13 @@ function filterBySampleId(obj, sampleList) {
 }
 
 function filterExprBySampleId(exprObj, sampleList) {
+    const sampleSet = new Set(sampleList);
     const filteredExpr = {};
     for (const [gene, values] of Object.entries(exprObj)) {
         const filteredValues = Object.fromEntries(
             Object.entries(values).filter(([sc, val]) => {
                 const sample = sc.split('_').slice(0,-1).join('_');
-                return sampleList.includes(sample);
+                return sampleSet.has(sample);
             })
         );
         filteredExpr[gene] = filteredValues;

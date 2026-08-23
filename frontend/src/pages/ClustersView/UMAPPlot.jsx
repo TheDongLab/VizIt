@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useRef} from "react"
+import {useEffect, useMemo, useRef} from "react"
 import PropTypes from "prop-types"
 import Plotly from "plotly.js-dist-min"
 
@@ -9,14 +9,14 @@ const UMAPPlot = ({umapData, metaData, selectedClusters, isAllClustersSelected, 
     const plotRef = useRef(null)
 
     const {cell_metadata, cell_metadata_mapping} = metaData
-    const updatedCellMetaData = Object.fromEntries(
+    const updatedCellMetaData = useMemo(() => Object.fromEntries(
         Object.entries(cell_metadata??{}).map(([cs_id, csObj]) => {
             const newSubObj = {...csObj};  // shallow copy of inner object
             const targetValue = csObj[mainCluster];
             newSubObj[mainCluster] = cell_metadata_mapping[mainCluster]?.[targetValue]?.[0];
             return [cs_id, newSubObj];
         })
-    );
+    ), [cell_metadata, cell_metadata_mapping, mainCluster]);
 
     // console.log("cell_metadata", cell_metadata)
     // console.log("updatedCellMetaData", updatedCellMetaData)
@@ -72,10 +72,17 @@ const UMAPPlot = ({umapData, metaData, selectedClusters, isAllClustersSelected, 
             // Group by cell type for coloring/traces
             const plorData = {}
 
+            // Keeps the first index of a cluster, the same as indexOf would
+            const clusterIndex = new Map()
+            selectedClusters.forEach((cluster, i) => {
+                if (!clusterIndex.has(cluster)) clusterIndex.set(cluster, i)
+            })
+
             umapData.forEach((point) => {
                 let cellType = updatedCellMetaData[point[0]]?.[mainCluster] || "Other"
-                if (selectedClusters.includes(cellType)) {
-                    cellTypeColors[cellType] = colorPalette[selectedClusters.indexOf(cellType) % colorPalette.length]
+                const clusterIdx = clusterIndex.get(cellType)
+                if (clusterIdx !== undefined) {
+                    cellTypeColors[cellType] = colorPalette[clusterIdx % colorPalette.length]
                 }else {
                     cellType="Other"
                     cellTypeColors[cellType] = "rgba(200, 200, 200, 0.3)"
