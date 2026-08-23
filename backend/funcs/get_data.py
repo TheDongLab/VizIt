@@ -14,6 +14,7 @@ from backend.funcs.remote_io import (
     ds_locator,
     ds_exists,
     ds_read_json,
+    ds_file_key,
     ds_read_text,
     ds_read_toml,
     ds_text_stream,
@@ -145,10 +146,15 @@ def get_gene_locations_in_chromosome(dataset, chromosome, start, end):
         # significant_genes_list = get_qtl_gene_list(dataset)
 
         if ds_exists(dataset, *rel):
-            df = pl.read_parquet(ds_locator(dataset, *rel)).filter(
-                (pl.col("position_end") >= start)
-                & (pl.col("position_start") <= end)
-                # & pl.col("gene_id").is_in(significant_genes_list)
+            # Filter while scanning so only the rows in the region are read
+            df = (
+                pl.scan_parquet(ds_locator(dataset, *rel))
+                .filter(
+                    (pl.col("position_end") >= start)
+                    & (pl.col("position_start") <= end)
+                    # & pl.col("gene_id").is_in(significant_genes_list)
+                )
+                .collect()
             )
 
             if not df.is_empty():
@@ -170,10 +176,15 @@ def get_snp_locations_in_chromosome(dataset, chromosome, start, end):
         significant_snps_list = get_qtl_snp_list(dataset)
 
         if ds_exists(dataset, *rel):
-            df = pl.read_parquet(ds_locator(dataset, *rel)).filter(
-                (pl.col("position") >= start)
-                & (pl.col("position") <= end)
-                & pl.col("snp_id").is_in(significant_snps_list)
+            # Filter while scanning so only the rows in the region are read
+            df = (
+                pl.scan_parquet(ds_locator(dataset, *rel))
+                .filter(
+                    (pl.col("position") >= start)
+                    & (pl.col("position") <= end)
+                    & pl.col("snp_id").is_in(significant_snps_list)
+                )
+                .collect()
             )
             if not df.is_empty():
                 df = df.drop_nulls()
@@ -202,9 +213,10 @@ def get_gwas_in_chromosome(qtl_dataset, gwas_dataset, chromosome, start, end):
     tsv_stream = ds_bytes_stream(qtl_dataset, "gwas", gwas_dataset, f"{chromosome}.tsv")
     if tsv_stream is None:
         return empty
-    df = pl.read_csv(tsv_stream, separator="\t").filter(
-        (pl.col("position") >= start) & (pl.col("position") <= end)
-    )
+    with tsv_stream as f:
+        df = pl.read_csv(f, separator="\t").filter(
+            (pl.col("position") >= start) & (pl.col("position") <= end)
+        )
     if df.is_empty():
         return {
             "snp_id": [],
@@ -1095,9 +1107,10 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
 
             positions, values = [], []
             for interval_start, interval_end, value in intervals:
-                for pos in range(max(start, interval_start), min(end, interval_end) + 1):
-                    positions.append(pos)
-                    values.append(format_signal_value(value))
+                # The value is constant across an interval, so format it once
+                span = range(max(start, interval_start), min(end, interval_end) + 1)
+                positions.extend(span)
+                values.extend([format_signal_value(value)] * len(span))
 
             return {"position": positions, "value": values}
 
@@ -1143,9 +1156,10 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
 
                     positions, values = [], []
                     for interval_start, interval_end, value in intervals:
-                        for pos in range(max(s, interval_start), min(e, interval_end) + 1):
-                            positions.append(pos)
-                            values.append(format_signal_value(value))
+                        # The value is constant across an interval, so format it once
+                        span = range(max(s, interval_start), min(e, interval_end) + 1)
+                        positions.extend(span)
+                        values.extend([format_signal_value(value)] * len(span))
                     return {"position": positions, "value": values}
 
                 data_plus = compute_from_bw(bw_plus)
@@ -1192,9 +1206,10 @@ def get_region_signal_data(dataset, chromosome, start, end, celltype="", bin_siz
 
         positions, values = [], []
         for interval_start, interval_end, value in intervals:
-            for pos in range(max(start, interval_start), min(end, interval_end) + 1):
-                positions.append(pos)
-                values.append(format_signal_value(value))
+            # The value is constant across an interval, so format it once
+            span = range(max(start, interval_start), min(end, interval_end) + 1)
+            positions.extend(span)
+            values.extend([format_signal_value(value)] * len(span))
 
         return {"position": positions, "value": values}
 
@@ -1301,6 +1316,28 @@ def inspect_dataset(dataset):
         return {"reachable": False, "dataset_id": dataset, "error": str(e)}
 
 
+@lru_cache(maxsize=4)
+def _read_chromosome_transcripts(dataset, bed_rel, chromosome, file_key):
+    bed_stream = ds_text_stream(dataset, bed_rel)
+    if bed_stream is None:
+        return None
+
+    chrom_prefix = f"{chromosome}\t"
+    rows = []
+    with bed_stream as f:
+        for line in f:
+            if not line.startswith(chrom_prefix):
+                continue
+            fields = line.split("\t", 3)
+            if len(fields) < 4:
+                continue
+            try:
+                rows.append((int(fields[1]), int(fields[2]), line))
+            except ValueError:
+                continue
+    return tuple(rows)
+
+
 def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=2000):
     if dataset == "all":
         return "Error: Dataset is not specified."
@@ -1315,8 +1352,13 @@ def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=
     #     return "Error: Annotation BED file not specified for the dataset."
     bed_rel = "transcript_annotation.bed"
 
-    bed_stream = ds_text_stream(dataset, bed_rel)
-    if bed_stream is None:
+    file_key = ds_file_key(dataset, bed_rel)
+    chrom_rows = (
+        None
+        if file_key is None
+        else _read_chromosome_transcripts(dataset, bed_rel, chromosome, file_key)
+    )
+    if chrom_rows is None:
         print(f"{bed_rel} not found for {dataset}")
         return "Error: Annotation BED file not found for the specified dataset."
 
@@ -1337,58 +1379,61 @@ def get_exon_structure_in_chromosome(dataset, chromosome, start, end, max_exons=
     truncated = False
 
     import csv
-    with bed_stream as f:
-      reader = csv.reader(f, delimiter="\t")
-      for row in reader:
-          if len(row) < 12:
-              continue
+    in_region = (
+        line
+        for tx_start, tx_end, line in chrom_rows
+        if tx_end >= start and tx_start <= end
+    )
+    reader = csv.reader(in_region, delimiter="\t")
+    for row in reader:
+        if len(row) < 12:
+            continue
 
-          bed_chrom = row[0]
-          tx_start = int(row[1])
-          tx_end = int(row[2])
-          name = row[3]
-          strand = row[5]
-          block_count = int(row[9])
-          block_sizes = [int(x) for x in row[10].rstrip(",").split(",")]
-          block_starts = [int(x) for x in row[11].rstrip(",").split(",")]
+        bed_chrom = row[0]
+        if bed_chrom != chromosome:
+            continue
 
-          if bed_chrom != chromosome:
-              continue
-          if tx_end < start or tx_start > end:
-              continue
+        tx_start = int(row[1])
+        tx_end = int(row[2])
 
-          parts = name.split("___")
-          transcript_id = parts[0] if len(parts) > 0 else name
-          gene_id = parts[1] if len(parts) > 1 else ""
-          biotype = parts[2] if len(parts) > 2 else ""
-          gene_symbol = parts[3] if len(parts) > 3 else gene_id
+        name = row[3]
+        strand = row[5]
+        block_count = int(row[9])
+        block_sizes = [int(x) for x in row[10].rstrip(",").split(",")]
+        block_starts = [int(x) for x in row[11].rstrip(",").split(",")]
 
-          for i in range(block_count):
-              exon_start = tx_start + block_starts[i]
-              exon_end = exon_start + block_sizes[i]
-              if exon_end < start or exon_start > end:
-                  continue
+        parts = name.split("___")
+        transcript_id = parts[0] if len(parts) > 0 else name
+        gene_id = parts[1] if len(parts) > 1 else ""
+        biotype = parts[2] if len(parts) > 2 else ""
+        gene_symbol = parts[3] if len(parts) > 3 else gene_id
 
-              chrom_list.append(bed_chrom)
-              transcript_id_list.append(transcript_id)
-              gene_id_list.append(gene_id)
-              gene_symbol_list.append(gene_symbol)
-              strand_list.append(strand)
-              biotype_list.append(biotype)
-              tx_start_list.append(tx_start)
-              tx_end_list.append(tx_end)
-              exon_index_list.append(i)
-              exon_start_list.append(exon_start)
-              exon_end_list.append(exon_end)
-              exon_count_list.append(block_count)
+        for i in range(block_count):
+            exon_start = tx_start + block_starts[i]
+            exon_end = exon_start + block_sizes[i]
+            if exon_end < start or exon_start > end:
+                continue
 
-              total_exons += 1
-              if total_exons >= max_exons:
-                  truncated = True
-                  break
+            chrom_list.append(bed_chrom)
+            transcript_id_list.append(transcript_id)
+            gene_id_list.append(gene_id)
+            gene_symbol_list.append(gene_symbol)
+            strand_list.append(strand)
+            biotype_list.append(biotype)
+            tx_start_list.append(tx_start)
+            tx_end_list.append(tx_end)
+            exon_index_list.append(i)
+            exon_start_list.append(exon_start)
+            exon_end_list.append(exon_end)
+            exon_count_list.append(block_count)
 
-          if truncated:
-              break
+            total_exons += 1
+            if total_exons >= max_exons:
+                truncated = True
+                break
+
+        if truncated:
+            break
 
     if total_exons == 0:
         return "No transcripts found in the region."

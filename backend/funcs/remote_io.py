@@ -193,6 +193,17 @@ def ds_exists(dataset: str, *parts) -> bool:
     return os.path.exists(_local_path(dataset, parts))
 
 
+def ds_file_key(dataset: str, *parts):
+    if is_remote(dataset):
+        return _remote_url(dataset, parts)
+    path = _local_path(dataset, parts)
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (path, st.st_mtime_ns, st.st_size)
+
+
 def ds_read_bytes(dataset: str, *parts):
     if is_remote(dataset):
         try:
@@ -227,14 +238,26 @@ def ds_read_toml(dataset: str, *parts):
     return toml.loads(text)
 
 
-def ds_text_stream(dataset: str, *parts):
-    text = ds_read_text(dataset, *parts)
+def ds_text_stream(dataset: str, *parts, encoding="utf-8"):
+    if not is_remote(dataset):
+        path = _local_path(dataset, parts)
+        if not os.path.exists(path):
+            return None
+        return open(path, "r", encoding=encoding, newline="")
+
+    text = ds_read_text(dataset, *parts, encoding=encoding)
     if text is None:
         return None
     return io.StringIO(text)
 
 
 def ds_bytes_stream(dataset: str, *parts):
+    if not is_remote(dataset):
+        path = _local_path(dataset, parts)
+        if not os.path.exists(path):
+            return None
+        return open(path, "rb")
+
     data = ds_read_bytes(dataset, *parts)
     if data is None:
         return None
