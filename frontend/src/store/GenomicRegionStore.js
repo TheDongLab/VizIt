@@ -140,6 +140,8 @@ const useSignalStore = create((set, get) => ({
         }
         set({ loading: true, snpData: {} });
 
+        let hasBWData = true;
+
         const promises = get().availableCellTypes.map(async (c) => {
             const response = await getRegionSignalData(
                 dataset,
@@ -149,9 +151,8 @@ const useSignalStore = create((set, get) => ({
                 c,
                 binSize,
             );
-            const hasBWData = response.hasBWData;
-            set({ hasBWData });
-            if (!hasBWData) {
+            if (!response.hasBWData) {
+                hasBWData = false;
                 return [c, []];
             }
             const signalData = response.data;
@@ -177,7 +178,12 @@ const useSignalStore = create((set, get) => ({
             const results = await Promise.all(promises);
 
             const newSignalData = Object.fromEntries(results);
-            set({ signalData: newSignalData, loading: false, error: null });
+            set({
+                signalData: newSignalData,
+                hasBWData,
+                loading: false,
+                error: null,
+            });
         } catch (error) {
             console.error("Error fetching signal data:", error);
             throw error;

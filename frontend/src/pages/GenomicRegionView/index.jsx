@@ -44,6 +44,15 @@ import { getGeneLocation, getSnpLocation } from "../../api/qtl.js";
 import { supportsWebGL } from "../../utils/webgl.js";
 
 const webGLSupported = supportsWebGL();
+
+const EMPTY_REGION_DATA = {
+    signalData: {},
+    nearbyGenes: [],
+    exonStructure: [],
+    exonStructureTruncated: false,
+    gwasData: {},
+    binSize: 1000,
+};
 // console.log("WebGL supported:", webGLSupported);
 
 function ConfirmationDialog({
@@ -120,20 +129,16 @@ function GenomicRegionView() {
         setSelectedRange,
         setSelectedChromosome,
         availableCellTypes,
-        signalData,
         fetchCellTypes,
         fetchSignalData,
         fetchGeneLocations,
         fetchGeneList,
         fetchSnpList,
         fetchExonStructure,
-        exonStructure,
-        exonStructureTruncated,
         gwasDatasets,
         selectedGwasDatasets,
         fetchGwasDatasets,
         fetchGwasForRegion,
-        gwasData,
     } = useSignalStore();
     const { loading, error } = useSignalStore();
 
@@ -182,6 +187,8 @@ function GenomicRegionView() {
 
     const ignoreNextUrlRegionRef = useRef(false);
     const firstRenderRef = useRef(true);
+    const lastFetchKeyRef = useRef(null);
+    const [gwasDatasetsReady, setGwasDatasetsReady] = useState(false);
 
     const [combinedList, setCombinedList] = useState([]);
     const [filteredCombinedList, setFilteredCombinedList] = useState([]);
@@ -239,7 +246,7 @@ function GenomicRegionView() {
         initialize();
     }, [datasetId, setDataset]);
 
-    const [nearbyGenes, setNearbyGenes] = useState([]);
+    const [regionData, setRegionData] = useState(EMPTY_REGION_DATA);
     const [regionSearchText, setRegionSearchText] = useState("");
 
     const indexedList = useMemo(
@@ -451,13 +458,18 @@ function GenomicRegionView() {
 
     useEffect(() => {
         if (datasetId) {
-            fetchGwasDatasets(datasetId);
+            setGwasDatasetsReady(false);
+            fetchGwasDatasets(datasetId)
+                .catch((err) => {
+                    console.error("Error fetching GWAS datasets:", err);
+                })
+                .finally(() => setGwasDatasetsReady(true));
         }
     }, [datasetId]);
 
     const [selectionError, setSelectionError] = useState("");
 
-    const fetchData = async (range, binSizeOverride = null) => {
+    const fetchData = async (range, binSizeOverride = null, force = false) => {
         if (!datasetId || !selectedChromosome || !range) return;
 
         const { start, end } = range;
@@ -466,37 +478,56 @@ function GenomicRegionView() {
             return;
         }
 
+        const binSize =
+            binSizeOverride ?? Math.ceil(Math.abs(end - start) * 0.002);
+
+        const fetchKey = [
+            datasetId,
+            selectedChromosome,
+            start,
+            end,
+            binSize,
+            activeGwasDatasets.join(","),
+        ].join("|");
+        if (!force && fetchKey === lastFetchKeyRef.current) return;
+        lastFetchKeyRef.current = fetchKey;
+
         setDataLoading(true);
         setSelectionError("");
 
         try {
             await fetchCellTypes(datasetId);
 
-            const locations = await fetchGeneLocations(datasetId, start, end);
-            setNearbyGenes(locations);
+            const [locations] = await Promise.all([
+                fetchGeneLocations(datasetId, start, end),
+                fetchExonStructure(datasetId, start, end),
+                fetchSignalData(datasetId, start, end, binSize),
+                activeGwasDatasets.length > 0
+                    ? fetchGwasForRegion(
+                          datasetId,
+                          selectedChromosome,
+                          start,
+                          end,
+                      ).catch((err) => {
+                          console.error("Error fetching GWAS data:", err);
+                          lastFetchKeyRef.current = null;
+                      })
+                    : null,
+            ]);
 
-            await fetchExonStructure(datasetId, start, end);
-
-            if (activeGwasDatasets.length > 0) {
-                try {
-                    await fetchGwasForRegion(
-                        datasetId,
-                        selectedChromosome,
-                        start,
-                        end,
-                    );
-                } catch (err) {
-                    console.error("Error fetching GWAS data:", err);
-                }
-            }
-
-            const binSize =
-                binSizeOverride ?? Math.ceil(Math.abs(end - start) * 0.002);
-
-            await fetchSignalData(datasetId, start, end, binSize);
+            const store = useSignalStore.getState();
+            setRegionData({
+                signalData: store.signalData,
+                nearbyGenes: locations || [],
+                exonStructure: store.exonStructure,
+                exonStructureTruncated: store.exonStructureTruncated,
+                gwasData: store.gwasData,
+                binSize,
+            });
             setCurrentBinSize(binSize);
         } catch (err) {
             console.error("Error fetching signal data:", err);
+            lastFetchKeyRef.current = null;
             setSelectionError(
                 "Error fetching data for the selected region. Please check your selection.",
             );
@@ -526,7 +557,7 @@ function GenomicRegionView() {
 
     // click the button to fetch umap data
     const handleLoadPlot = async () => {
-        await fetchData(selectedRange);
+        await fetchData(selectedRange, null, true);
     };
 
     // Handle clicking points
@@ -656,6 +687,11 @@ function GenomicRegionView() {
         return displayOptions.showGwas ? selectedGwasDatasets || [] : [];
     }, [displayOptions.showGwas, selectedGwasDatasets]);
 
+    const visibleGwasDatasets = useMemo(
+        () => gwasDatasets.filter((ds) => activeGwasDatasets.includes(ds.id)),
+        [gwasDatasets, activeGwasDatasets],
+    );
+
     useEffect(() => {
         if (menuOpen) {
             setTempDisplayOptions({ ...displayOptions });
@@ -716,16 +752,16 @@ function GenomicRegionView() {
                         end: Math.ceil(end),
                     };
 
-                    if (
-                        !visibleRange ||
-                        newRange.start !== visibleRange.start ||
-                        newRange.end !== visibleRange.end
-                    ) {
-                        setVisibleRange(newRange);
-                    }
+                    setVisibleRange((prev) =>
+                        prev &&
+                        prev.start === newRange.start &&
+                        prev.end === newRange.end
+                            ? prev
+                            : newRange,
+                    );
                 }
             }, 500),
-        [visibleRange, setVisibleRange],
+        [],
     );
 
     // Handle plot updates and visible range changes
@@ -739,6 +775,7 @@ function GenomicRegionView() {
     // Refetch data when dataset, chromosome, or selected range changes
     useEffect(() => {
         if (
+            gwasDatasetsReady &&
             datasetId &&
             selectedChromosome &&
             selectedRange?.start != null &&
@@ -747,6 +784,7 @@ function GenomicRegionView() {
             fetchData(selectedRange);
         }
     }, [
+        gwasDatasetsReady,
         datasetId,
         selectedChromosome,
         selectedRange?.start,
@@ -756,6 +794,7 @@ function GenomicRegionView() {
 
     useEffect(() => {
         if (
+            gwasDatasetsReady &&
             visibleRange &&
             visibleRange.start != null &&
             visibleRange.end != null &&
@@ -777,6 +816,7 @@ function GenomicRegionView() {
             }
         }
     }, [
+        gwasDatasetsReady,
         visibleRange,
         selectedChromosome,
         datasetId,
@@ -1339,25 +1379,28 @@ function GenomicRegionView() {
                                                 selectedRange={selectedRange}
                                                 visibleRange={visibleRange}
                                                 cellTypes={availableCellTypes}
-                                                signalData={signalData}
-                                                nearbyGenes={nearbyGenes}
-                                                gwasDatasets={gwasDatasets.filter(
-                                                    (ds) =>
-                                                        activeGwasDatasets.includes(
-                                                            ds.id,
-                                                        ),
-                                                )}
-                                                gwasData={gwasData}
+                                                signalData={
+                                                    regionData.signalData
+                                                }
+                                                nearbyGenes={
+                                                    regionData.nearbyGenes
+                                                }
+                                                gwasDatasets={
+                                                    visibleGwasDatasets
+                                                }
+                                                gwasData={regionData.gwasData}
                                                 handleSelect={handleSelect}
                                                 useWebGL={webGLSupported}
                                                 displayOptions={displayOptions}
                                                 handlePlotUpdate={
                                                     handlePlotUpdate
                                                 }
-                                                binSize={currentBinSize}
-                                                exonStructure={exonStructure}
+                                                binSize={regionData.binSize}
+                                                exonStructure={
+                                                    regionData.exonStructure
+                                                }
                                                 exonStructureTruncated={
-                                                    exonStructureTruncated
+                                                    regionData.exonStructureTruncated
                                                 }
                                             />
                                         </div>
