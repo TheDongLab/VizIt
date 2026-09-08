@@ -1,7 +1,7 @@
 ______________________________
 
 ## NOTES ON DATASET PREPARATION
-Christopher Zhang, Ruifeng Hu
+Chenhang Christopher Zhang, Ruifeng Hu
 ______________________________
 
 

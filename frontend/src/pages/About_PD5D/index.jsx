@@ -99,7 +99,7 @@ const About = () => {
             shared to promote transparency, reproducibility, and collaboration. The portal is built
             on an open-source framework called{" "}
             <a href="https://github.com/TheDongLab/VizIt" target="_blank" rel="noopener noreferrer">VizIt</a>
-            {" "}developed by Dr. Ruifeng Hu and Christopher Zhang in Dong Lab at Yale:
+            {" "}developed by Dr. Ruifeng Hu and Chenhang Christopher Zhang in Dong Lab at Yale:
             <ul>
               <li>
                 Code repository:
@@ -120,7 +120,7 @@ const About = () => {
           <ul>
             <li><strong>Xianjun Dong (Principal Investigator, Yale)</strong> - Oversee all aspects of development and research.</li>
             <li><strong>Ruifeng Hu (Lead Developer, Yale)</strong> - Lead the project, design and implement the portal's features, ensuring that the portal is both powerful and user-friendly.</li>
-            <li><strong>Christopher Zhang (Developer, Concord Academy)</strong> - xQTL datasets processing, xQTL visualization, and genomic view page development.</li>
+            <li><strong>Chenhang Christopher Zhang (Developer, Concord Academy)</strong> - xQTL datasets processing, xQTL visualization, and genomic view page development.</li>
             <li><strong>Yanqing Lou (Developer, Northeastern University)</strong> - Frontend development and UI enhancements.</li>
             <li><strong>Zechuan Lin (Data contributor, Yale)</strong> - MTG eQTL, PD GWAS dataset.</li>
             <li><strong>Mingming Lu (Data contributor, Yale)</strong> - Midbrain eQTL/scQTL, scATACseq dataset.</li>
