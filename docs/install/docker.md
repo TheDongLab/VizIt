@@ -139,3 +139,11 @@ Nginx serves the frontend and proxies the API from the same origin. Set
 ??? failure "Changing a `VITE_*` value did nothing"
     Those are compiled into the frontend bundle, so you need to rebuild with
     `docker compose up -d --build`.
+
+??? failure "The first page load takes 15 seconds or more"
+    If you run a reverse proxy in front of Docker, check nginx for
+    `proxy_buffering off` on the block serving the frontend. That setting
+    belongs only on the backend locations.
+
+    Check the [example Nginx config](manual.md#option-c-production-mode-nginx-server-with-proxy-service)
+    in the manual install guide for a correct example.

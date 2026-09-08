@@ -195,62 +195,7 @@ Before you begin, ensure you have the following installed on your system:
   ```bash
   # Create and edit /etc/nginx/conf.d/BrainDataPortal.conf
        
-  server {
-
-      # Make sure THE PORT IS NOT USED!
-      listen 80;
-      server_name localhost;
-
-      # Replace with the actual path to your frontend production folder, e.g., /var/www/html/BrainDataPortal/dist;
-      root <path-to-your-frontend-production-folder> 
-      index index.html;
-
-      # frontend pages
-      location / {
-          try_files $uri /index.html;
-      }
-
-      # API requests - proxy to FastAPI
-      location /api/ {
-          proxy_pass http://localhost:8000; # Replace with your FastAPI server address (e.g., http://localhost:8000)
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      }
-
-      # QTL requests - proxy to FastAPI
-      location /qtl/ {
-          proxy_pass http://localhost:8000;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      }
-
-      location /visium/ {
-          proxy_pass http://localhost:8000;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      }
-          
-      location /signal/ {
-          proxy_pass http://localhost:8000;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      }
-
-      location /datasetmanage/ {
-          proxy_pass http://localhost:8000;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      }
-  }
+  --8<-- "docs/demos/bdpvite"
   ```
 - Enable the site  
   ```bash
