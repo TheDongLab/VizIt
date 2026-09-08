@@ -1,0 +1,287 @@
+---
+title: "Cluster Marker Analysis"
+author: "Ruifeng Hu"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: cosmo
+---
+
+## Overview
+
+This notebook performs cluster marker analysis on a Seurat object, including:
+- Finding cluster specific markers
+- Calculating differential expression within clusters
+- Performing pseudo-bulk analysis
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Load Required Libraries
+
+```{r libraries}
+library(jsonlite)
+library(Matrix)
+library(data.table)
+library(Seurat)
+library(tidyverse)
+```
+
+## Set Parameters
+
+```{r parameters}
+seurat_obj_file <- "example_data/Visium_MTG_10samples.rds"
+output_dir <- "example_data/Visium_MTG_10samples"
+cluster_col <- "smoothed_label_s5"
+condition_col <- "diagnosis"
+sample_col <- "sample_name"
+seurat_type <- "visiumst" # options: "scrnaseq", "snrnaseq", "snatacseq", "scatacseq", "visiumst"
+
+
+# Create output directory
+clustermarkers_folder = paste0(output_dir, "/clustermarkers")
+if (!dir.exists(clustermarkers_folder)) {
+  dir.create(clustermarkers_folder, recursive = TRUE)
+}
+```
+
+## Load and Validate Seurat Object
+
+```{r load-seurat}
+cat("Loading RDS data...\n")
+seurat_obj <- readRDS(seurat_obj_file)
+
+# Validation checks
+if (!inherits(seurat_obj, "Seurat")) {
+  stop("The provided file is not a valid Seurat object.")
+}
+
+if(seurat_type == "scrnaseq" | seurat_type == "snrnaseq"){
+	  # Check if the Seurat object has the necessary assay
+	if (!"RNA" %in% names(seurat_obj@assays)) {
+		stop("The Seurat object does not contain the 'RNA' assay.")
+	}
+	# Check if the Seurat object has the necessary assay data
+	if (!"data" %in% names(seurat_obj@assays$RNA@layers)) {
+		stop("The Seurat object does not contain the 'data' slot in the 'RNA' assay.")
+	}
+} else if (seurat_type == "snatacseq" | seurat_type == "scatacseq") {
+	# Check if the Seurat object has the necessary assay
+	if (!"ATAC" %in% names(seurat_obj@assays)) {
+		stop("The Seurat object does not contain the 'ATAC' assay.")
+	}
+	# Check if the Seurat object has the necessary assay data
+	if (!"counts" %in% slotNames(seurat_obj@assays$ATAC)) {
+		stop("The Seurat object does not contain the 'counts' slot in the 'ATAC' assay.")
+	}
+} else if (seurat_type == "visiumst") {
+	# Check if the Seurat object has the necessary assay
+	if (!"Spatial" %in% names(seurat_obj@assays)) {
+		stop("The Seurat object does not contain the 'Spatial' assay.")
+	}
+	# Check if the Seurat object has the necessary assay data
+	if (!"data" %in% slotNames(seurat_obj@assays$Spatial)) {
+		stop("The Seurat object does not contain the 'data' slot in the 'Spatial' assay.")
+	}
+}
+
+# Check required columns exist in metadata
+required_cols <- c(cluster_col, condition_col, sample_col)
+missing_cols <- required_cols[!required_cols %in% colnames(seurat_obj@meta.data)]
+if (length(missing_cols) > 0) {
+  stop(paste("Missing required columns in metadata:", paste(missing_cols, collapse = ", ")))
+}
+```
+
+## Find cluster Markers
+
+```{r find-markers}
+print("Extracting cluster specific markers...")
+
+# Find markers for each cluster
+cluster_markers <- FindAllMarkers(seurat_obj,group.by = cluster_col)
+
+# Convert to data.table and save
+cluster_markers_dt <- as.data.table(cluster_markers)
+fwrite(cluster_markers_dt,
+       paste0(clustermarkers_folder,"/cluster_FindAllMarkers.csv"), 
+       row.names = FALSE)
+```
+
+## Differential Expression Analysis
+
+```{r diff-expression}
+print("Calculating differential expression within each cluster...")
+
+# Define the clusters
+clusters <- unique(seurat_obj@meta.data[[cluster_col]])
+# Initialize an empty list to store results
+de_results_list <- list()
+de_results_topN_list <- list()
+
+# Loop through each cluster
+for (cluster in clusters) {
+	# Print the current cluster # nolint: whitespace_linter, indentation_linter.
+	print(paste("Processing cluster:", cluster))
+	# Subset the Seurat object to the current cluster # nolint
+	subset_obj <- seurat_obj[, seurat_obj@meta.data[[cluster_col]] == cluster]
+
+	# Calculate differential expression between conditions
+	condition_ls <- unique(seurat_obj@meta.data[[condition_col]])
+	# if there are more than 2 conditions, compare all possible combinations
+	if (length(condition_ls) > 2) {
+		combinations <- combn(condition_ls, 2)
+		for (i in 1:ncol(combinations)) {
+			c1 <- combinations[1, i]
+			c2 <- combinations[2, i]
+			de_results <- FindMarkers(subset_obj, ident.1 = c1, ident.2 = c2, group.by = condition_col)
+			## add a column for the gene names
+			de_results$gene <- rownames(de_results)
+			
+			## filter out genes with padj > 0.05
+			# de_results <- de_results[de_results$p_val_adj < 0.05, ]
+			
+			## get top 10 upregulated DE genes and downregulated, base on logFC
+			de_results_topN <- rbind(de_results[order(de_results$avg_log2FC, decreasing = TRUE), ][1:10, ],de_results[order(de_results$avg_log2FC, decreasing = FALSE), ][1:10, ])
+		
+			# Store the results in the list
+			de_results_list[[paste(cluster, paste(c1, c2, sep = "vs"), sep = ".")]] <- de_results
+			de_results_topN_list[[paste(cluster, paste(c1, c2, sep = "vs"), sep = ".")]] <- de_results_topN
+		}
+	} else {
+		de_results <- FindMarkers(subset_obj, ident.1 = condition_ls[1], ident.2 = condition_ls[2], group.by = condition_col)
+		## add a column for the gene names
+		de_results$gene <- rownames(de_results)
+
+		## filter out genes with padj > 0.05
+		# de_results <- de_results[de_results$p_val_adj < 0.05, ]
+		
+		## get top 10 upregulated DE genes and downregulated, base on logFC
+		de_results_topN <- rbind(de_results[order(de_results$avg_log2FC, decreasing = TRUE), ][1:10, ],de_results[order(de_results$avg_log2FC, decreasing = FALSE), ][1:10, ])
+		
+		de_results_list[[paste(cluster, paste(condition_ls[1], condition_ls[2], sep = "vs"), sep = ".")]] <- de_results
+		de_results_topN_list[[paste(cluster, paste(condition_ls[1], condition_ls[2], sep = "vs"), sep = ".")]] <- de_results_topN
+
+	}
+}
+# Convert the list to a data.table
+de_results_dt <- rbindlist(de_results_list, idcol = "cluster_DE")
+de_results_topN_dt <- rbindlist(de_results_topN_list, idcol = "cluster_DE")
+# Save to CSV
+fwrite(de_results_dt, paste0(clustermarkers_folder, "/cluster_DEGs.csv"), row.names = FALSE)
+fwrite(de_results_topN_dt, paste0(clustermarkers_folder, "/cluster_DEGs_topN.csv"), row.names = FALSE)
+
+```
+
+## Pseudo-bulk Analysis
+
+```{r pseudo-bulk}
+print("Calculating pseudo-bulk differential expression within each cluster...")
+
+# Set assay based on data type
+assay <- switch(seurat_type,
+               "scrnaseq" = "RNA",
+               "snrnaseq" = "RNA",
+               "snATACseq" = "ATAC",
+               "visiumst" = "Spatial",
+               stop("Invalid seurat_type"))
+
+## use the counts assay
+pb_obj <- PseudobulkExpression(seurat_obj,assays = assay, layer = "counts", method= "aggregate", return.seurat = T, group.by = c(sample_col, cluster_col, condition_col))
+
+pb_obj@meta.data[[cluster_col]] <- gsub("-", "_", pb_obj@meta.data[[cluster_col]])
+pb_obj@meta.data[["orig.ident"]] <- gsub("-", "_", pb_obj@meta.data[["orig.ident"]])
+
+metadata = pb_obj@meta.data
+## rename sample_id to sampleId
+colnames(metadata)[colnames(metadata) == sample_col] <- "sampleId"
+colnames(metadata)[colnames(metadata) == condition_col] <- "condition"
+
+write.csv(metadata, paste0(clustermarkers_folder, "/metadata_sample_cluster_condition.csv"), row.names = FALSE)
+
+expr_matrix <- GetAssayData(pb_obj, assay = assay, layer = "data")
+colnames(expr_matrix) <- gsub("-", "_", colnames(expr_matrix))
+write.csv(expr_matrix, paste0(clustermarkers_folder, "/pb_expr_matrix.csv"), row.names = TRUE)
+```
+
+```{r pseudo-bulk-de}
+# Define the clusters
+clusters <- unique(pb_obj@meta.data[[cluster_col]])
+
+# Initialize an empty list to store results
+pseudo_bulk_list <- list()
+pseudo_bulk_topN_list <- list()
+# Loop through each cluster
+for (cluster in clusters) {
+	# Print the current cluster # nolint: whitespace_linter, indentation_linter.
+	print(paste("Processing cluster:", cluster))
+	# Subset the Seurat object to the current cluster # nolint
+	subset_obj <- pb_obj[, pb_obj@meta.data[[cluster_col]] == cluster]
+
+	# Calculate differential expression between conditions
+	# Here, we assume that the conditions are stored in the "Condition" metadata column 
+	# You may need to adjust this based on your actual metadata structure
+	condition_ls <- unique(subset_obj@meta.data[[condition_col]])
+	# if there are more than 2 conditions, compare all possible combinations
+	if (length(condition_ls) > 2) {
+		combinations <- combn(condition_ls, 2)
+		for (i in 1:ncol(combinations)) {
+			c1 <- combinations[1, i]
+			c2 <- combinations[2, i]
+			
+			if (sum(Idents(seurat_obj) == c1) >= 3 & sum(Idents(seurat_obj) == c2) >= 3) {
+				de_results <- FindMarkers(subset_obj, ident.1 = c1, ident.2 = c2, group.by = condition_col, test.use = "wilcox")
+			}
+			
+			## add a column for the gene names
+			de_results$gene <- rownames(de_results)
+			
+			## filter out genes with padj > 0.05
+			# de_results <- de_results[de_results$p_val_adj < 0.1, ]
+
+			## get top 10 upregulated DE genes and downregulated, base on logFC
+			de_results_topN <- rbind(de_results[order(de_results$avg_log2FC, decreasing = TRUE), ][1:10, ],de_results[order(de_results$avg_log2FC, decreasing = FALSE), ][1:10, ])
+			
+			# Store the results in the list
+			pseudo_bulk_list[[paste(cluster, paste(c1, c2, sep = "vs"), sep = ".")]] <- de_results
+			pseudo_bulk_topN_list[[paste(cluster, paste(c1, c2, sep = "vs"), sep = ".")]] <- de_results_topN
+		}
+	} else {
+		de_results <- FindMarkers(subset_obj, ident.1 = condition_ls[1], ident.2 = condition_ls[2], group.by = condition_col,test.use = "wilcox")
+		## add a column for the gene names
+		de_results$gene <- rownames(de_results)
+		
+		## filter out genes with padj > 0.05
+		# de_results <- de_results[de_results$p_val_adj < 0.05, ]
+		
+		## get top 10 upregulated DE genes and downregulated, base on logFC
+		de_results_topN <- rbind(de_results[order(de_results$avg_log2FC, decreasing = TRUE), ][1:10, ],de_results[order(de_results$avg_log2FC, decreasing = FALSE), ][1:10, ])
+		
+		# Store the results in the list
+		pseudo_bulk_list[[paste(cluster, paste(condition_ls[1], condition_ls[2], sep = "vs"), sep = ".")]] <- de_results
+		pseudo_bulk_topN_list[[paste(cluster, paste(condition_ls[1], condition_ls[2], sep = "vs"), sep = ".")]] <- de_results_topN
+	}
+}
+# Convert the list to a data.table
+pseudo_bulk_dt <- rbindlist(pseudo_bulk_list, idcol = "cluster_DE")
+pseudo_bulk_topN_dt <- rbindlist(pseudo_bulk_topN_list, idcol = "cluster_DE")
+# Save to CSV
+fwrite(pseudo_bulk_dt, paste0(clustermarkers_folder, "/cluster_pb_DEGs.csv"), row.names = FALSE)
+fwrite(pseudo_bulk_topN_dt, paste0(clustermarkers_folder, "/cluster_pb_DEGs_topN.csv"), row.names = FALSE)
+```
+
+```{r pseudo-bulk-topN}
+pooled_topN_DEGs = pseudo_bulk_topN_dt$gene
+## remove duplicates
+pooled_topN_DEGs <- unique(pooled_topN_DEGs)
+## subset expr_matrix to only include pooled_topN_DEGs
+expr_matrix_pooled_topN_DGEs <- expr_matrix[pooled_topN_DEGs, ]
+## save the pooled_topN_DEGs expression matrix
+write.csv(expr_matrix_pooled_topN_DGEs, paste0(clustermarkers_folder, "/pb_expr_matrix_DEGs_topN.csv"), row.names = TRUE)
+
+cat("Done! cluster markers is done! ^_^ ...\n")
+
+```

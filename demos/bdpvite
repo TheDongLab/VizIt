@@ -1,0 +1,41 @@
+# Example Nginx configuration for VizIt.
+#
+# This config works for both a manual install and for the Docker image.
+#
+# Change these two settings to match your configuration:
+#   root        where your built frontend (frontend/dist) lives
+#   proxy_pass  location and port of the backend
+
+server {
+    listen 80;
+    server_name localhost;
+
+    # Replace with the actual path to your frontend production folder
+    root /var/www/html/VizIt/dist;
+    index index.html;
+
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    location ~ ^/(api|db|qtl|visium|signal|datasetmanage|serverconfig)(/|$) {
+        # Replace with your backend address
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+
+        proxy_buffering off;
+    }
+}
