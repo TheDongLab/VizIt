@@ -1262,11 +1262,24 @@ def get_bigwig_celltype_list(dataset):
     return list(celltype_mapping.keys())
 
 
+def has_qtl_data(dataset):
+    config = get_config_info(dataset)
+    if isinstance(config, dict):
+        declared = (config.get("capabilities") or {}).get("has_qtl")
+        if declared is not None:
+            return bool(declared)
+
+    return bool(
+        ds_exists(dataset, "celltypes", "celltype_parquet.json")
+        and ds_exists(dataset, "snp_locations", "chr1.parquet")
+    )
+
+
 def get_dataset_capabilities(dataset):
     has_bw = get_bw_data_exists(dataset)
     return {
         "has_umap": bool(ds_exists(dataset, "umap_embeddings_50k.csv")),
-        "has_qtl": bool(ds_exists(dataset, "celltypes", "celltype_parquet.json")),
+        "has_qtl": has_qtl_data(dataset),
         "has_bw": bool(has_bw) if not isinstance(has_bw, str) else False,
         "has_spatial": bool(ds_exists(dataset, "coordinates")),
     }
